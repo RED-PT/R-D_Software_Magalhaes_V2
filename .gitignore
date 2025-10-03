@@ -1,0 +1,16 @@
+*.d
+*.o
+*.su
+*.mk
+*.bin
+*.elf
+*.list
+*.map
+Debug/makefile
+Flight_computer_software Debug.cfg
+*.xml
+*.version
+*.resources
+*.prefs
+/Debug/
+/.settings/*
