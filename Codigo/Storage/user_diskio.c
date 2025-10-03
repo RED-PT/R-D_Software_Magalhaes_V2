@@ -6,13 +6,12 @@
   ******************************************************************************
   * @attention
   *
-  * <h2><center>&copy; Copyright (c) 2023 STMicroelectronics.
-  * All rights reserved.</center></h2>
+  * Copyright (c) 2025 STMicroelectronics.
+  * All rights reserved.
   *
-  * This software component is licensed by ST under Ultimate Liberty license
-  * SLA0044, the "License"; You may not use this file except in compliance with
-  * the License. You may obtain a copy of the License at:
-  *                             www.st.com/SLA0044
+  * This software is licensed under terms that can be found in the LICENSE file
+  * in the root directory of this software component.
+  * If no LICENSE file comes with this software, it is provided AS-IS.
   *
   ******************************************************************************
   */
@@ -36,12 +35,6 @@
 /* Includes ------------------------------------------------------------------*/
 #include <string.h>
 #include "ff_gen_drv.h"
-
-/* BY USER BEGIN */
-
-#include "SD_Card/fatfs_sd.h"
-
-/* BY USER END */
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
@@ -88,13 +81,8 @@ DSTATUS USER_initialize (
 )
 {
   /* USER CODE BEGIN INIT */
-
-	/* BY USER BEGIN */
-
-	return SD_disk_initialize(pdrv);
-
-	/* BY USER END */
-
+    Stat = STA_NOINIT;
+    return Stat;
   /* USER CODE END INIT */
 }
 
@@ -108,13 +96,8 @@ DSTATUS USER_status (
 )
 {
   /* USER CODE BEGIN STATUS */
-
-	/* BY USER BEGIN */
-
-	return SD_disk_status(pdrv);
-
-	/* BY USER END */
-
+    Stat = STA_NOINIT;
+    return Stat;
   /* USER CODE END STATUS */
 }
 
@@ -134,13 +117,7 @@ DRESULT USER_read (
 )
 {
   /* USER CODE BEGIN READ */
-
-	/* BY USER BEGIN */
-
-	return SD_disk_read(pdrv, buff, sector, count);
-
-	/* BY USER END */
-
+    return RES_OK;
   /* USER CODE END READ */
 }
 
@@ -162,13 +139,7 @@ DRESULT USER_write (
 {
   /* USER CODE BEGIN WRITE */
   /* USER CODE HERE */
-
-	/* BY USER BEGIN */
-
-	return SD_disk_write(pdrv, buff, sector, count);
-
-	/* BY USER END */
-
+    return RES_OK;
   /* USER CODE END WRITE */
 }
 #endif /* _USE_WRITE == 1 */
@@ -188,13 +159,8 @@ DRESULT USER_ioctl (
 )
 {
   /* USER CODE BEGIN IOCTL */
-
-	/* BY USER BEGIN */
-
-	return SD_disk_ioctl(pdrv, cmd, buff);
-
-	/* BY USER END */
-
+    DRESULT res = RES_ERROR;
+    return res;
   /* USER CODE END IOCTL */
 }
 #endif /* _USE_IOCTL == 1 */
