@@ -14,3 +14,4 @@ Flight_computer_software Debug.cfg
 *.prefs
 /Debug/
 /.settings/*
+readme.md

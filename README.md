@@ -26,7 +26,7 @@
     - Select New -> Folder
     - Set _Folder name_: "Codigo"
     - Select Advanced -> Link to alternate location (Linked Folder)
-    - **In case of FreeRTOS**, write to textbox _"WORKSPACE_LOC\Eletro_Software_Camoes\Codigo"_
+    - **In case of FreeRTOS**, write to textbox _"WORKSPACE_LOC\R-D_Software_Magalhaes_V2\Codigo"_
     - Deve ter sido criado um softlink ao repositório. Verificar se a folder tem ficheiros
 10. Adicionar os ficheiros da pasta Src ao compilador
     - Go to Project -> Properties  -> C/C++ General -> Paths and Symbols -> Source Location
