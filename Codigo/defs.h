@@ -82,8 +82,8 @@ typedef struct {
 //	GPS: U-Blox Neo-9M
 typedef struct{
 	// Position
-	double latitude_deg;  // Latitude (degrees, -90 to +90)
-	double longitude_deg; // Longitude (degrees, -180 to +180)
+	double dec_latitude;  // Latitude (degrees, -90 to +90)
+	double dec_longitude; // Longitude (degrees, -180 to +180)
 	float altitude_m;     // Altitude above mean sea level (meters)
 
     // GGA - Global Positioning System Fixed Data

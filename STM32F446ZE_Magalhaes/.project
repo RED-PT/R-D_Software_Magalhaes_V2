@@ -33,7 +33,7 @@
 		<link>
 			<name>Codigo</name>
 			<type>2</type>
-			<location>C:/Users/Tomas Teixeira/STM32CubeIDE/RED_Workspace/R-D_Software_Magalhaes_V2/Codigo</location>
+			<locationURI>WORKSPACE_LOC/R-D_Software_Magalhaes_V2/Codigo</locationURI>
 		</link>
 		<link>
 			<name>STM32 Modular Drivers</name>
