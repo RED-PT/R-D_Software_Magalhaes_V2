@@ -115,48 +115,19 @@ typedef struct{
     uint32_t timestamp_ms; // Timestamp (milliseconds)
 } GPS_t;
 
-//	Telemetry
-//	Fast Packet (50Hz)
-typedef struct{
-	uint32_t time;
-	uint8_t state;
-	uint8_t substate;
-	float altitude;
-	float velocity;
-	float aceleration;
-	float euler_angles[3];	// roll, pitch, yaw [deg]
-	float gyro[3];  // p,q,r [dps]
-	float throttle;
-	float servo_deg[2];
-	uint16_t vbat;
+//	Temperature Readings
+typedef struct {
+	float  temp_ms;
+	float temp_cpu;
+	float  adc_voltage;
+	uint32_t timestamp;
+} temperature_readings_t;
 
-} telemetry_fast_t;
-
-//	Slow Packet (5Hz)
-typedef struct{
-	float latitude;
-	float longitude;
-} telemetry_slow_t;
-
-//	Event Packet (on change)
-typedef struct{
-
-} telemetry_event_t;
-
-//	Commands/Events (inputs from GroundStation→FlightComputer)
-typedef enum{
-	NONE = 0,
-	PING,
-	SET_PROFILE,
-	ARM,
-	DISARM,
-	START_TEST,
-	LAUNCH,
-	ABORT,
-	FORCE_SAFE,
-	SET_TARGET_ALT
-
-
-};
+// Extern Variables
+extern IMU_t imu;
+extern MAG_t mag;
+extern BNO_t bno;
+extern BARO_t baro;
+extern GPS_t ublox_gps;
 
 #endif /* INC_DEFS_H_ */

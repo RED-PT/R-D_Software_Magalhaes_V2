@@ -9,8 +9,11 @@
 #define FLIGHT_COMPUTER_FLIGHT_COMPUTER_H_
 
 #include "defs.h"
+#include "mutex.h"
 
-//	FSM States, Sub-states & Profiles
+
+//	FSM States, Sub-states, Profiles & Parameters
+// States
 typedef enum{
 	 BOOT = 0,
 	 IDLE,
@@ -22,6 +25,7 @@ typedef enum{
 	 SAFE
 } fsm_state_t;
 
+// Sub-states
 typedef enum{
 	SUB_NONE = 0,
 	// TEST_STAND
@@ -38,10 +42,113 @@ typedef enum{
 	SUB_FL_RECOVERY
 } fsm_substate_t;
 
+// Profiles
 typedef enum{
 	GUTTER_RAMP = 0,
 	GUTTER_HOLD,
 	FLIGHT_PARAMETRIC
 } flight_profile_t;
+
+//	Parameters
+typedef struct{
+	flight_profile_t type;
+
+	//	Common
+	float target_altitude; //[m]
+	float flare_altitude; //[m]
+	float touchdown_velocity; //[m/s]
+
+	// Gutter Ramp Profile
+
+	// Gutter Hold Profile
+	float hold_throttle;
+
+	// Safety Limits
+	float throttle_min, throttle_max;
+
+} profile_params_t;
+
+// FSM Context
+typedef struct{
+	fsm_state_t state;
+	fsm_substate_t substate;
+	profile_params_t profile;
+
+	// flags
+
+
+} fsm_ctx_t;
+
+//	Commands (inputs from GroundStation→FlightComputer)
+typedef enum{
+	CMD_NONE = 0,
+	CMD_PING,
+	CMD_SET_PROFILE,
+	CMD_ARM,
+	CMD_DISARM,
+	CMD_START_TEST,
+	CMD_LAUNCH,
+	CMD_ABORT,
+	CMD_FORCE_SAFE,
+	CMD_SET_TARGET_ALT
+} command_t;
+
+// Events (from FlightComputer to GroundStation; Used in Event Packet)
+typedef enum {
+    EVT_STATE_CHANGE = 0,
+	EVT_FAULT,
+	EVT_ABORT,
+	EVT_PROFILE_LOADED,
+	EVT_CHECKS_GREEN,
+	EVT_CHECKS_RED,
+	EVT_GENERIC_MSG
+} event_t;
+
+// State Changed Details
+typedef struct {
+    uint8_t old_state;
+    uint8_t old_sub;
+    uint8_t new_state;
+    uint8_t new_sub;
+    uint8_t reason_evt; // which event caused it
+} event_state_change_t;
+
+// Event Fault Info
+typedef struct {
+    uint16_t code; // numerical identifier that tells what kind of fault happened
+    char     desc[32]; // ASCII short description
+} event_fault_t;
+
+typedef union {
+    event_state_change_t state;
+    event_fault_t        fault;
+    profile_params_t profile;
+    char msg[48];
+} event_payload_u;
+
+
+// FSM Functions Prototypes
+// Initialize FSM (call once at boot)
+void fsm_init();
+
+// Inject an event (from threads)
+void fsm_handle_event(fsm_ctx_t* ctx, event_t event, const void* payload, uint16_t size);
+
+//
+int get_fsm_state();
+
+//
+int get_fsm_substate();
+
+//
+void set_fsm_state(int value);
+
+//
+void set_fsm_substate(int value);
+
+
+// Variables
+extern fsm_ctx_t fsm_ctx;
+
 
 #endif /* FLIGHT_COMPUTER_FLIGHT_COMPUTER_H_ */
