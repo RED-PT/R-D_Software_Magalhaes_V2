@@ -35,7 +35,7 @@ extern UART_HandleTypeDef huart3;
 
 //UART
 #define UART_DEBUG &huart1
-#define UART_GPS &huart3
+#define UART_UBLOX &huart3
 
 //SPI
 #define SPI_IMU_BARO &hspi1

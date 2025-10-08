@@ -36,6 +36,8 @@ extern "C" {
 #endif
 
 #include "main.h"
+#include "stm32f4xx_hal.h"
+
 
 // MS5607 commands
 enum MS_CMD {

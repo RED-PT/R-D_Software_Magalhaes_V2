@@ -8,27 +8,26 @@
 #ifndef INC_CREATE_THREADS_H_
 #define INC_CREATE_THREADS_H_
 
-//  C libraries
-#include <stdbool.h>
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-#include <stdlib.h>
 
 //  freertos libraries
-#include "FreeRTOS.h"
+#include "FreeRTOS.h" //Don't remove !!!!!!!!!!!
 #include "semphr.h"
 #include "task.h"
 #include "cmsis_os2.h"
-#include "ff.h"
-
-//	our libraries
-#include "config.h"
+#include "message_buffer.h"
 
 //	ID threads
+// Thread chata
+extern osThreadId_t defaultTaskHandle;
+// Threads
+extern osThreadId_t ublox_gps_thread_id;
+
+// Buffers
+// Stream Buffers
+extern StreamBufferHandle_t stream_buffer_gps;
 
 // create threads function
-void create_threads();
+extern void create_threads();
 
 #endif /* INC_CREATE_THREADS_H_ */
 
