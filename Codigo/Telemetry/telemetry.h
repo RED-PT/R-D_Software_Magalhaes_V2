@@ -27,7 +27,7 @@ typedef struct{
 	uint16_t crc16;
 } telemetry_fast_t;
 
-//	Slow Packet (5Hz)
+//	Slow Packet (2Hz)
 typedef struct{
 	uint32_t time;
 	float  temp_ms;
@@ -35,6 +35,7 @@ typedef struct{
 	uint16_t vbat;
 	float latitude;
 	float longitude;
+	uint16_t crc16;
 } telemetry_slow_t;
 
 //	Event Packet (on change)

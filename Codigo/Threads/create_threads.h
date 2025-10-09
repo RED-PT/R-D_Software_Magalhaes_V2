@@ -21,6 +21,7 @@
 extern osThreadId_t defaultTaskHandle;
 // Threads
 extern osThreadId_t ublox_gps_thread_id;
+extern osThreadId_t fsm_thread_id;
 
 // Buffers
 // Stream Buffers

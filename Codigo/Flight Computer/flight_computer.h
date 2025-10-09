@@ -44,7 +44,8 @@ typedef enum{
 
 // Profiles
 typedef enum{
-	GUTTER_RAMP = 0,
+	NO_PROFILE = 0,
+	GUTTER_RAMP,
 	GUTTER_HOLD,
 	FLIGHT_PARAMETRIC
 } flight_profile_t;
@@ -116,7 +117,7 @@ typedef struct {
 // Event Fault Info
 typedef struct {
     uint16_t code; // numerical identifier that tells what kind of fault happened
-    char     desc[32]; // ASCII short description
+    char desc[32]; // ASCII short description
 } event_fault_t;
 
 typedef union {
