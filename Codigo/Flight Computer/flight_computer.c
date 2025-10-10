@@ -9,12 +9,18 @@
 #include "flight_computer.h"
 #include "flags.h"
 #include "defs.h"
+#include "retarget.h"
+#include "config.h"
 
 // Variables
 fsm_ctx_t fsm_ctx = {};
 
 //Functions
 void fsm_init() {
+
+	// NÃO REMOVER - faz funcionar os printf()
+	RetargetInit(UART_DEBUG);
+
 
 	mutex_lock(&mutex_flags);
 

@@ -18,6 +18,7 @@
 #include "dma_msg.h"
 
 // Threads Functions
+void fsm_thread_function();
 void ublox_gps_function();
 
 // GPS

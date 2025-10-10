@@ -123,11 +123,4 @@ typedef struct {
 	uint32_t timestamp;
 } temperature_readings_t;
 
-// Extern Variables
-extern IMU_t imu;
-extern MAG_t mag;
-extern BNO_t bno;
-extern BARO_t baro;
-extern GPS_t ublox_gps;
-
 #endif /* INC_DEFS_H_ */

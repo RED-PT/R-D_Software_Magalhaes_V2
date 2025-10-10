@@ -1,14 +1,12 @@
 // Includes
 #include "create_threads.h"
 #include "threads.h"
-#include "retarget.h"
 #include "flags.h"
 #include "print.h"
 #include <stdio.h>
 #include <string.h>
 #include "defs.h"
 #include "config.h"
-#include "test.h"
 
 // Threads Ids
 osThreadId_t ublox_gps_thread_id;
@@ -27,9 +25,6 @@ const osThreadAttr_t fsm_thread_attributes = { .name =
 
 // Functions
 void create_threads() {
-
-	// NÃO REMOVER - faz funcionar os printf()
-	RetargetInit(UART_DEBUG);
 
 	// Terminate Task chata FreeRTOS
 	osThreadTerminate(defaultTaskHandle);

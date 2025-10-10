@@ -23,6 +23,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "Flight Computer/flight_computer.h"
 #include "Threads/create_threads.h"
 /* USER CODE END Includes */
 
@@ -173,6 +174,8 @@ int main(void)
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
+  fsm_init();
+  create_threads();
   /* USER CODE END RTOS_THREADS */
 
   /* USER CODE BEGIN RTOS_EVENTS */
