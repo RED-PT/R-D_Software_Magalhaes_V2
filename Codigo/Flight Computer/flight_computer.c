@@ -19,13 +19,11 @@ fsm_ctx_t fsm_ctx = {};
 void fsm_init() {
 
 	// NÃO REMOVER - faz funcionar os printf()
-	RetargetInit(UART_DEBUG);
-
+	RetargetInit(UART_DEBUG); // MUDAR PARA init.c
 
 	mutex_lock(&mutex_flags);
 
 	memset(&fsm_ctx, 0, sizeof(fsm_ctx_t)); // clear all fields
-
 	fsm_ctx.state = BOOT;
 	fsm_ctx.substate = SUB_NONE;
 

@@ -26,24 +26,4 @@
 #include "conditional_variable.h"
 #include "retarget.h"
 
-// -- sensors --
-// Altimeter
-#include "Sensors/MS5607/MS5607SPI.h"
-
-// GPS
-#include "Sensors/GPS/gps.h"
-
-// -- UBLOX --
-
-
-// Threads Functions
-//FSM - Finite State Machine
-void fsm_thread_function() {
-
-}
-
-//GPS
-void ublox_gps_function() {
-
-}
 

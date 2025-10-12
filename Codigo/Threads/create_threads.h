@@ -16,19 +16,48 @@
 #include "cmsis_os2.h"
 #include "message_buffer.h"
 
+#include "Sensors/sensors_thread.h"
+#include "Data Handler/data_handler_thread.h"
+#include "Estimator/estimator_thread.h"
+#include "Controller/controller_thread.h"
+#include "Storage/sd_card_thread.h"
+#include "Telemetry/telemetry_thread.h"
+#include "Flight Computer/flight_computer_thread.h"
+#include "GPS/gps_thread.h"
+
 //	ID threads
+
 // Thread chata
 extern osThreadId_t defaultTaskHandle;
-// Threads
-extern osThreadId_t ublox_gps_thread_id;
+
+// Thread IDs
+extern osThreadId_t sensors_thread_id;
+extern osThreadId_t data_handler_thread_id;
+extern osThreadId_t estimator_thread_id;
+extern osThreadId_t controller_thread_id;
+extern osThreadId_t sd_card_thread_id;
+extern osThreadId_t telemetry_thread_id;
 extern osThreadId_t fsm_thread_id;
+extern osThreadId_t ublox_gps_thread_id;
+
+// Thread Attributes
+extern const osThreadAttr_t sensors_thread_attr;
+extern const osThreadAttr_t data_handler_thread_attr;
+extern const osThreadAttr_t estimator_thread_attr;
+extern const osThreadAttr_t controller_thread_attr;
+extern const osThreadAttr_t sd_card_thread_attr;
+extern const osThreadAttr_t telemetry_thread_attr;
+extern const osThreadAttr_t fsm_thread_attr;
+extern const osThreadAttr_t ublox_gps_thread_attr;
+
+
 
 // Buffers
 // Stream Buffers
 extern StreamBufferHandle_t stream_buffer_gps;
 
-// create threads function
-extern void create_threads();
+// Initialization threads functions
+void create_threads(void);
 
 #endif /* INC_CREATE_THREADS_H_ */
 
