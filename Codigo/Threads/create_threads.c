@@ -14,6 +14,10 @@ osThreadId_t fsm_thread_id = NULL;
 osThreadId_t ublox_gps_thread_id = NULL;
 //osThreadId_t radio_rx_thread_id = NULL;
 
+// Timers
+TimerHandle_t xBaroTimer = NULL;
+TimerHandle_t xBnoTimer = NULL;
+
 // Threads Attributes
 const osThreadAttr_t sensors_thread_attr = {
     .name = "Sensors",
@@ -71,6 +75,8 @@ const osThreadAttr_t radio_rx_thread_attr = {
 };
 */
 
+
+
 // Stream Buffer
 StreamBufferHandle_t stream_buffer_gps;
 
@@ -79,6 +85,20 @@ void create_threads() {
 
 	// Terminate Task chata FreeRTOS
 	osThreadTerminate(defaultTaskHandle);
+
+	printf("Creating timers...\n");
+
+    xBaroTimer = xTimerCreate("BaroTimer",pdMS_TO_TICKS(BARO_UPDATE_RATE_MS),
+                              pdTRUE,  // Auto-reload
+                              NULL,
+                              vBaroTimerCallback);
+
+    xBnoTimer = xTimerCreate("BnoTimer", pdMS_TO_TICKS(BNO_UPDATE_RATE_MS),
+                             pdTRUE,  // Auto-reload
+                             NULL,
+                             vBnoTimerCallback);
+
+    if (xBaroTimer == NULL || xBnoTimer == NULL) {printf("ERROR: Failed to create timers\n");}
 
 	printf("Creating threads...\n");
 

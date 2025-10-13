@@ -15,6 +15,7 @@
 #include "task.h"
 #include "cmsis_os2.h"
 #include "message_buffer.h"
+#include "timers.h"
 
 #include "Sensors/sensors_thread.h"
 #include "Data Handler/data_handler_thread.h"
@@ -24,6 +25,7 @@
 #include "Telemetry/telemetry_thread.h"
 #include "Flight Computer/flight_computer_thread.h"
 #include "GPS/gps_thread.h"
+#include "Sensors/sensors_thread.h"
 
 //	ID threads
 
@@ -49,6 +51,10 @@ extern const osThreadAttr_t sd_card_thread_attr;
 extern const osThreadAttr_t telemetry_thread_attr;
 extern const osThreadAttr_t fsm_thread_attr;
 extern const osThreadAttr_t ublox_gps_thread_attr;
+
+//Timers
+extern TimerHandle_t xBaroTimer;
+extern TimerHandle_t xBnoTimer;
 
 
 

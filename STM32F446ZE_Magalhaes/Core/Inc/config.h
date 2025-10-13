@@ -11,12 +11,6 @@
 
 #include "main.h"
 
-//FLASH MEMORY BASE ADDRESS
-#define FLASH_BASE_ADDRESS 0x08000000
-#define FLASH_SECTOR_DATA        FLASH_SECTOR_6
-#define FLASH_DATA_START_ADDR    0x08040000
-#define FLASH_DATA_SIZE          (128 * 1024)  // 128KB
-
 //extern handles
 extern I2C_HandleTypeDef hi2c1;
 
@@ -33,12 +27,20 @@ extern UART_HandleTypeDef huart1;
 extern UART_HandleTypeDef huart3;
 
 //DMA
-extern DMA_HandleTypeDef hdma_spi1_rx;  // IMU + Baro
-extern DMA_HandleTypeDef hdma_spi2_rx;  // LoRa RX
-extern DMA_HandleTypeDef hdma_spi2_tx;  // LoRa TX
-extern DMA_HandleTypeDef hdma_spi3_rx;  // Magnetometer
-extern DMA_HandleTypeDef hdma_i2c1_rx;  // BNO055
-extern DMA_HandleTypeDef hdma_usart3_rx; // GPS
+extern DMA_HandleTypeDef hdma_spi1_rx; // IMU + Baro
+extern DMA_HandleTypeDef hdma_spi1_tx; // IMU + Baro
+extern DMA_HandleTypeDef hdma_spi2_rx; // LoRa RX
+extern DMA_HandleTypeDef hdma_spi2_tx; // LoRa Tx
+extern DMA_HandleTypeDef hdma_spi3_rx; // Magnetometer
+extern DMA_HandleTypeDef hdma_spi3_tx; // Magnetometer
+extern DMA_HandleTypeDef hdma_spi4_rx; // SD Card
+extern DMA_HandleTypeDef hdma_spi4_tx; // SD Card
+
+extern DMA_HandleTypeDef hdma_i2c1_rx; // BNO055
+extern DMA_HandleTypeDef hdma_i2c1_tx; // BNO055
+
+extern DMA_HandleTypeDef hdma_usart3_rx; // GPS Rx
+extern DMA_HandleTypeDef hdma_usart1_tx; // GPS Tx
 
 //I2C
 #define I2C_BNO &hi2c1
@@ -105,5 +107,8 @@ extern DMA_HandleTypeDef hdma_usart3_rx; // GPS
 
 #define EXTI_IMU_PORT GPIOB
 #define EXTI_IMU_PIN GPIO_PIN_11
+
+#define EXTI_MAG_PORT GPIOB
+#define EXTI_MAG_PIN GPIO_PIN_15
 
 #endif /* INC_CONFIG_H_ */
