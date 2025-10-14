@@ -175,6 +175,8 @@ int main(void)
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
+  // Comentado até criação das funções de inicialização
+  //sensors_thread_init();
   fsm_init();
   create_threads();
   /* USER CODE END RTOS_THREADS */

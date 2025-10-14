@@ -15,6 +15,7 @@
 // Sensors Includes
 #include "MS5607/MS5607SPI.h"
 #include "ASM330LHHX/asm330lhhx_reg.h"
+#include "ASM330LHHX/ASM330LHHX.h"
 
 
 // DMA buffers (must be in DMA-accessible memory)
@@ -151,25 +152,16 @@ bool sensor_imu_read(void) {
 void sensor_imu_process(void) {
     IMU_t imu_data;
     // Process raw DMA buffer into structured data
-    if (imu_process_data(imu_dma_rx_buffer, &imu_data)) {
+    if (imu_process_data(&imu_data)) {
         sensor_stats.imu_samples++;
-
         // Send to data handler
         data_handler_store_imu(&imu_data);
-    } else {
+    }
+    else {
         sensor_stats.imu_errors++;
     }
-
     // Release SPI1 bus
     spi1_active_sensor = ACTIVE_SENSOR_NONE;
-}
-
-bool imu_start_read_dma(void) {
-	return true;
-}
-
-bool imu_process_data(const uint8_t *buffer, IMU_t *imu_data) {
-	return true;
 }
 
 // MAG

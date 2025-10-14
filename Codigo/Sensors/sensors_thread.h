@@ -66,12 +66,8 @@ void sensors_thread_function();
 
 // Sensor driver functions (to be implemented in separate driver files)
 // Substituir por drivers reais (basta dar include nos drives no sensors_thread.c)
-bool imu_init(void);
-bool imu_configure(void);
 bool sensor_imu_read(void);
 void sensor_imu_process(void);
-bool imu_start_read_dma(void);
-bool imu_process_data(const uint8_t *buffer, IMU_t *imu_data);
 
 bool baro_init(void);
 bool baro_configure(void);
