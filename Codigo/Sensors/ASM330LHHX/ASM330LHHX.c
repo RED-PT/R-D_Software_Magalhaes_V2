@@ -1,147 +1,154 @@
+/*
+ * ASM330LHHX.c - 6-axis IMU Driver Implementation
+ */
+
 #include "ASM330LHHX.h"
-#include "FreeRTOS.h"
-#include "task.h"
-#include "timers.h"
+#include <string.h>
 
+// ST driver context (for ST library compatibility)
+static stmdev_ctx_t dev_ctx;
+static asm330lhhx_pin_int1_route_t int1_route;
+static uint8_t whoami, rst;
 
-// asm330lhhx_reg variables
-stmdev_ctx_t dev_ctx;
-asm330lhhx_pin_int1_route_t int1_route;
-static uint8_t whoamI, rst;
-
-//Buffers and Info
-static int16_t data_raw_acceleration[3];
-static int16_t data_raw_angular_rate[3];
-static int16_t data_raw_temp;
-
-// Private Functions
+// Platform functions for ST library
 static int32_t platform_write(void *handle, uint8_t reg, const uint8_t *bufp, uint16_t len);
 static int32_t platform_read(void *handle, uint8_t reg, uint8_t *bufp, uint16_t len);
 static void platform_delay(uint32_t ms);
 
-bool imu_init(void) {
-	// Initialize mems driver interface.
-	dev_ctx.write_reg = platform_write;
-	dev_ctx.read_reg = platform_read;
-	dev_ctx.mdelay = platform_delay;
-	dev_ctx.handle = SPI_IMU_BARO;
+bool ASM330LHHX_Init(ASM330LHHX_t *dev, SPI_HandleTypeDef *hspi) {
+    if (!dev || !hspi) {
+        return false;
+    }
 
-	// Wait sensor boot time
-	HAL_Delay(BOOT_TIME);
+    dev->hspi = hspi;
+    dev->data_ready = 0;
+    memset(dev->read_buffer, 0, sizeof(dev->read_buffer));
 
-	// Check device ID
-	asm330lhhx_device_id_get(&dev_ctx, &whoamI);
-	if (whoamI != ASM330LHHX_ID) return false;
-	return true;
+    // Setup ST driver context
+    dev_ctx.write_reg = platform_write;
+    dev_ctx.read_reg = platform_read;
+    dev_ctx.mdelay = platform_delay;
+    dev_ctx.handle = (void*)hspi;
+
+    HAL_Delay(BOOT_TIME);
+
+    // Check device ID
+    asm330lhhx_device_id_get(&dev_ctx, &whoami);
+    if (whoami != ASM330LHHX_ID) {
+        return false;
+    }
+
+    return true;
 }
 
-bool imu_configure(void){
-	// Restore default configuration
-	asm330lhhx_reset_set(&dev_ctx, PROPERTY_ENABLE);
-	do{ asm330lhhx_reset_get(&dev_ctx, &rst);}
-	while (rst);
+bool ASM330LHHX_Configure(ASM330LHHX_t *dev) {
+    if (!dev) {
+        return false;
+    }
 
-	// Disable I3C interface
-	asm330lhhx_i3c_disable_set(&dev_ctx, ASM330LHHX_I3C_DISABLE);
+    // Restore default configuration
+    asm330lhhx_reset_set(&dev_ctx, PROPERTY_ENABLE);
+    do {
+        asm330lhhx_reset_get(&dev_ctx, &rst);
+    } while (rst);
 
-	//Set Output Data Rate Full Speed
-	asm330lhhx_xl_data_rate_set(&dev_ctx, ASM330LHHX_XL_ODR_6667Hz);
-	asm330lhhx_gy_data_rate_set(&dev_ctx, ASM330LHHX_GY_ODR_6667Hz);
+    // Disable I3C interface
+    asm330lhhx_i3c_disable_set(&dev_ctx, ASM330LHHX_I3C_DISABLE);
 
-	// Set full scale
-	asm330lhhx_xl_full_scale_set(&dev_ctx, ASM330LHHX_2g);
-	asm330lhhx_gy_full_scale_set(&dev_ctx, ASM330LHHX_2000dps);
+    // Set full speed
+    asm330lhhx_xl_data_rate_set(&dev_ctx, ASM330LHHX_XL_ODR_6667Hz);
+    asm330lhhx_gy_data_rate_set(&dev_ctx, ASM330LHHX_GY_ODR_6667Hz);
 
-	//interrupt generation on Free Fall INT1 pin
-	asm330lhhx_pin_int1_route_get(&dev_ctx, &int1_route);
-	int1_route.md1_cfg.int1_ff = PROPERTY_ENABLE;
-	asm330lhhx_pin_int1_route_set(&dev_ctx, &int1_route);
+    // Set full scales
+    asm330lhhx_xl_full_scale_set(&dev_ctx, ASM330LHHX_2g);
+    asm330lhhx_gy_full_scale_set(&dev_ctx, ASM330LHHX_2000dps);
 
-	return true;
+    // Enable data ready interrupt
+    asm330lhhx_pin_int1_route_get(&dev_ctx, &int1_route);
+    int1_route.md1_cfg.int1_ff = PROPERTY_ENABLE;
+    asm330lhhx_pin_int1_route_set(&dev_ctx, &int1_route);
+
+    return true;
 }
 
-bool imu_start_read_dma(void) {
+bool ASM330LHHX_StartReadDMA(ASM330LHHX_t *dev) {
+    if (!dev || !dev->hspi) {
+        return false;
+    }
 
-	uint8_t reg;
-	uint32_t status;
-	asm330lhhx_xl_flag_data_ready_get(&dev_ctx, &reg);
-	if (reg){
-	    //Read acceleration field data
-		memset(data_raw_acceleration, 0x00, 3 * sizeof(int16_t));
-		status = asm330lhhx_acceleration_raw_get(&dev_ctx, data_raw_acceleration);
-		if (status != 0) {return false;}
-	}
+    // Prepare TX buffer: [COMMAND][DUMMIES]
+    uint8_t tx_buffer[15];
+    tx_buffer[0] = (1 << 7) | (0x20 << 1);  // Read from TEMP_OUT_L (0x20)
+    memset(&tx_buffer[1], 0x00, 14);
 
-	// read output only if new gyro value is available
-	asm330lhhx_gy_flag_data_ready_get(&dev_ctx, &reg);
-	if (reg){
-		// Read angular rate field data
-		memset(data_raw_angular_rate, 0x00, 3 * sizeof(int16_t));
-		status = asm330lhhx_angular_rate_raw_get(&dev_ctx, data_raw_angular_rate);
-		if (status != 0) {return false;}
-	}
+    // Single DMA TransmitReceive
+    if (HAL_SPI_TransmitReceive_DMA(dev->hspi, tx_buffer, dev->read_buffer, 15) != HAL_OK) {
+        return false;
+    }
 
-	// read output only if new temp is available
-	asm330lhhx_temp_flag_data_ready_get(&dev_ctx, &reg);
-	if (reg) {
-		memset(&data_raw_temp, 0x00, sizeof(int16_t));
-		status = asm330lhhx_temperature_raw_get(&dev_ctx, &data_raw_temp);
-		if (status != 0) {return false;}
-	}
-	return true;
+    return true;
 }
 
-bool imu_process_data(IMU_t *imu_data) {
+void ASM330LHHX_ParseDMABuffer(ASM330LHHX_t *dev) {
+    if (!dev) {
+        return;
+    }
 
-	uint8_t reg;
-	uint32_t status;
-	status = asm330lhhx_xl_flag_data_ready_get(&dev_ctx, &reg);
-	if (status != 0) {return false;}
-	if (reg){
-		imu_data->accel_x = asm330lhhx_from_fs2g_to_mg(data_raw_acceleration[0]);
-		imu_data->accel_y = asm330lhhx_from_fs2g_to_mg(data_raw_acceleration[1]);
-		imu_data->accel_z = asm330lhhx_from_fs2g_to_mg(data_raw_acceleration[2]);
-	}
+    // Parse received buffer (skip first byte which is command echo)
+    dev->temp_raw = (int16_t)((dev->read_buffer[2] << 8) | dev->read_buffer[1]);
 
-	status = asm330lhhx_gy_flag_data_ready_get(&dev_ctx, &reg);
-	if (status != 0) {return false;}
-	if (reg){
-		imu_data->gyro_x = asm330lhhx_from_fs2000dps_to_mdps(data_raw_angular_rate[0]);
-		imu_data->gyro_y = asm330lhhx_from_fs2000dps_to_mdps(data_raw_angular_rate[1]);
-		imu_data->gyro_z = asm330lhhx_from_fs2000dps_to_mdps(data_raw_angular_rate[2]);
-	}
+    dev->accel_raw[0] = (int16_t)((dev->read_buffer[4] << 8) | dev->read_buffer[3]);
+    dev->accel_raw[1] = (int16_t)((dev->read_buffer[6] << 8) | dev->read_buffer[5]);
+    dev->accel_raw[2] = (int16_t)((dev->read_buffer[8] << 8) | dev->read_buffer[7]);
 
-	status = asm330lhhx_temp_flag_data_ready_get(&dev_ctx, &reg);
-	if (status != 0) {return false;}
-	if (reg) {
-		imu_data->temperature_c = asm330lhhx_from_lsb_to_celsius(data_raw_temp);
-	}
-	imu_data->timestamp_ms = xTaskGetTickCount();
+    dev->gyro_raw[0] = (int16_t)((dev->read_buffer[10] << 8) | dev->read_buffer[9]);
+    dev->gyro_raw[1] = (int16_t)((dev->read_buffer[12] << 8) | dev->read_buffer[11]);
+    dev->gyro_raw[2] = (int16_t)((dev->read_buffer[14] << 8) | dev->read_buffer[13]);
 
-	return true;
+    dev->data_ready = 1;
 }
 
-// Platform functions
+bool ASM330LHHX_ProcessData(ASM330LHHX_t *dev, IMU_t *output) {
+    if (!dev || !output || !dev->data_ready) {
+        return false;
+    }
+
+    // Convert raw values to physical units
+    output->accel_x = asm330lhhx_from_fs2g_to_mg(dev->accel_raw[0]);
+    output->accel_y = asm330lhhx_from_fs2g_to_mg(dev->accel_raw[1]);
+    output->accel_z = asm330lhhx_from_fs2g_to_mg(dev->accel_raw[2]);
+
+    output->gyro_x = asm330lhhx_from_fs2000dps_to_mdps(dev->gyro_raw[0]);
+    output->gyro_y = asm330lhhx_from_fs2000dps_to_mdps(dev->gyro_raw[1]);
+    output->gyro_z = asm330lhhx_from_fs2000dps_to_mdps(dev->gyro_raw[2]);
+
+    output->temperature_c = asm330lhhx_from_lsb_to_celsius(dev->temp_raw);
+    output->timestamp_ms = HAL_GetTick();
+
+    dev->data_ready = 0;
+
+    return true;
+}
+
+// Platform Functions
+
 static int32_t platform_write(void *handle, uint8_t reg, const uint8_t *bufp, uint16_t len) {
-
-	HAL_GPIO_WritePin(CS_IMU_PORT, CS_IMU_PIN, GPIO_PIN_RESET);
-	HAL_SPI_Transmit_DMA(handle, &reg, 1);
-	HAL_SPI_Transmit_DMA(handle, (uint8_t*) bufp, len);
-	HAL_GPIO_WritePin(CS_IMU_PORT, CS_IMU_PIN, GPIO_PIN_SET);
-	return 0;
+    HAL_GPIO_WritePin(CS_IMU_PORT, CS_IMU_PIN, GPIO_PIN_RESET);
+    HAL_SPI_Transmit((SPI_HandleTypeDef*)handle, &reg, 1, HAL_MAX_DELAY);
+    HAL_SPI_Transmit((SPI_HandleTypeDef*)handle, (uint8_t*)bufp, len, HAL_MAX_DELAY);
+    HAL_GPIO_WritePin(CS_IMU_PORT, CS_IMU_PIN, GPIO_PIN_SET);
+    return 0;
 }
 
-static int32_t platform_read(void *handle, uint8_t reg, uint8_t *bufp, uint16_t len){
-
-	reg |= 0x80;
-	HAL_GPIO_WritePin(CS_IMU_PORT, CS_IMU_PIN, GPIO_PIN_RESET);
-	HAL_SPI_Transmit_DMA(handle, &reg, 1);
-	HAL_SPI_Receive_DMA(handle, bufp, len);
-	HAL_GPIO_WritePin(CS_IMU_PORT, CS_IMU_PIN, GPIO_PIN_SET);
-	return 0;
+static int32_t platform_read(void *handle, uint8_t reg, uint8_t *bufp, uint16_t len) {
+    reg |= 0x80;
+    HAL_GPIO_WritePin(CS_IMU_PORT, CS_IMU_PIN, GPIO_PIN_RESET);
+    HAL_SPI_Transmit((SPI_HandleTypeDef*)handle, &reg, 1, HAL_MAX_DELAY);
+    HAL_SPI_Receive((SPI_HandleTypeDef*)handle, bufp, len, HAL_MAX_DELAY);
+    HAL_GPIO_WritePin(CS_IMU_PORT, CS_IMU_PIN, GPIO_PIN_SET);
+    return 0;
 }
 
 static void platform_delay(uint32_t ms) {
-	HAL_Delay(ms);
+    HAL_Delay(ms);
 }
-
