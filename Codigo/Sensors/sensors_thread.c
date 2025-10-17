@@ -34,7 +34,7 @@ static struct {
     uint32_t dma_errors;
 } sensor_stats = {0};
 
-// Timer Callbacks
+// Timer Callbacks // substituir: Block for x ms
 void vBaroTimerCallback(TimerHandle_t xTimer) {
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
     xTaskNotifyFromISR(sensors_thread_id, SENSOR_NOTIFY_BARO_TIMER, eSetBits, &xHigherPriorityTaskWoken);

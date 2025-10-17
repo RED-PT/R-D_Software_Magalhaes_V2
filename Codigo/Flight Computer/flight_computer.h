@@ -17,7 +17,7 @@
 typedef enum{
 	 BOOT = 0,
 	 IDLE,
-	 CONFIG,
+	 CONFIGED,
 	 ARMED,
 	 TEST_STAND,
 	 FLIGHT,
