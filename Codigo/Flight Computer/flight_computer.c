@@ -26,6 +26,7 @@ void fsm_init() {
 	memset(&fsm_ctx, 0, sizeof(fsm_ctx_t)); // clear all fields
 	fsm_ctx.state = BOOT;
 	fsm_ctx.substate = SUB_NONE;
+	fsm_ctx.profile.type = NO_PROFILE;
 
 	mutex_unlock(&mutex_flags);
 }

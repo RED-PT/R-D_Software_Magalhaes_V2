@@ -88,15 +88,8 @@ void create_threads() {
 
 	printf("Creating timers...\n");
 
-    xBaroTimer = xTimerCreate("BaroTimer",pdMS_TO_TICKS(BARO_UPDATE_RATE_MS),
-                              pdTRUE,  // Auto-reload
-                              NULL,
-                              vBaroTimerCallback);
-
-    xBnoTimer = xTimerCreate("BnoTimer", pdMS_TO_TICKS(BNO_UPDATE_RATE_MS),
-                             pdTRUE,  // Auto-reload
-                             NULL,
-                             vBnoTimerCallback);
+    xBaroTimer = xTimerCreate("BaroTimer",pdMS_TO_TICKS(BARO_UPDATE_RATE_MS), pdTRUE, NULL, vBaroTimerCallback);
+    xBnoTimer = xTimerCreate("BnoTimer", pdMS_TO_TICKS(BNO_UPDATE_RATE_MS), pdTRUE, NULL, vBnoTimerCallback);
 
     if (xBaroTimer == NULL || xBnoTimer == NULL) {printf("ERROR: Failed to create timers\n");}
 
