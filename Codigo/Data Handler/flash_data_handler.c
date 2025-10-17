@@ -68,11 +68,11 @@ void data_handler_init(void) {
 
     printf("Data Handler initialized successfully\n");
     printf("Memory usage:\n");
-    printf("  IMU buffer:  %lu bytes\n", RAM_IMU_BUFFER_SIZE * sizeof(IMU_t));
-    printf("  BARO buffer: %lu bytes\n", RAM_BARO_BUFFER_SIZE * sizeof(BARO_t));
-    printf("  MAG buffer:  %lu bytes\n", RAM_MAG_BUFFER_SIZE * sizeof(MAG_t));
-    printf("  BNO buffer:  %lu bytes\n", RAM_BNO_BUFFER_SIZE * sizeof(BNO_t));
-    printf("  GPS buffer:  %lu bytes\n", RAM_GPS_BUFFER_SIZE * sizeof(GPS_t));
+    printf("  IMU buffer:  %u bytes\n", RAM_IMU_BUFFER_SIZE * sizeof(IMU_t));
+    printf("  BARO buffer: %u bytes\n", RAM_BARO_BUFFER_SIZE * sizeof(BARO_t));
+    printf("  MAG buffer:  %u bytes\n", RAM_MAG_BUFFER_SIZE * sizeof(MAG_t));
+    printf("  BNO buffer:  %u bytes\n", RAM_BNO_BUFFER_SIZE * sizeof(BNO_t));
+    printf("  GPS buffer:  %u bytes\n", RAM_GPS_BUFFER_SIZE * sizeof(GPS_t));
 }
 
 void ram_circular_buffer_init(ram_circular_buffer_t *cb, void *buffer,
