@@ -17,6 +17,7 @@
 #include "MMC5983MA/MMC5983MA.h"
 #include "MS5607/MS5607.h"
 #include "BNO055/BNO055.h"
+#include "GPS/GPS.h"
 
 #include "Threads/create_threads.h"
 
@@ -25,6 +26,7 @@ extern ASM330LHHX_t imu_device;
 extern MMC5983MA_t mag_device;
 extern MS5607_t baro_device;
 extern BNO055_t bno_device;
+extern UBLOX_GPS_t gps_device;
 
 // Sensor state tracking
 typedef enum {
@@ -42,6 +44,8 @@ typedef enum {
 #define SENSOR_NOTIFY_BNO_TIMER     (1 << 3)
 #define SENSOR_NOTIFY_DMA_COMPLETE  (1 << 4)
 #define SENSOR_NOTIFY_DMA_ERROR     (1 << 5)
+#define SENSOR_NOTIFY_GPS_DATA      (1 << 6)
+#define SENSOR_NOTIFY_GPS_DR        (1 << 7)
 
 // Update rates
 #define BARO_UPDATE_RATE_MS   20    // 50 Hz

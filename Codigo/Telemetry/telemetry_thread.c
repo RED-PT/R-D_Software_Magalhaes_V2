@@ -6,9 +6,11 @@
  */
 
 #include "telemetry_thread.h"
+#include "cmsis_os.h"
 
 void telemetry_thread_function() {
-	printf("Flight Computer Thread started...\r\n");
+	printf("Telemetry Thread started...\r\n");
+	osDelay(50);
 	vTaskSuspend(NULL);
 }
 

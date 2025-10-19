@@ -8,10 +8,11 @@
 // Include Flash Data Handler Drivers
 #include "flash_data_handler.h"
 #include "print.h"
+#include "cmsis_os.h"
 
 void data_handler_thread_function(void *argument) {
 	printf("Data Handler monitoring thread started\r\n");
-
+	osDelay(50);
 	    TickType_t last_wake_time = xTaskGetTickCount();
 	    const TickType_t frequency = pdMS_TO_TICKS(5000); // 5 seconds
 
@@ -21,19 +22,19 @@ void data_handler_thread_function(void *argument) {
 
 	        // Check for overflows
 	        if (cb_imu.overflow_count > 0) {
-	            printf("IMU overflows: %lu\n", cb_imu.overflow_count);
+	            printf("IMU overflows: %lu\r\n", cb_imu.overflow_count);
 	        }
 	        if (cb_baro.overflow_count > 0) {
-	            printf("BARO overflows: %lu\n", cb_baro.overflow_count);
+	            printf("BARO overflows: %lu\r\n", cb_baro.overflow_count);
 	        }
 	        if (cb_mag.overflow_count > 0) {
-	            printf("MAG overflows: %lu\n", cb_mag.overflow_count);
+	            printf("MAG overflows: %lu\r\n", cb_mag.overflow_count);
 	        }
 	        if (cb_bno.overflow_count > 0) {
-	            printf("BNO overflows: %lu\n", cb_bno.overflow_count);
+	            printf("BNO overflows: %lu\r\n", cb_bno.overflow_count);
 	        }
 	        if (cb_gps.overflow_count > 0) {
-	            printf("GPS overflows: %lu\n", cb_gps.overflow_count);
+	            printf("GPS overflows: %lu\r\n", cb_gps.overflow_count);
 	        }
 
 	        // Check queue levels

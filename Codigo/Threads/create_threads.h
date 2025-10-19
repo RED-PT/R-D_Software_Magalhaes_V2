@@ -24,7 +24,6 @@
 #include "Storage/sd_card_thread.h"
 #include "Telemetry/telemetry_thread.h"
 #include "Flight Computer/flight_computer_thread.h"
-#include "GPS/gps_thread.h"
 #include "Sensors/sensors_thread.h"
 
 //	ID threads
@@ -40,7 +39,6 @@ extern osThreadId_t controller_thread_id;
 extern osThreadId_t sd_card_thread_id;
 extern osThreadId_t telemetry_thread_id;
 extern osThreadId_t fsm_thread_id;
-extern osThreadId_t ublox_gps_thread_id;
 
 // Thread Attributes
 extern const osThreadAttr_t sensors_thread_attr;
@@ -50,7 +48,6 @@ extern const osThreadAttr_t controller_thread_attr;
 extern const osThreadAttr_t sd_card_thread_attr;
 extern const osThreadAttr_t telemetry_thread_attr;
 extern const osThreadAttr_t fsm_thread_attr;
-extern const osThreadAttr_t ublox_gps_thread_attr;
 
 //Timers
 extern TimerHandle_t xBaroTimer;

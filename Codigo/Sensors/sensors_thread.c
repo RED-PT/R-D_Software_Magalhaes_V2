@@ -15,6 +15,7 @@ ASM330LHHX_t imu_device;
 MMC5983MA_t mag_device;
 MS5607_t baro_device;
 BNO055_t bno_device;
+UBLOX_GPS_t gps_device;
 
 // Bus Tracking
 static volatile active_sensor_t spi1_active_sensor = ACTIVE_SENSOR_NONE;
@@ -27,86 +28,125 @@ static struct {
     uint32_t mag_samples;
     uint32_t baro_samples;
     uint32_t bno_samples;
+    uint32_t gps_samples;
     uint32_t imu_errors;
     uint32_t mag_errors;
     uint32_t baro_errors;
     uint32_t bno_errors;
+    uint32_t gps_errors;
     uint32_t dma_errors;
 } sensor_stats = {0};
 
 // Timer Callbacks // substituir: Block for x ms
 void vBaroTimerCallback(TimerHandle_t xTimer) {
-    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-    xTaskNotifyFromISR(sensors_thread_id, SENSOR_NOTIFY_BARO_TIMER, eSetBits, &xHigherPriorityTaskWoken);
-    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+	if (osKernelGetState() == osKernelRunning) {
+		BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+		xTaskNotifyFromISR(sensors_thread_id, SENSOR_NOTIFY_BARO_TIMER, eSetBits, &xHigherPriorityTaskWoken);
+		portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+	}
 }
 
 void vBnoTimerCallback(TimerHandle_t xTimer) {
-    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-    xTaskNotifyFromISR(sensors_thread_id, SENSOR_NOTIFY_BNO_TIMER, eSetBits, &xHigherPriorityTaskWoken);
-    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+	if (osKernelGetState() == osKernelRunning) {
+		BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+		xTaskNotifyFromISR(sensors_thread_id, SENSOR_NOTIFY_BNO_TIMER, eSetBits, &xHigherPriorityTaskWoken);
+		portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+	}
 }
 
 // GPIO EXTI Callbacks
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
-    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+	if (osKernelGetState() == osKernelRunning) {
+		BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
-    if (GPIO_Pin == EXTI_IMU_PIN) {
-        xTaskNotifyFromISR(sensors_thread_id, SENSOR_NOTIFY_IMU_DRDY, eSetBits, &xHigherPriorityTaskWoken);
-    }
-    else if (GPIO_Pin == EXTI_MAG_PIN) {
-    	xTaskNotifyFromISR(sensors_thread_id, SENSOR_NOTIFY_MAG_DRDY, eSetBits, &xHigherPriorityTaskWoken);
-    }
+		if (GPIO_Pin == EXTI_IMU_PIN) {
+			xTaskNotifyFromISR(sensors_thread_id, SENSOR_NOTIFY_IMU_DRDY, eSetBits, &xHigherPriorityTaskWoken);
+		}
+		else if (GPIO_Pin == EXTI_MAG_PIN) {
+			xTaskNotifyFromISR(sensors_thread_id, SENSOR_NOTIFY_MAG_DRDY, eSetBits, &xHigherPriorityTaskWoken);
+		}
 
-    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+		portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+	}
 }
 
 // DMA Callbacks
 void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi) {
-    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+	if (osKernelGetState() == osKernelRunning) {
+		BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+		// Parse DMA buffer based on active sensor
+		if (hspi->Instance == SPI_IMU_BARO_INSTANCE) {
+			if (spi1_active_sensor == ACTIVE_SENSOR_IMU) {
+				ASM330LHHX_ParseDMABuffer(&imu_device);
+			}
+			else if (spi1_active_sensor == ACTIVE_SENSOR_BARO) {
+				// Barometer parsing
+			}
+		}
+		else if (hspi->Instance == SPI_MAG_INSTANCE) {
+			if (spi3_active_sensor == ACTIVE_SENSOR_MAG) {
+				MMC5983MA_ParseDMABuffer(&mag_device);
+			}
+		}
+		// Notify thread
+		xTaskNotifyFromISR(sensors_thread_id, SENSOR_NOTIFY_DMA_COMPLETE, eSetBits, &xHigherPriorityTaskWoken);
+		portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+	}
+}
 
-    // Parse DMA buffer based on active sensor
-    if (hspi->Instance == SPI1) {
-    	if (spi1_active_sensor == ACTIVE_SENSOR_IMU) {
-            ASM330LHHX_ParseDMABuffer(&imu_device);
-        }
-        else if (spi1_active_sensor == ACTIVE_SENSOR_BARO) {
-            // Barometer parsing
-        }
-    }
-    else if (hspi->Instance == SPI3) {
-        if (spi3_active_sensor == ACTIVE_SENSOR_MAG) {
-            MMC5983MA_ParseDMABuffer(&mag_device);
-        }
-    }
+// UART CALLBACKS
+void HAL_UART_IdleCallback(UART_HandleTypeDef *huart) {
+	if (osKernelGetState() == osKernelRunning) {
+		BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
-    // Notify thread
-    xTaskNotifyFromISR(sensors_thread_id, SENSOR_NOTIFY_DMA_COMPLETE, eSetBits, &xHigherPriorityTaskWoken);
-    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+		if (huart->Instance == UART_UBLOX_INSTANCE) {
+			// GPS idle line detected - data available in buffer
+			xTaskNotifyFromISR(sensors_thread_id, SENSOR_NOTIFY_GPS_DATA, eSetBits, &xHigherPriorityTaskWoken);
+		}
+		portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+	}
+}
+
+void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) {
+	if (osKernelGetState() == osKernelRunning) {
+		BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+
+		if (huart->Instance == UART_UBLOX_INSTANCE) {
+			sensor_stats.gps_errors++;
+			// Could handle recovery here if needed
+		}
+		portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+	}
 }
 
 void HAL_SPI_ErrorCallback(SPI_HandleTypeDef *hspi) {
-    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-    sensor_stats.dma_errors++;
-    xTaskNotifyFromISR(sensors_thread_id, SENSOR_NOTIFY_DMA_ERROR, eSetBits, &xHigherPriorityTaskWoken);
-    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+	if (osKernelGetState() == osKernelRunning) {
+		BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+		sensor_stats.dma_errors++;
+		xTaskNotifyFromISR(sensors_thread_id, SENSOR_NOTIFY_DMA_ERROR, eSetBits, &xHigherPriorityTaskWoken);
+		portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+	}
 }
 
 void HAL_I2C_MemRxCpltCallback(I2C_HandleTypeDef *hi2c) {
-    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-    if (hi2c->Instance == I2C1) {
-        xTaskNotifyFromISR(sensors_thread_id, SENSOR_NOTIFY_DMA_COMPLETE, eSetBits, &xHigherPriorityTaskWoken);
-    }
-    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+	if (osKernelGetState() == osKernelRunning) {
+		BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+		if (hi2c->Instance == I2C1) {
+			xTaskNotifyFromISR(sensors_thread_id, SENSOR_NOTIFY_DMA_COMPLETE, eSetBits, &xHigherPriorityTaskWoken);
+		}
+		portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+	}
 }
 
 void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c) {
-    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-    if (hi2c->Instance == I2C1) {
-        sensor_stats.dma_errors++;
-        xTaskNotifyFromISR(sensors_thread_id, SENSOR_NOTIFY_DMA_ERROR, eSetBits, &xHigherPriorityTaskWoken);
-    }
-    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+	if (osKernelGetState() == osKernelRunning) {
+		BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+		if (hi2c->Instance == I2C1) {
+			sensor_stats.dma_errors++;
+			xTaskNotifyFromISR(sensors_thread_id, SENSOR_NOTIFY_DMA_ERROR, eSetBits, &xHigherPriorityTaskWoken);
+		}
+		portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+	}
 }
 
 // Initialization
@@ -149,7 +189,40 @@ void sensors_thread_init(void) {
         printf("ERROR: BNO configure failed!\r\n");
     }
 
+    // Initialize GPS
+    printf("Initializing GPS...\r\n");
+	if (!UBLOX_GPS_Init(&gps_device, UART_UBLOX)) {
+		printf("ERROR: GPS init failed!\r\n");
+	}
+	if (!UBLOX_GPS_StartDMA(&gps_device)) {
+		printf("ERROR: GPS DMA start failed!\r\n");
+	}
+
     printf("Sensors initialized successfully!\r\n");
+}
+
+
+// for debug
+
+void debug_print_notifications(uint32_t ulNotificationValue) {
+    printf("Notification bits set: 0x%08lX\r\n", ulNotificationValue);
+
+    if (ulNotificationValue & SENSOR_NOTIFY_IMU_DRDY)
+        printf("  - IMU_DRDY (bit 0)\r\n");
+    if (ulNotificationValue & SENSOR_NOTIFY_MAG_DRDY)
+        printf("  - MAG_DRDY (bit 1)\r\n");
+    if (ulNotificationValue & SENSOR_NOTIFY_BARO_TIMER)
+        printf("  - BARO_TIMER (bit 2)\r\n");
+    if (ulNotificationValue & SENSOR_NOTIFY_BNO_TIMER)
+        printf("  - BNO_TIMER (bit 3)\r\n");
+    if (ulNotificationValue & SENSOR_NOTIFY_DMA_COMPLETE)
+        printf("  - DMA_COMPLETE (bit 4)\r\n");
+    if (ulNotificationValue & SENSOR_NOTIFY_DMA_ERROR)
+        printf("  - DMA_ERROR (bit 5)\r\n");
+    if (ulNotificationValue & SENSOR_NOTIFY_GPS_DATA)
+        printf("  - GPS_DATA (bit 6)\r\n");
+    if (ulNotificationValue & SENSOR_NOTIFY_GPS_DR)
+        printf("  - GPS_DR (bit 7)\r\n");
 }
 
 // Thread Main Loop
@@ -159,6 +232,8 @@ void sensors_thread_function(void *argument) {
 
     uint32_t ulNotificationValue;
     const TickType_t xMaxBlockTime = pdMS_TO_TICKS(100);
+
+    ulTaskNotifyTake(pdTRUE, 0);
 
     xTimerStart(xBaroTimer, 0);
     xTimerStart(xBnoTimer, 0);
@@ -175,17 +250,19 @@ void sensors_thread_function(void *argument) {
 		}
 
     	// WAIT FOR NOTIFICATIONS
-        ulNotificationValue = ulTaskNotifyTake(pdFALSE, xMaxBlockTime);
+		xTaskNotifyWait(0, 0xFFFFFFFF, &ulNotificationValue, xMaxBlockTime);
 
         if (ulNotificationValue == 0) {
             continue;  // Timeout
         }
 
+        //debug_print_notifications(ulNotificationValue);
+
         // INITIATE SENSOR READS
         if (ulNotificationValue & SENSOR_NOTIFY_IMU_DRDY) {
             // Check if SPI1 available
             if (spi1_active_sensor == ACTIVE_SENSOR_NONE) {
-                spi1_active_sensor = ACTIVE_SENSOR_IMU;
+            	spi1_active_sensor = ACTIVE_SENSOR_IMU;
                 if (!ASM330LHHX_StartReadDMA(&imu_device)) {
                     spi1_active_sensor = ACTIVE_SENSOR_NONE;
                     sensor_stats.imu_errors++;
@@ -227,6 +304,15 @@ void sensors_thread_function(void *argument) {
                     sensor_stats.bno_errors++;
                 }
             }
+        }
+
+        if (ulNotificationValue & SENSOR_NOTIFY_GPS_DATA) {
+			// GPS idle line detected - parse available data
+			if (UBLOX_GPS_Update(&gps_device)) {
+				// Complete sentence available for processing
+				// Process happens below in DMA_COMPLETE section
+				ulNotificationValue |= SENSOR_NOTIFY_GPS_DR;
+			}
         }
 
         // PROCESS COMPLETED DATA
@@ -278,6 +364,17 @@ void sensors_thread_function(void *argument) {
             }
         }
 
+        if (ulNotificationValue & SENSOR_NOTIFY_GPS_DR) {
+			GPS_t gps_data;
+			if (UBLOX_GPS_ProcessData(&gps_device, &gps_data)) {
+				sensor_stats.gps_samples++;
+				data_handler_store_gps(&gps_data);
+			}
+			else {
+				sensor_stats.gps_errors++;
+			}
+		}
+
         // ERROR HANDLING
         if (ulNotificationValue & SENSOR_NOTIFY_DMA_ERROR) {
             printf("ERROR: DMA error occurred\r\n");
@@ -299,7 +396,8 @@ void sensors_thread_function(void *argument) {
             printf("MAG:  %lu samples, %lu errors\r\n", sensor_stats.mag_samples, sensor_stats.mag_errors);
             printf("BARO: %lu samples, %lu errors\r\n", sensor_stats.baro_samples, sensor_stats.baro_errors);
             printf("BNO:  %lu samples, %lu errors\r\n", sensor_stats.bno_samples, sensor_stats.bno_errors);
-            printf("DMA errors: %lu\n", sensor_stats.dma_errors);
+            printf("GPS:  %lu samples, %lu errors\r\n", sensor_stats.gps_samples, sensor_stats.gps_errors);
+            printf("DMA errors: %lu\r\n", sensor_stats.dma_errors);
 
             last_stats_time = xTaskGetTickCount();
         }

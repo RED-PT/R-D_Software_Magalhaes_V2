@@ -11,7 +11,6 @@ osThreadId_t controller_thread_id = NULL;
 osThreadId_t sd_card_thread_id = NULL;
 osThreadId_t telemetry_thread_id = NULL;
 osThreadId_t fsm_thread_id = NULL;
-osThreadId_t ublox_gps_thread_id = NULL;
 //osThreadId_t radio_rx_thread_id = NULL;
 
 // Timers
@@ -59,12 +58,6 @@ const osThreadAttr_t fsm_thread_attr = {
     .name = "FSM",
     .stack_size = 1024 * 4,
     .priority = osPriorityAboveNormal1,
-};
-
-const osThreadAttr_t ublox_gps_thread_attr = {
-    .name = "GPS",
-    .stack_size = 1024 * 4,
-    .priority = osPriorityNormal,
 };
 
 /*
@@ -115,11 +108,6 @@ void create_threads() {
 
 	fsm_thread_id = osThreadNew(fsm_thread_function, NULL, &fsm_thread_attr);
 	if (fsm_thread_id == NULL) {printf("ERROR: FSM thread creation failed\r\n");}
-
-	ublox_gps_thread_id = osThreadNew(ublox_gps_thread_function, NULL, &ublox_gps_thread_attr);
-	if (ublox_gps_thread_id == NULL) {printf("ERROR: GPS thread creation failed\r\n");
-	printf("Free heap: %u bytes\r\n", xPortGetFreeHeapSize());
-	}
 
 	//radio_rx_thread_id = osThreadNew(radio_rx_thread_function, NULL, &radio_rx_thread_attr);
 	//if (radio_rx_thread_id == NULL) {printf("ERROR: Radio RX thread creation failed\n");}

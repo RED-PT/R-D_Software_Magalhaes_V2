@@ -6,8 +6,8 @@
  */
 #include <stdio.h>
 #include <string.h>
+#include <Sensors/GPS/gps_reg.h>
 #include "main.h"
-#include "gps.h"
 #include "stdbool.h"
 #include "dma_msg.h"
 

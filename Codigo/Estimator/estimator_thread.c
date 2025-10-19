@@ -6,9 +6,11 @@
  */
 
 #include "estimator_thread.h"
+#include "cmsis_os.h"
 
 void estimator_thread_function() {
 	printf("Estimator Thread started...\r\n");
+	osDelay(50);
 	vTaskSuspend(NULL);
 }
 

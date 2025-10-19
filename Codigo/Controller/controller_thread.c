@@ -6,9 +6,11 @@
  */
 
 #include "controller_thread.h"
+#include "cmsis_os.h"
 
 void controller_thread_function() {
 	printf("Controller Thread started...\r\n");
+	osDelay(50);
 	vTaskSuspend(NULL);
 }
 

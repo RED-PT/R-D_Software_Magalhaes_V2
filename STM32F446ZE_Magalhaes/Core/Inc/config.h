@@ -48,23 +48,29 @@ extern DMA_HandleTypeDef hdma_usart1_tx; // GPS Tx
 //UART
 #define UART_DEBUG &huart3
 #define UART_UBLOX &huart1
+#define UART_UBLOX_INSTANCE USART1
+#define UART_DEBUG_INSTANCE USART3
 
 //SPI
 #define SPI_IMU_BARO &hspi1
+#define SPI_IMU_BARO_INSTANCE SPI1
 #define CS_IMU_PORT GPIOB
 #define CS_IMU_PIN GPIO_PIN_1
 #define CS_BARO_PORT GPIOB
 #define CS_BARO_PIN GPIO_PIN_3
 
 #define SPI_LORA &hspi2
+#define SPI_LORA_INSTANCE SPI2
 #define CS_LORA_PORT GPIOB
 #define CS_LORA_PIN GPIO_PIN_12
 
 #define SPI_MAG &hspi3
+#define SPI_MAG_INSTANCE SPI3
 #define CS_MAG_PORT GPIOB
 #define CS_MAG_PIN GPIO_PIN_13
 
 #define SPI_SDCARD &hspi4
+#define SPI_SDCARD_INSTANCE SPI4
 #define CS_SDCARD_PORT GPIOB
 #define CS_SDCARD_PIN GPIO_PIN_4
 
