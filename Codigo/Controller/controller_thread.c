@@ -5,8 +5,11 @@
  *      Author: Tomas Teixeira
  */
 
-void controller_thread_function() {
+#include "controller_thread.h"
 
+void controller_thread_function() {
+	printf("Controller Thread started...\r\n");
+	vTaskSuspend(NULL);
 }
 
 

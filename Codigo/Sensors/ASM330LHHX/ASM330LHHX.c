@@ -4,6 +4,8 @@
 
 #include "ASM330LHHX.h"
 #include <string.h>
+#include "print.h"
+#include "cmsis_os2.h"
 
 // ST driver context (for ST library compatibility)
 static stmdev_ctx_t dev_ctx;
@@ -16,7 +18,7 @@ static int32_t platform_read(void *handle, uint8_t reg, uint8_t *bufp, uint16_t 
 static void platform_delay(uint32_t ms);
 
 bool ASM330LHHX_Init(ASM330LHHX_t *dev, SPI_HandleTypeDef *hspi) {
-    if (!dev || !hspi) {
+	if (!dev || !hspi) {
         return false;
     }
 
@@ -30,10 +32,11 @@ bool ASM330LHHX_Init(ASM330LHHX_t *dev, SPI_HandleTypeDef *hspi) {
     dev_ctx.mdelay = platform_delay;
     dev_ctx.handle = (void*)hspi;
 
+
     HAL_Delay(BOOT_TIME);
 
     // Check device ID
-    asm330lhhx_device_id_get(&dev_ctx, &whoami);
+    if (asm330lhhx_device_id_get(&dev_ctx, &whoami) != 0) {return false;}
     if (whoami != ASM330LHHX_ID) {
         return false;
     }
@@ -47,26 +50,26 @@ bool ASM330LHHX_Configure(ASM330LHHX_t *dev) {
     }
 
     // Restore default configuration
-    asm330lhhx_reset_set(&dev_ctx, PROPERTY_ENABLE);
+    if (asm330lhhx_reset_set(&dev_ctx, PROPERTY_ENABLE) != 0) {return false;}
     do {
         asm330lhhx_reset_get(&dev_ctx, &rst);
     } while (rst);
 
     // Disable I3C interface
-    asm330lhhx_i3c_disable_set(&dev_ctx, ASM330LHHX_I3C_DISABLE);
+    if (asm330lhhx_i3c_disable_set(&dev_ctx, ASM330LHHX_I3C_DISABLE) != 0) {return false;}
 
     // Set full speed
-    asm330lhhx_xl_data_rate_set(&dev_ctx, ASM330LHHX_XL_ODR_6667Hz);
-    asm330lhhx_gy_data_rate_set(&dev_ctx, ASM330LHHX_GY_ODR_6667Hz);
+    if (asm330lhhx_xl_data_rate_set(&dev_ctx, ASM330LHHX_XL_ODR_6667Hz) != 0) {return false;}
+    if (asm330lhhx_gy_data_rate_set(&dev_ctx, ASM330LHHX_GY_ODR_6667Hz) != 0) {return false;}
 
     // Set full scales
-    asm330lhhx_xl_full_scale_set(&dev_ctx, ASM330LHHX_2g);
-    asm330lhhx_gy_full_scale_set(&dev_ctx, ASM330LHHX_2000dps);
+    if (asm330lhhx_xl_full_scale_set(&dev_ctx, ASM330LHHX_2g)) {return false;}
+    if (asm330lhhx_gy_full_scale_set(&dev_ctx, ASM330LHHX_2000dps)) {return false;}
 
     // Enable data ready interrupt
-    asm330lhhx_pin_int1_route_get(&dev_ctx, &int1_route);
+    if (asm330lhhx_pin_int1_route_get(&dev_ctx, &int1_route) != 0) {return false;}
     int1_route.md1_cfg.int1_ff = PROPERTY_ENABLE;
-    asm330lhhx_pin_int1_route_set(&dev_ctx, &int1_route);
+    if (asm330lhhx_pin_int1_route_set(&dev_ctx, &int1_route) != 0) {return false;}
 
     return true;
 }
@@ -133,7 +136,7 @@ bool ASM330LHHX_ProcessData(ASM330LHHX_t *dev, IMU_t *output) {
 // Platform Functions
 
 static int32_t platform_write(void *handle, uint8_t reg, const uint8_t *bufp, uint16_t len) {
-    HAL_GPIO_WritePin(CS_IMU_PORT, CS_IMU_PIN, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(CS_IMU_PORT, CS_IMU_PIN, GPIO_PIN_RESET);
     HAL_SPI_Transmit((SPI_HandleTypeDef*)handle, &reg, 1, HAL_MAX_DELAY);
     HAL_SPI_Transmit((SPI_HandleTypeDef*)handle, (uint8_t*)bufp, len, HAL_MAX_DELAY);
     HAL_GPIO_WritePin(CS_IMU_PORT, CS_IMU_PIN, GPIO_PIN_SET);

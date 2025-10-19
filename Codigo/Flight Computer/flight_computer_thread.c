@@ -5,8 +5,10 @@
  *      Author: Tomas Teixeira
  */
 
+#include "flight_computer_thread.h"
 
 void fsm_thread_function() {
-
+	printf("Flight Computer Thread started...\r\n");
+	vTaskSuspend(NULL);
 }
 

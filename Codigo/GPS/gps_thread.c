@@ -5,8 +5,11 @@
  *      Author: Tomas Teixeira
  */
 
-void ublox_gps_thread_function() {
+#include "gps_thread.h"
 
+void ublox_gps_thread_function() {
+	printf("GPS Thread started...\r\n");
+	vTaskSuspend(NULL);
 }
 
 

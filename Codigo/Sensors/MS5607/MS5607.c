@@ -8,6 +8,7 @@
 #include "MS5607.h"
 #include <string.h>
 #include <math.h>
+#include "cmsis_os2.h"
 
 // Private helper functions
 static void MS5607_Select(MS5607_t *dev);
@@ -74,7 +75,7 @@ bool MS5607_StartRead(MS5607_t *dev) {
     }
 
     dev->state = MS5607_STATE_CONV_D2;
-    dev->conversion_start_time = HAL_GetTick();
+    dev->conversion_start_time =HAL_GetTick();
 
     return true;
 }

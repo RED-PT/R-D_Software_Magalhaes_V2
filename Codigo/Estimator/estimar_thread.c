@@ -5,8 +5,11 @@
  *      Author: Tomas Teixeira
  */
 
-void estimator_thread_function() {
+#include "estimator_thread.h"
 
+void estimator_thread_function() {
+	printf("Estimator Thread started...\r\n");
+	vTaskSuspend(NULL);
 }
 
 

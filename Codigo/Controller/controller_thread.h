@@ -8,6 +8,14 @@
 #ifndef CONTROLLER_CONTROLLER_THREAD_H_
 #define CONTROLLER_CONTROLLER_THREAD_H_
 
+#include "FreeRTOS.h"
+#include "task.h"
+#include "timers.h"
+#include "config.h"
+#include "defs.h"
+#include "stm32f4xx_hal.h"
+#include "print.h"
+
 void controller_thread_function();
 
 

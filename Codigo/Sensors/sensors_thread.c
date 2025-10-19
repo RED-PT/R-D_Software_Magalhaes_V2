@@ -111,51 +111,51 @@ void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c) {
 
 // Initialization
 void sensors_thread_init(void) {
-    printf("Initializing sensors...\n");
+    printf("Initializing sensors...\r\n");
 
     // Initialize IMU
-    printf("Initializing IMU...\n");
+    printf("Initializing IMU...\r\n");
     if (!ASM330LHHX_Init(&imu_device, SPI_IMU_BARO)) {
-        printf("ERROR: IMU init failed!\n");
+        printf("ERROR: IMU init failed!\r\n");
     }
     if (!ASM330LHHX_Configure(&imu_device)) {
         printf("ERROR: IMU configure failed!\n");
     }
 
     // Initialize Magnetometer
-    printf("Initializing Magnetometer...\n");
+    printf("Initializing Magnetometer...\r\n");
     if (!MMC5983MA_Init(&mag_device, SPI_MAG)) {
-        printf("ERROR: MAG init failed!\n");
+        printf("ERROR: MAG init failed!\r\n");
     }
     if (!MMC5983MA_Configure(&mag_device)) {
-        printf("ERROR: MAG configure failed!\n");
+        printf("ERROR: MAG configure failed!\r\n");
     }
 
     // Initialize Barometer
-    printf("Initializing Barometer...\n");
+    printf("Initializing Barometer...\r\n");
     if (!MS5607_Init(&baro_device, SPI_IMU_BARO, CS_BARO_PORT, CS_BARO_PIN)) {
-        printf("ERROR: BARO init failed!\n");
+        printf("ERROR: BARO init failed!\r\n");
     }
     if (!MS5607_Configure(&baro_device)) {
-        printf("ERROR: BARO configure failed!\n");
+        printf("ERROR: BARO configure failed!\r\n");
     }
 
     // Initialize BNO055
-    printf("Initializing BNO055...\n");
+    printf("Initializing BNO055...\r\n");
     if (!BNO055_Init(&bno_device, I2C_BNO)) {
-        printf("ERROR: BNO init failed!\n");
+        printf("ERROR: BNO init failed!\r\n");
     }
     if (!BNO055_Configure(&bno_device)) {
-        printf("ERROR: BNO configure failed!\n");
+        printf("ERROR: BNO configure failed!\r\n");
     }
 
-    printf("Sensors initialized successfully!\n");
+    printf("Sensors initialized successfully!\r\n");
 }
 
 // Thread Main Loop
 
 void sensors_thread_function(void *argument) {
-    printf("Sensors thread started\n");
+    printf("Sensors thread started\r\n");
 
     uint32_t ulNotificationValue;
     const TickType_t xMaxBlockTime = pdMS_TO_TICKS(100);
@@ -280,7 +280,7 @@ void sensors_thread_function(void *argument) {
 
         // ERROR HANDLING
         if (ulNotificationValue & SENSOR_NOTIFY_DMA_ERROR) {
-            printf("ERROR: DMA error occurred\n");
+            printf("ERROR: DMA error occurred\r\n");
 
             // Reset all buses
             CS_IMU_HIGH();
@@ -294,11 +294,11 @@ void sensors_thread_function(void *argument) {
         // STATISTICS
 
         if ((xTaskGetTickCount() - last_stats_time) > pdMS_TO_TICKS(5000)) {
-            printf("\n=== Sensor Statistics ===\n");
-            printf("IMU:  %lu samples, %lu errors\n", sensor_stats.imu_samples, sensor_stats.imu_errors);
-            printf("MAG:  %lu samples, %lu errors\n", sensor_stats.mag_samples, sensor_stats.mag_errors);
-            printf("BARO: %lu samples, %lu errors\n", sensor_stats.baro_samples, sensor_stats.baro_errors);
-            printf("BNO:  %lu samples, %lu errors\n", sensor_stats.bno_samples, sensor_stats.bno_errors);
+            printf("Sensor Statistics\r\n");
+            printf("IMU:  %lu samples, %lu errors\r\n", sensor_stats.imu_samples, sensor_stats.imu_errors);
+            printf("MAG:  %lu samples, %lu errors\r\n", sensor_stats.mag_samples, sensor_stats.mag_errors);
+            printf("BARO: %lu samples, %lu errors\r\n", sensor_stats.baro_samples, sensor_stats.baro_errors);
+            printf("BNO:  %lu samples, %lu errors\r\n", sensor_stats.bno_samples, sensor_stats.bno_errors);
             printf("DMA errors: %lu\n", sensor_stats.dma_errors);
 
             last_stats_time = xTaskGetTickCount();

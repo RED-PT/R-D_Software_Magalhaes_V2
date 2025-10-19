@@ -8,6 +8,7 @@
 #include "BNO055.h"
 #include <string.h>
 #include <math.h>
+#include "cmsis_os2.h"
 
 // Private helper functions
 static bool BNO055_ReadRegister(BNO055_t *dev, uint8_t reg, uint8_t *data);
@@ -157,6 +158,12 @@ bool BNO055_ProcessData(BNO055_t *dev, BNO_t *output) {
 
     dev->data_ready = 0;
 
+    if (!dev || !output) return false;
+    // TODO: Parse data and convert to physical units
+    output->heading_deg = 0.0f;
+    output->roll_deg = 0.0f;
+    output->pitch_deg = 0.0f;
+    output->timestamp_ms = HAL_GetTick();
     return true;
 }
 

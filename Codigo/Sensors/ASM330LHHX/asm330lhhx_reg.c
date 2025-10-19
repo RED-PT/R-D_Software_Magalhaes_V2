@@ -17,6 +17,8 @@
  */
 
 #include "asm330lhhx_reg.h"
+#include "print.h"
+#include <stdio.h>
 
 /**
   * @defgroup    ASM330LHHX

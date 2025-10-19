@@ -25,6 +25,8 @@
 /* USER CODE BEGIN Includes */
 #include "Flight Computer/flight_computer.h"
 #include "Threads/create_threads.h"
+#include "retarget.h"
+#include "Data Handler/flash_data_handler.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -113,7 +115,6 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -147,7 +148,9 @@ int main(void)
   MX_SPI3_Init();
   MX_SPI4_Init();
   /* USER CODE BEGIN 2 */
-
+  // NÃO REMOVER - faz funcionar os printf()
+  RetargetInitNoProtection(UART_DEBUG); // MUDAR PARA init.c
+  sensors_thread_init();
   /* USER CODE END 2 */
 
   /* Init scheduler */
@@ -175,8 +178,8 @@ int main(void)
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
-  // Comentado até criação das funções de inicialização
-  //sensors_thread_init();
+  RetargetInit(UART_DEBUG);
+  data_handler_init();
   fsm_init();
   create_threads();
   /* USER CODE END RTOS_THREADS */
@@ -186,6 +189,7 @@ int main(void)
   /* USER CODE END RTOS_EVENTS */
 
   /* Start scheduler */
+  printf("osKernalStart......\r\n");
   osKernelStart();
 
   /* We should never get here as control is now taken by the scheduler */

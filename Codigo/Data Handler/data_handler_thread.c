@@ -10,14 +10,14 @@
 #include "print.h"
 
 void data_handler_thread_function(void *argument) {
-	printf("Data Handler monitoring thread started\n");
+	printf("Data Handler monitoring thread started\r\n");
 
 	    TickType_t last_wake_time = xTaskGetTickCount();
 	    const TickType_t frequency = pdMS_TO_TICKS(5000); // 5 seconds
 
 	    while(1) {
 	        // Just monitor buffer health every 5 seconds
-	        printf("\n=== Data Handler Status ===\n");
+	        printf("Data Handler Status\r\n");
 
 	        // Check for overflows
 	        if (cb_imu.overflow_count > 0) {
@@ -41,10 +41,7 @@ void data_handler_thread_function(void *argument) {
 	        UBaseType_t tel_msgs = uxQueueMessagesWaiting(queue_to_telemetry);
 	        UBaseType_t log_msgs = uxQueueMessagesWaiting(queue_to_logger);
 
-	        printf("Queue levels: EST=%u/%u, TEL=%u/%u, LOG=%u/%u\n",
-	               est_msgs, QUEUE_LENGTH_ESTIMATOR,
-	               tel_msgs, QUEUE_LENGTH_TELEMETRY,
-	               log_msgs, QUEUE_LENGTH_LOGGER);
+	        printf("Queue levels: EST=%lu/%u, TEL=%lu/%u, LOG=%lu/%u\r\n", est_msgs, QUEUE_LENGTH_ESTIMATOR, tel_msgs, QUEUE_LENGTH_TELEMETRY, log_msgs, QUEUE_LENGTH_LOGGER);
 
 	        vTaskDelayUntil(&last_wake_time, frequency);
 	    }

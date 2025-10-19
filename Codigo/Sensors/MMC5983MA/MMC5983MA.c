@@ -7,6 +7,8 @@
 
 #include "MMC5983MA.h"
 #include <string.h>
+#include "cmsis_os2.h"
+#include "print.h"
 
 // Private helper functions
 static bool MMC5983MA_ReadRegister(MMC5983MA_t *dev, uint8_t reg, uint8_t *data);

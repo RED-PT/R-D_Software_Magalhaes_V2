@@ -11,24 +11,31 @@
 #include "defs.h"
 #include "retarget.h"
 #include "config.h"
+#include "Sensors/sensors_thread.h"
+#include "FreeRTOS.h"
+#include "semphr.h"
 
 // Variables
 fsm_ctx_t fsm_ctx = {};
 
+SemaphoreHandle_t xMutex = NULL;
+
 //Functions
 void fsm_init() {
 
-	// NÃO REMOVER - faz funcionar os printf()
-	RetargetInit(UART_DEBUG); // MUDAR PARA init.c
-
-	mutex_lock(&mutex_flags);
+	xMutex = xSemaphoreCreateMutex();
+	if (xMutex == NULL) {
+		printf("Failed to create mutex\r\n");
+	}
+	printf("Mutex created successfully\r\n");
 
 	memset(&fsm_ctx, 0, sizeof(fsm_ctx_t)); // clear all fields
 	fsm_ctx.state = BOOT;
 	fsm_ctx.substate = SUB_NONE;
 	fsm_ctx.profile.type = NO_PROFILE;
 
-	mutex_unlock(&mutex_flags);
+	printf("FSM Configed!\r\n");
+
 }
 
 int get_fsm_state() {

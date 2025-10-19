@@ -21,49 +21,49 @@ TimerHandle_t xBnoTimer = NULL;
 // Threads Attributes
 const osThreadAttr_t sensors_thread_attr = {
     .name = "Sensors",
-    .stack_size = 2048 * 4,
-    .priority = osPriorityRealtime,  //???
+    .stack_size = 1536 * 4,
+    .priority = osPriorityHigh3  //???
 };
 
 const osThreadAttr_t data_handler_thread_attr = {
     .name = "DataHandler",
     .stack_size = 1024 * 4,
-    .priority = osPriorityAboveNormal,
+    .priority = osPriorityHigh2,
 };
 
 const osThreadAttr_t estimator_thread_attr = {
     .name = "Estimator",
-    .stack_size = 2048 * 4,
+    .stack_size = 1024 * 4,
     .priority = osPriorityHigh,
 };
 
 const osThreadAttr_t controller_thread_attr = {
     .name = "Controller",
-    .stack_size = 2048 * 4,
+    .stack_size = 1024 * 4,
     .priority = osPriorityHigh,
 };
 
 const osThreadAttr_t sd_card_thread_attr = {
     .name = "SDCard",
-    .stack_size = 2048 * 4,
+    .stack_size = 1024 * 4,
     .priority = osPriorityLow,
 };
 
 const osThreadAttr_t telemetry_thread_attr = {
     .name = "Telemetry",
-    .stack_size = 1536 * 4,
+    .stack_size = 1024 * 4,
     .priority = osPriorityNormal,
 };
 
 const osThreadAttr_t fsm_thread_attr = {
     .name = "FSM",
-    .stack_size = 1536 * 4,
+    .stack_size = 1024 * 4,
     .priority = osPriorityAboveNormal1,
 };
 
 const osThreadAttr_t ublox_gps_thread_attr = {
     .name = "GPS",
-    .stack_size = 1536 * 4,
+    .stack_size = 1024 * 4,
     .priority = osPriorityNormal,
 };
 
@@ -86,43 +86,45 @@ void create_threads() {
 	// Terminate Task chata FreeRTOS
 	osThreadTerminate(defaultTaskHandle);
 
-	printf("Creating timers...\n");
+	printf("Creating timers...\r\n");
 
     xBaroTimer = xTimerCreate("BaroTimer",pdMS_TO_TICKS(BARO_UPDATE_RATE_MS), pdTRUE, NULL, vBaroTimerCallback);
     xBnoTimer = xTimerCreate("BnoTimer", pdMS_TO_TICKS(BNO_UPDATE_RATE_MS), pdTRUE, NULL, vBnoTimerCallback);
 
-    if (xBaroTimer == NULL || xBnoTimer == NULL) {printf("ERROR: Failed to create timers\n");}
+    if (xBaroTimer == NULL || xBnoTimer == NULL) {printf("ERROR: Failed to create timers\r\n");}
 
-	printf("Creating threads...\n");
+	printf("Creating threads...\r\n");
 
 	sensors_thread_id = osThreadNew(sensors_thread_function, NULL, &sensors_thread_attr);
-	if (sensors_thread_id == NULL) {printf("ERROR: Sensor Fusion thread creation failed\n");}
+	if (sensors_thread_id == NULL) {printf("ERROR: Sensor Fusion thread creation failed\r\n");}
 
 	data_handler_thread_id = osThreadNew(data_handler_thread_function, NULL, &data_handler_thread_attr);
-	if (data_handler_thread_id == NULL) { printf("ERROR: Data Handler thread creation failed\n");}
+	if (data_handler_thread_id == NULL) { printf("ERROR: Data Handler thread creation failed\r\n");}
 
 	estimator_thread_id = osThreadNew(estimator_thread_function, NULL, &estimator_thread_attr);
-	if (estimator_thread_id == NULL) {printf("ERROR: Estimator thread creation failed\n");}
+	if (estimator_thread_id == NULL) {printf("ERROR: Estimator thread creation failed\r\n");}
 
 	controller_thread_id = osThreadNew(controller_thread_function, NULL, &controller_thread_attr);
-	if (controller_thread_id == NULL) {printf("ERROR: Controller thread creation failed\n");}
+	if (controller_thread_id == NULL) {printf("ERROR: Controller thread creation failed\r\n");}
 
 	sd_card_thread_id = osThreadNew(sd_card_thread_function, NULL, &sd_card_thread_attr);
-	if (sd_card_thread_id == NULL) {printf("ERROR: SD Card thread creation failed\n");}
+	if (sd_card_thread_id == NULL) {printf("ERROR: SD Card thread creation failed\r\n");}
 
 	telemetry_thread_id = osThreadNew(telemetry_thread_function, NULL, &telemetry_thread_attr);
-	if (telemetry_thread_id == NULL) {printf("ERROR: Telemetry thread creation failed\n");}
+	if (telemetry_thread_id == NULL) {printf("ERROR: Telemetry thread creation failed\r\n");}
 
 	fsm_thread_id = osThreadNew(fsm_thread_function, NULL, &fsm_thread_attr);
-	if (fsm_thread_id == NULL) {printf("ERROR: FSM thread creation failed\n");}
+	if (fsm_thread_id == NULL) {printf("ERROR: FSM thread creation failed\r\n");}
 
 	ublox_gps_thread_id = osThreadNew(ublox_gps_thread_function, NULL, &ublox_gps_thread_attr);
-	if (ublox_gps_thread_id == NULL) {printf("ERROR: GPS thread creation failed\n");}
+	if (ublox_gps_thread_id == NULL) {printf("ERROR: GPS thread creation failed\r\n");
+	printf("Free heap: %u bytes\r\n", xPortGetFreeHeapSize());
+	}
 
 	//radio_rx_thread_id = osThreadNew(radio_rx_thread_function, NULL, &radio_rx_thread_attr);
 	//if (radio_rx_thread_id == NULL) {printf("ERROR: Radio RX thread creation failed\n");}
 
-	printf("\nAll threads created successfully");
+	printf("All threads created successfully\r\n");
 
 }
 

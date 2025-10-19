@@ -46,8 +46,8 @@ extern DMA_HandleTypeDef hdma_usart1_tx; // GPS Tx
 #define I2C_BNO &hi2c1
 
 //UART
-#define UART_DEBUG &huart1
-#define UART_UBLOX &huart3
+#define UART_DEBUG &huart3
+#define UART_UBLOX &huart1
 
 //SPI
 #define SPI_IMU_BARO &hspi1

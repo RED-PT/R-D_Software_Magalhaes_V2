@@ -8,6 +8,14 @@
 #ifndef TELEMETRY_TELEMETRY_THREAD_H_
 #define TELEMETRY_TELEMETRY_THREAD_H_
 
+#include "FreeRTOS.h"
+#include "task.h"
+#include "timers.h"
+#include "config.h"
+#include "defs.h"
+#include "stm32f4xx_hal.h"
+#include "print.h"
+
 
 void telemetry_thread_function();
 

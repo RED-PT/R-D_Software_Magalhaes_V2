@@ -8,6 +8,13 @@
 #ifndef ESTIMATOR_ESTIMATOR_THREAD_H_
 #define ESTIMATOR_ESTIMATOR_THREAD_H_
 
+#include "FreeRTOS.h"
+#include "task.h"
+#include "timers.h"
+#include "config.h"
+#include "defs.h"
+#include "stm32f4xx_hal.h"
+#include "print.h"
 
 void estimator_thread_function();
 

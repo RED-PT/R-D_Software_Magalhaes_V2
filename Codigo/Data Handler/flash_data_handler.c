@@ -40,7 +40,7 @@ static uint32_t seq_gps = 0;
 // Functions
 // - Initialization Functions
 void data_handler_init(void) {
-    printf("Initializing Data Handler System...\n");
+    printf("Initializing Data Handler System...\r\n");
 
     // Initialize RAM circular buffers
     ram_circular_buffer_init(&cb_imu, imu_buffer,
@@ -63,16 +63,16 @@ void data_handler_init(void) {
                                    sizeof(data_packet_t));
 
     if (!queue_to_estimator || !queue_to_telemetry || !queue_to_logger) {
-        printf("ERROR: Failed to create queues!\n");
+        printf("ERROR: Failed to create queues!\r\n");
     }
 
-    printf("Data Handler initialized successfully\n");
-    printf("Memory usage:\n");
-    printf("  IMU buffer:  %u bytes\n", RAM_IMU_BUFFER_SIZE * sizeof(IMU_t));
-    printf("  BARO buffer: %u bytes\n", RAM_BARO_BUFFER_SIZE * sizeof(BARO_t));
-    printf("  MAG buffer:  %u bytes\n", RAM_MAG_BUFFER_SIZE * sizeof(MAG_t));
-    printf("  BNO buffer:  %u bytes\n", RAM_BNO_BUFFER_SIZE * sizeof(BNO_t));
-    printf("  GPS buffer:  %u bytes\n", RAM_GPS_BUFFER_SIZE * sizeof(GPS_t));
+    printf("Data Handler initialized successfully\r\n");
+    printf("Memory usage:\r\n");
+    printf("IMU buffer:  %u bytes\r\n", RAM_IMU_BUFFER_SIZE * sizeof(IMU_t));
+    printf("BARO buffer: %u bytes\r\n", RAM_BARO_BUFFER_SIZE * sizeof(BARO_t));
+    printf("MAG buffer:  %u bytes\r\n", RAM_MAG_BUFFER_SIZE * sizeof(MAG_t));
+    printf("BNO buffer:  %u bytes\r\n", RAM_BNO_BUFFER_SIZE * sizeof(BNO_t));
+    printf("GPS buffer:  %u bytes\r\n", RAM_GPS_BUFFER_SIZE * sizeof(GPS_t));
 }
 
 void ram_circular_buffer_init(ram_circular_buffer_t *cb, void *buffer,
