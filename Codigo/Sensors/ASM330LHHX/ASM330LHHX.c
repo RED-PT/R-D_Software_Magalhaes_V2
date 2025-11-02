@@ -49,12 +49,15 @@ bool ASM330LHHX_Configure(ASM330LHHX_t *dev) {
         return false;
     }
 
+
     // Restore default configuration
     if (asm330lhhx_reset_set(&dev_ctx, PROPERTY_ENABLE) != 0) {return false;}
+    printf("OI?\r\n");
+    /*
     do {
         asm330lhhx_reset_get(&dev_ctx, &rst);
     } while (rst);
-
+	*/
     // Disable I3C interface
     if (asm330lhhx_i3c_disable_set(&dev_ctx, ASM330LHHX_I3C_DISABLE) != 0) {return false;}
 

@@ -185,8 +185,10 @@ void data_handler_store_baro(const BARO_t *baro_data) {
             .sequence = seq_baro++,
             .source_cb = &cb_baro
         };
-
-        distribute_data_packet(&packet);
+        // vamos só enviar para o estimator. a data handler thread trata de enviar
+        // para o resto das queues quando os buffers tiverem cheios
+        // mudar de maneira a não enviar para o estimator em certos estados da FSM
+        xQueueSend(queue_to_estimator, &packet, 0);
     }
 }
 
@@ -201,8 +203,10 @@ void data_handler_store_mag(const MAG_t *mag_data) {
             .sequence = seq_mag++,
             .source_cb = &cb_mag
         };
-
-        distribute_data_packet(&packet);
+        // vamos só enviar para o estimator. a data handler thread trata de enviar
+		// para o resto das queues quando os buffers tiverem cheios
+        // mudar de maneira a não enviar para o estimator em certos estados da FSM
+		xQueueSend(queue_to_estimator, &packet, 0);
     }
 }
 
@@ -217,8 +221,10 @@ void data_handler_store_bno(const BNO_t *bno_data) {
             .sequence = seq_bno++,
             .source_cb = &cb_bno
         };
-
-        distribute_data_packet(&packet);
+        // vamos só enviar para o estimator. a data handler thread trata de enviar
+		// para o resto das queues quando os buffers tiverem cheios
+        // mudar de maneira a não enviar para o estimator em certos estados da FSM
+		xQueueSend(queue_to_estimator, &packet, 0);
     }
 }
 
@@ -233,8 +239,10 @@ void data_handler_store_gps(const GPS_t *gps_data) {
             .sequence = seq_gps++,
             .source_cb = &cb_gps
         };
-
-        distribute_data_packet(&packet);
+        // vamos só enviar para o estimator. a data handler thread trata de enviar
+		// para o resto das queues quando os buffers tiverem cheios
+        // mudar de maneira a não enviar para o estimator em certos estados da FSM
+		xQueueSend(queue_to_estimator, &packet, 0);
     }
 }
 
@@ -247,6 +255,5 @@ void data_handler_store_event(const telemetry_event_t *event_data) {
         .sequence = 0,
         .source_cb = NULL  // No circular buffer for events
     };
-
     distribute_data_packet(&packet);
 }
