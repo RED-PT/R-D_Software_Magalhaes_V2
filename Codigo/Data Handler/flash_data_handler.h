@@ -69,11 +69,11 @@ extern ram_circular_buffer_t cb_gps;
 // Queues
 #define QUEUE_LENGTH_ESTIMATOR  20   // High-rate sensors
 #define QUEUE_LENGTH_TELEMETRY  10   // Lower rate
-#define QUEUE_LENGTH_LOGGER     50   // Buffered logging
+#define QUEUE_LENGTH_SD     50   // Buffered logging
 
 extern QueueHandle_t queue_to_estimator;    // High priority - IMU, MAG
 extern QueueHandle_t queue_to_telemetry;    // Medium priority - all data
-extern QueueHandle_t queue_to_logger;       // Low priority - SD card logging
+extern QueueHandle_t queue_to_sd;       // Low priority - SD card logging
 
 // Function Prototypes
 // Initialize flash storage system

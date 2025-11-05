@@ -28,7 +28,7 @@ ram_circular_buffer_t cb_gps;
 // FreeRTOS Queues
 QueueHandle_t queue_to_estimator = NULL;
 QueueHandle_t queue_to_telemetry = NULL;
-QueueHandle_t queue_to_logger = NULL;
+QueueHandle_t queue_to_sd = NULL;
 
 // Sequence Counters
 static uint32_t seq_imu = 0;
@@ -59,10 +59,10 @@ void data_handler_init(void) {
                                      sizeof(data_packet_t));
     queue_to_telemetry = xQueueCreate(QUEUE_LENGTH_TELEMETRY,
                                      sizeof(data_packet_t));
-    queue_to_logger = xQueueCreate(QUEUE_LENGTH_LOGGER,
+    queue_to_sd = xQueueCreate(QUEUE_LENGTH_SD,
                                    sizeof(data_packet_t));
 
-    if (!queue_to_estimator || !queue_to_telemetry || !queue_to_logger) {
+    if (!queue_to_estimator || !queue_to_telemetry || !queue_to_sd) {
         printf("ERROR: Failed to create queues!\r\n");
     }
 
@@ -150,8 +150,8 @@ static void distribute_data_packet(const data_packet_t *packet) {
     // Send to telemetry (non-blocking)
     xQueueSend(queue_to_telemetry, packet, 0);
 
-    // Send to logger (non-blocking, can drop if full)
-    xQueueSend(queue_to_logger, packet, 0);
+    // Send to sd (non-blocking, can drop if full)
+    xQueueSend(queue_to_sd, packet, 0);
 }
 
 // Helper Functions for Sensors
