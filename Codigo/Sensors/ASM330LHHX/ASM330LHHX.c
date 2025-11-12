@@ -52,7 +52,6 @@ bool ASM330LHHX_Configure(ASM330LHHX_t *dev) {
 
     // Restore default configuration
     if (asm330lhhx_reset_set(&dev_ctx, PROPERTY_ENABLE) != 0) {return false;}
-    printf("OI?\r\n");
     /*
     do {
         asm330lhhx_reset_get(&dev_ctx, &rst);

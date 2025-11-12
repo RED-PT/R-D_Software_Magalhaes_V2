@@ -13,4 +13,3 @@ void sd_card_thread_function() {
 	osDelay(50);
 	vTaskSuspend(NULL);
 }
-
