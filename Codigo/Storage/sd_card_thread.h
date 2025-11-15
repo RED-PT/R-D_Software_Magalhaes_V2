@@ -10,14 +10,17 @@
 
 #include "FreeRTOS.h"
 #include "task.h"
-#include "timers.h"
+#include "queue.h"
 #include "config.h"
 #include "defs.h"
 #include "stm32f4xx_hal.h"
 #include "print.h"
 
+// Thread function - run as a FreeRTOS task
+void sd_card_thread_function(void *argument);
 
-void sd_card_thread_function();
+// Cleanup function - call before shutdown
+void sd_card_close(void);
 
 
 #endif /* STORAGE_SD_CARD_THREAD_H_ */

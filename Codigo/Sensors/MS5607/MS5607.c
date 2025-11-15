@@ -1,20 +1,21 @@
 /*
- * MS5607.c
+ * MS5607.c - Altimeter Driver - CORRECTED BIT SHIFTS
  *
  *  Created on: Oct 16, 2025
- *      Author: texman
+ *      Author: Tomas Teixeira
+ *  Fixed: Bit shift error causing pressure to be half of actual value
  */
 
 #include "MS5607.h"
 #include <string.h>
 #include <math.h>
-#include "cmsis_os2.h"
+
+// Global calibration coefficients
+uint16_t C[7] = {0};
 
 // Private helper functions
 static void MS5607_Select(MS5607_t *dev);
 static void MS5607_Deselect(MS5607_t *dev);
-static HAL_StatusTypeDef MS5607_SendCommand(MS5607_t *dev, uint8_t cmd);
-static bool MS5607_ReadADC_DMA(MS5607_t *dev);
 
 bool MS5607_Init(MS5607_t *dev, SPI_HandleTypeDef *hspi,
                  GPIO_TypeDef *cs_port, uint16_t cs_pin) {
@@ -25,28 +26,62 @@ bool MS5607_Init(MS5607_t *dev, SPI_HandleTypeDef *hspi,
     dev->hspi = hspi;
     dev->cs_port = cs_port;
     dev->cs_pin = cs_pin;
-    dev->state = MS5607_STATE_IDLE;
-    dev->data_ready = 0;
-    memset(dev->read_buffer, 0, sizeof(dev->read_buffer));
 
     // Reset sensor
-    MS5607_SendCommand(dev, CMD_RESET);
-    HAL_Delay(10);
+    printf("MS5607: Sending reset command...\r\n");
+    uint8_t cmd = CMD_RESET;
+    MS5607_Select(dev);
+    HAL_Delay(1);
+    HAL_StatusTypeDef status = HAL_SPI_Transmit(dev->hspi, &cmd, 1, HAL_MAX_DELAY);
+    MS5607_Deselect(dev);
 
-    // Read calibration coefficients from PROM (blocking - only during init)
+    if (status != HAL_OK) {
+        printf("ERROR: MS5607 reset failed (SPI error: %d)\r\n", status);
+        return false;
+    }
+
+    HAL_Delay(10);
+    printf("MS5607: Reset complete, reading calibration...\r\n");
+
+    // Read calibration coefficients from PROM
     for (uint8_t i = 0; i < 7; i++) {
         uint8_t addr = CMD_PROM_READ + (i * 2);
-        uint8_t tx_buf = addr;
         uint8_t rx_buf[2];
 
         MS5607_Select(dev);
-        HAL_SPI_Transmit(dev->hspi, &tx_buf, 1, HAL_MAX_DELAY);
-        HAL_SPI_Receive(dev->hspi, rx_buf, 2, HAL_MAX_DELAY);
+        status = HAL_SPI_Transmit(dev->hspi, &addr, 1, HAL_MAX_DELAY);
+        if (status != HAL_OK) {
+            MS5607_Deselect(dev);
+            printf("ERROR: Failed to send PROM read command for C[%d]\r\n", i);
+            return false;
+        }
+
+        status = HAL_SPI_Receive(dev->hspi, rx_buf, 2, HAL_MAX_DELAY);
         MS5607_Deselect(dev);
 
-        dev->calibration[i] = ((uint16_t)rx_buf[0] << 8) | rx_buf[1];
+        if (status != HAL_OK) {
+            printf("ERROR: Failed to receive PROM data for C[%d]\r\n", i);
+            return false;
+        }
+
+        C[i] = ((uint16_t)rx_buf[0] << 8) | rx_buf[1];
+        //printf("C[%d] = 0x%04X (%u) [raw bytes: 0x%02X 0x%02X]\r\n",
+        //i, C[i], C[i], rx_buf[0], rx_buf[1]);
     }
 
+    // Validate calibration coefficients
+    if (C[0] == 0x0000 || C[0] == 0xFFFF) {
+        printf("ERROR: Invalid C[0] = 0x%04X - sensor not responding!\r\n", C[0]);
+        printf("Check: SPI wiring, chip select, power supply\r\n");
+        return false;
+    }
+
+    // Additional validation - typical ranges from datasheet
+    if (C[1] < 30000 || C[1] > 50000) {
+        printf("WARNING: C[1] = %u is outside typical range (30000-50000)\r\n", C[1]);
+    }
+
+    printf("MS5607: Initialization successful!\r\n");
     return true;
 }
 
@@ -54,184 +89,123 @@ bool MS5607_Configure(MS5607_t *dev) {
     if (!dev) {
         return false;
     }
-
-    dev->state = MS5607_STATE_IDLE;
+    // Nothing to configure - just return true
     return true;
 }
 
-bool MS5607_StartRead(MS5607_t *dev) {
-    if (!dev) {
+// Read temperature and pressure - call this from timer callback
+bool MS5607_ReadTemperatureandPressure(MS5607_t *dev, BARO_t *output) {
+    if (!dev || !output) {
         return false;
     }
 
-    // Only start if idle
-    if (dev->state != MS5607_STATE_IDLE) {
+    uint8_t cmd;
+    uint32_t D2, D1;
+    HAL_StatusTypeDef status;
+
+    // Read temperature (D2)
+    cmd = CMD_CONV_D2;
+    MS5607_Select(dev);
+    status = HAL_SPI_Transmit(dev->hspi, &cmd, 1, HAL_MAX_DELAY);
+    MS5607_Deselect(dev);
+
+    if (status != HAL_OK) {
+        printf("ERROR: Failed to send D2 conversion command\r\n");
         return false;
     }
 
-    // Start D2 (temperature) conversion
-    if (MS5607_SendCommand(dev, CMD_CONV_D2) != HAL_OK) {
+    HAL_Delay(10);  // Wait for conversion
+
+    // Read D2 ADC value
+    cmd = CMD_ADC_READ;
+    uint8_t rx_buf[3];
+    MS5607_Select(dev);
+    status = HAL_SPI_Transmit(dev->hspi, &cmd, 1, HAL_MAX_DELAY);
+    if (status != HAL_OK) {
+        MS5607_Deselect(dev);
+        printf("ERROR: Failed to send ADC read command for D2\r\n");
         return false;
     }
 
-    dev->state = MS5607_STATE_CONV_D2;
-    dev->conversion_start_time =HAL_GetTick();
+    status = HAL_SPI_Receive(dev->hspi, rx_buf, 3, HAL_MAX_DELAY);
+    MS5607_Deselect(dev);
 
-    return true;
-}
-
-bool MS5607_Update(MS5607_t *dev) {
-    uint32_t elapsed_ms;
-
-    if (!dev) {
+    if (status != HAL_OK) {
+        printf("ERROR: Failed to receive D2 ADC data\r\n");
         return false;
     }
 
-    elapsed_ms = HAL_GetTick() - dev->conversion_start_time;
+    D2 = ((uint32_t)rx_buf[0] << 16) | ((uint32_t)rx_buf[1] << 8) | rx_buf[2];
 
-    switch (dev->state) {
-        case MS5607_STATE_CONV_D2:
-            // Wait for D2 conversion (~9ms for high resolution)
-            if (elapsed_ms >= 10) {
-                // Start DMA read of D2 ADC
-                if (MS5607_ReadADC_DMA(dev)) {
-                    dev->state = MS5607_STATE_READ_D2;
-                    return false;  // Wait for DMA to complete
-                } else {
-                    dev->state = MS5607_STATE_IDLE;
-                    return false;
-                }
-            }
-            return false;  // Not ready yet
+    // Read pressure (D1)
+    cmd = CMD_CONV_D1;
+    MS5607_Select(dev);
+    status = HAL_SPI_Transmit(dev->hspi, &cmd, 1, HAL_MAX_DELAY);
+    MS5607_Deselect(dev);
 
-        case MS5607_STATE_READ_D2:
-            // DMA read complete - data already in read_buffer
-            // Parse D2
-            dev->d2_raw = ((uint32_t)dev->read_buffer[1] << 16) |
-                         ((uint32_t)dev->read_buffer[2] << 8) |
-                          dev->read_buffer[3];
-
-            // Start D1 (pressure) conversion
-            if (MS5607_SendCommand(dev, CMD_CONV_D1) != HAL_OK) {
-                dev->state = MS5607_STATE_IDLE;
-                return false;
-            }
-
-            dev->state = MS5607_STATE_CONV_D1;
-            dev->conversion_start_time = HAL_GetTick();
-            return false;
-
-        case MS5607_STATE_CONV_D1:
-            // Wait for D1 conversion (~9ms for high resolution)
-            if (elapsed_ms >= 10) {
-                // Start DMA read of D1 ADC
-                if (MS5607_ReadADC_DMA(dev)) {
-                    dev->state = MS5607_STATE_READ_D1;
-                    return false;  // Wait for DMA to complete
-                } else {
-                    dev->state = MS5607_STATE_IDLE;
-                    return false;
-                }
-            }
-            return false;  // Not ready yet
-
-        case MS5607_STATE_READ_D1:
-            // DMA read complete - data already in read_buffer
-            // Parse D1
-            dev->d1_raw = ((uint32_t)dev->read_buffer[1] << 16) |
-                         ((uint32_t)dev->read_buffer[2] << 8) |
-                          dev->read_buffer[3];
-
-            dev->state = MS5607_STATE_IDLE;
-            dev->data_ready = 1;
-            return true;  // Data ready
-
-        default:
-            dev->state = MS5607_STATE_IDLE;
-            return false;
-    }
-}
-
-bool MS5607_ProcessData(MS5607_t *dev, BARO_t *output) {
-    if (!dev || !output || !dev->data_ready) {
+    if (status != HAL_OK) {
+        printf("ERROR: Failed to send D1 conversion command\r\n");
         return false;
     }
 
-    // Convert raw ADC values to physical units
-    // Using formulas from MS5607 datasheet
+    HAL_Delay(10);  // Wait for conversion
 
-    int64_t d1 = (int64_t)dev->d1_raw;
-    int64_t d2 = (int64_t)dev->d2_raw;
+    // Read D1 ADC value
+    cmd = CMD_ADC_READ;
+    MS5607_Select(dev);
+    status = HAL_SPI_Transmit(dev->hspi, &cmd, 1, HAL_MAX_DELAY);
+    if (status != HAL_OK) {
+        MS5607_Deselect(dev);
+        printf("ERROR: Failed to send ADC read command for D1\r\n");
+        return false;
+    }
 
-    int64_t c1 = (int64_t)dev->calibration[0];
-    int64_t c2 = (int64_t)dev->calibration[1];
-    int64_t c3 = (int64_t)dev->calibration[2];
-    int64_t c4 = (int64_t)dev->calibration[3];
-    int64_t c5 = (int64_t)dev->calibration[4];
-    int64_t c6 = (int64_t)dev->calibration[5];
+    status = HAL_SPI_Receive(dev->hspi, rx_buf, 3, HAL_MAX_DELAY);
+    MS5607_Deselect(dev);
 
-    // Calculate temperature
-    int64_t dt = d2 - (c5 << 8);
-    int64_t temp_raw = 2000 + ((dt * c6) >> 23);
+    if (status != HAL_OK) {
+        printf("ERROR: Failed to receive D1 ADC data\r\n");
+        return false;
+    }
 
-    output->temperature_c = (float)temp_raw / 100.0f;
+    D1 = ((uint32_t)rx_buf[0] << 16) | ((uint32_t)rx_buf[1] << 8) | rx_buf[2];
 
-    // Calculate pressure
-    int64_t off = (c2 << 16) + ((dt * c4) >> 7);
-    int64_t sens = (c1 << 15) + ((dt * c3) >> 8);
+    // Calculate temperature using MS5607 formula
+    int64_t dT = (int64_t)D2 - ((int64_t)C[5] << 8);
+    int32_t TEMP = 2000 + (int32_t)((dT * (int64_t)C[6]) >> 23);
 
-    int64_t pressure_raw = (((d1 * sens) >> 21) - off) >> 15;
-    output->pressure_mbar = (float)pressure_raw / 100.0f;
+    // Calculate pressure offset and sensitivity
+    // CRITICAL FIX: Changed << 16 to << 17 for OFF, and << 15 to << 16 for SENS
+    int64_t OFF = ((int64_t)C[2] << 17) + (((int64_t)dT * (int64_t)C[4]) >> 7);
+    int64_t SENS = ((int64_t)C[1] << 16) + (((int64_t)dT * (int64_t)C[3]) >> 8);
 
-    // Calculate altitude (simple approximation)
+    // Calculate final pressure
+    int32_t P = (int32_t)(((((int64_t)D1 * SENS) >> 21) - OFF) >> 15);
+
+
+    // Convert to output format
+    output->temperature_c = (float)TEMP / 100.0f;
+    output->pressure_mbar = (float)P / 100.0f;
+
+    // Calculate altitude using barometric formula
     #define SEA_LEVEL_PRESSURE 1013.25f
     float pressure_ratio = output->pressure_mbar / SEA_LEVEL_PRESSURE;
     output->altitude_m = 44330.0f * (1.0f - powf(pressure_ratio, 1.0f / 5.255f));
 
     output->timestamp_ms = HAL_GetTick();
 
-    dev->data_ready = 0;
+    // Debug output
+    //printf("D2=%lu D1=%lu T=%.2fC P=%.2fmbar Alt=%.1fm\r\n",
+    //       D2, D1, output->temperature_c, output->pressure_mbar, output->altitude_m);
 
     return true;
 }
 
 // Private Functions
-
 static void MS5607_Select(MS5607_t *dev) {
     HAL_GPIO_WritePin(dev->cs_port, dev->cs_pin, GPIO_PIN_RESET);
 }
 
 static void MS5607_Deselect(MS5607_t *dev) {
     HAL_GPIO_WritePin(dev->cs_port, dev->cs_pin, GPIO_PIN_SET);
-}
-
-static HAL_StatusTypeDef MS5607_SendCommand(MS5607_t *dev, uint8_t cmd) {
-    HAL_StatusTypeDef status;
-
-    MS5607_Select(dev);
-    status = HAL_SPI_Transmit(dev->hspi, &cmd, 1, HAL_MAX_DELAY);
-    MS5607_Deselect(dev);
-
-    return status;
-}
-
-static bool MS5607_ReadADC_DMA(MS5607_t *dev) {
-    // Prepare TX buffer: [ADC_READ_CMD][DUMMIES]
-    uint8_t tx_buffer[4];
-    tx_buffer[0] = CMD_ADC_READ;
-    memset(&tx_buffer[1], 0x00, 3);
-
-    MS5607_Select(dev);
-
-    // Use blocking SPI TransmitReceive for simplicity
-    // (The DMA callback won't fire for blocking calls)
-    // Alternative: Use HAL_SPI_TransmitReceive_DMA if you want true async
-    if (HAL_SPI_TransmitReceive(dev->hspi, tx_buffer, dev->read_buffer, 4, HAL_MAX_DELAY) != HAL_OK) {
-        MS5607_Deselect(dev);
-        return false;
-    }
-
-    MS5607_Deselect(dev);
-
-    return true;
 }

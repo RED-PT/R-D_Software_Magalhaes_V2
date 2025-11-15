@@ -149,8 +149,8 @@ int main(void)
   MX_SPI4_Init();
   /* USER CODE BEGIN 2 */
   // NÃO REMOVER - faz funcionar os printf()
-  RetargetInitNoProtection(UART_DEBUG); // MUDAR PARA init.c
-  sensors_thread_init();
+  //RetargetInitNoProtection(UART_DEBUG);
+  //sensors_thread_init(); removed; added to thread
   /* USER CODE END 2 */
 
   /* Init scheduler */
@@ -688,8 +688,8 @@ static void MX_DMA_Init(void)
 {
 
   /* DMA controller clock enable */
-  __HAL_RCC_DMA2_CLK_ENABLE();
   __HAL_RCC_DMA1_CLK_ENABLE();
+  __HAL_RCC_DMA2_CLK_ENABLE();
 
   /* DMA interrupt init */
   /* DMA1_Stream0_IRQn interrupt configuration */
@@ -746,15 +746,18 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOE_CLK_ENABLE();
   __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOH_CLK_ENABLE();
-  __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
   __HAL_RCC_GPIOD_CLK_ENABLE();
+  __HAL_RCC_GPIOA_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, LD1_Pin|LD3_Pin|SD_CS_Pin|LD2_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, LD1_Pin|IMU_CS_Pin|LD3_Pin|LD2_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, IMU_CS_Pin|LORA_CS_Pin|MAG_CS_Pin|BARO_CS_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(GPIOB, LORA_CS_Pin|MAG_CS_Pin, GPIO_PIN_SET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOD, CS_SD_Pin|CS_BARO_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : USER_Btn_Pin */
   GPIO_InitStruct.Pin = USER_Btn_Pin;
@@ -769,10 +772,8 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : IMU_CS_Pin LORA_CS_Pin MAG_CS_Pin BARO_CS_Pin
-                           SD_CS_Pin */
-  GPIO_InitStruct.Pin = IMU_CS_Pin|LORA_CS_Pin|MAG_CS_Pin|BARO_CS_Pin
-                          |SD_CS_Pin;
+  /*Configure GPIO pins : IMU_CS_Pin LORA_CS_Pin MAG_CS_Pin */
+  GPIO_InitStruct.Pin = IMU_CS_Pin|LORA_CS_Pin|MAG_CS_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
@@ -789,6 +790,13 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_PULLDOWN;
   HAL_GPIO_Init(MAG_DRDY_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : CS_SD_Pin CS_BARO_Pin */
+  GPIO_InitStruct.Pin = CS_SD_Pin|CS_BARO_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
   HAL_NVIC_SetPriority(EXTI2_IRQn, 5, 0);

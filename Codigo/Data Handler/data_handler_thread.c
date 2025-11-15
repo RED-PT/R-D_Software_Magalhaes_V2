@@ -17,7 +17,7 @@
 // Flush timing
 #define FAST_PACKET_PERIOD_MS       20   // 50Hz
 #define SLOW_PACKET_PERIOD_MS       200  // 5Hz
-#define MONITOR_PERIOD_MS           1000 // Status print every 1s
+#define MONITOR_PERIOD_MS           2000 // Status print every 1s
 
 // Helper function to create packets from circular buffer and send to queues
 // NOTE: Packets are sent with locked mutexes - consumers MUST call data_packet_unlock()
@@ -116,8 +116,10 @@ static void flush_all_buffers(void) {
 }
 
 void data_handler_thread_function(void *argument) {
-    printf("Data Handler monitoring thread started\r\n");
-    osDelay(50);
+
+	osDelay(500);
+
+	printf("Data Handler monitoring thread started\r\n");
 
     TickType_t last_fast_flush = xTaskGetTickCount();
     TickType_t last_slow_flush = xTaskGetTickCount();

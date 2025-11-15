@@ -25,7 +25,7 @@ bool MMC5983MA_Init(MMC5983MA_t *dev, SPI_HandleTypeDef *hspi) {
     dev->data_ready = 0;
     memset(dev->read_buffer, 0, sizeof(dev->read_buffer));
 
-    HAL_Delay(10);
+    osDelay(10);
 
     // Read and verify Product ID
     if (!MMC5983MA_ReadRegister(dev, MMC5983MA_REG_PRODUCT_ID, &product_id)) {
@@ -41,7 +41,7 @@ bool MMC5983MA_Init(MMC5983MA_t *dev, SPI_HandleTypeDef *hspi) {
         return false;
     }
 
-    HAL_Delay(2);
+    osDelay(2);
 
     return true;
 }
@@ -55,28 +55,28 @@ bool MMC5983MA_Configure(MMC5983MA_t *dev) {
     if (!MMC5983MA_WriteRegister(dev, MMC5983MA_REG_CTRL1, 0x00)) {
         return false;
     }
-    HAL_Delay(1);
+    osDelay(1);
 
     // Set BW[1:0] = 11 (800Hz, 0.5ms measurement time)
     if (!MMC5983MA_WriteRegister(dev, MMC5983MA_REG_CTRL1,
                                  (MMC5983MA_CTRL1_BW0 | MMC5983MA_CTRL1_BW1))) {
         return false;
     }
-    HAL_Delay(1);
+    osDelay(1);
 
     // Enable continuous measurement at 1000 Hz
     if (!MMC5983MA_WriteRegister(dev, MMC5983MA_REG_CTRL2,
                                  (0x04 | 0x07))) {  // Cmm_en | CM_Freq=1000Hz
         return false;
     }
-    HAL_Delay(1);
+    osDelay(1);
 
     // Enable interrupt and auto set/reset
     if (!MMC5983MA_WriteRegister(dev, MMC5983MA_REG_CTRL0,
                                  (MMC5983MA_CTRL0_INT_EN | MMC5983MA_CTRL0_AUTO_SR))) {
         return false;
     }
-    HAL_Delay(1);
+    osDelay(1);
 
     return true;
 }

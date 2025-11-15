@@ -10,7 +10,6 @@
 
 void telemetry_thread_function() {
 	printf("Telemetry Thread started...\r\n");
-	osDelay(50);
 	vTaskSuspend(NULL);
 }
 

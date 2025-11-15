@@ -48,7 +48,7 @@ typedef enum {
 #define SENSOR_NOTIFY_GPS_DR        (1 << 7)
 
 // Update rates
-#define BARO_UPDATE_RATE_MS   20    // 50 Hz
+#define BARO_UPDATE_RATE_MS   20   // 50 Hz
 #define BNO_UPDATE_RATE_MS    10    // 100 Hz
 
 // Function prototypes

@@ -1,8 +1,8 @@
 /*
  * BNO055.c
  *
- *  Created on: Oct 16, 2025
- *      Author: texman
+ * Created on: Oct 16, 2025
+ * Author: texman
  */
 
 #include "BNO055.h"
@@ -26,7 +26,7 @@ bool BNO055_Init(BNO055_t *dev, I2C_HandleTypeDef *hi2c) {
     dev->data_ready = 0;
     memset(dev->read_buffer, 0, sizeof(dev->read_buffer));
 
-    HAL_Delay(50);  // Power-up time
+    osDelay(50);  // Power-up time
 
     // Read and verify chip ID
     if (!BNO055_ReadRegister(dev, BNO055_REG_CHIP_ID, &chip_id)) {
@@ -49,19 +49,19 @@ bool BNO055_Configure(BNO055_t *dev) {
     if (!BNO055_SetOpMode(dev, BNO055_MODE_CONFIGMODE)) {
         return false;
     }
-    HAL_Delay(25);
+    osDelay(25);
 
     // Set to NDOF mode (full 9-DOF sensor fusion)
     if (!BNO055_SetOpMode(dev, BNO055_MODE_NDOF)) {
         return false;
     }
-    HAL_Delay(100);  // Mode change takes time
+    osDelay(100);  // Mode change takes time
 
     // Set power mode to normal
     if (!BNO055_WriteRegister(dev, BNO055_REG_PWR_MODE, BNO055_POWER_NORMAL)) {
         return false;
     }
-    HAL_Delay(10);
+    osDelay(10);
 
     return true;
 }
@@ -71,7 +71,7 @@ bool BNO055_StartReadDMA(BNO055_t *dev) {
         return false;
     }
 
-    // Read euler angles + quaternion + linear accel + gravity + temp
+    // Read euler angles + quaternion + linear accel
     // Starting from EULER_H_LSB (0x1A) for 20 bytes total
     // This covers: Euler(6) + Quat(8) + LinAccel(6)
 
@@ -79,9 +79,9 @@ bool BNO055_StartReadDMA(BNO055_t *dev) {
     uint8_t num_bytes = 20;  // Euler(6) + Quat(8) + LinAccel(6)
 
     // Prepare command: I2C address write, then register address, then read
-    if (HAL_I2C_Mem_Read_DMA(dev->hi2c, dev->i2c_addr, start_reg,
-                             I2C_MEMADD_SIZE_8BIT, dev->read_buffer, num_bytes) != HAL_OK) {
-        return false;
+    if (HAL_I2C_Mem_Read_DMA(dev->hi2c, dev->i2c_addr, start_reg, I2C_MEMADD_SIZE_8BIT, dev->read_buffer, num_bytes) != HAL_OK) {
+    	printf("ERROR\r\n");
+    	return false;
     }
 
     return true;
@@ -149,21 +149,18 @@ bool BNO055_ProcessData(BNO055_t *dev, BNO_t *output) {
     output->mag_y_uT = 0.0f;
     output->mag_z_uT = 0.0f;
 
-    // Get calibration status
-    BNO055_GetCalibStatus(dev, &dev->calib_status);
-    output->calibration_status = (dev->calib_status >> 6) & 0x03;  // System calibration (0-3)
+    // Get calibration status - **REMOVIDO** para evitar bloqueio do I2C
+    // BNO055_GetCalibStatus(dev, &dev->calib_status);
+    // output->calibration_status = (dev->calib_status >> 6) & 0x03;
+    output->calibration_status = 0; // Placeholder
 
     // Temperature (1 byte, 1°C per LSB)
     output->timestamp_ms = HAL_GetTick();
 
     dev->data_ready = 0;
 
-    if (!dev || !output) return false;
-    // TODO: Parse data and convert to physical units
-    output->heading_deg = 0.0f;
-    output->roll_deg = 0.0f;
-    output->pitch_deg = 0.0f;
-    output->timestamp_ms = HAL_GetTick();
+    // **BLOCO DE CÓDIGO INCORRETO REMOVIDO DAQUI**
+
     return true;
 }
 

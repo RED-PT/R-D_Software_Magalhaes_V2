@@ -56,8 +56,8 @@ extern DMA_HandleTypeDef hdma_usart1_tx; // GPS Tx
 #define SPI_IMU_BARO_INSTANCE SPI1
 #define CS_IMU_PORT GPIOB
 #define CS_IMU_PIN GPIO_PIN_1
-#define CS_BARO_PORT GPIOB
-#define CS_BARO_PIN GPIO_PIN_3
+#define CS_BARO_PORT GPIOD
+#define CS_BARO_PIN GPIO_PIN_15
 
 #define SPI_LORA &hspi2
 #define SPI_LORA_INSTANCE SPI2
@@ -71,8 +71,8 @@ extern DMA_HandleTypeDef hdma_usart1_tx; // GPS Tx
 
 #define SPI_SDCARD &hspi4
 #define SPI_SDCARD_INSTANCE SPI4
-#define CS_SDCARD_PORT GPIOB
-#define CS_SDCARD_PIN GPIO_PIN_4
+#define CS_SDCARD_PORT GPIOD
+#define CS_SDCARD_PIN GPIO_PIN_14
 
 //CS Macros
 #define CS_IMU_LOW()     HAL_GPIO_WritePin(CS_IMU_PORT, CS_IMU_PIN, GPIO_PIN_RESET)

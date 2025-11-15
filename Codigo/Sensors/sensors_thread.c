@@ -37,13 +37,13 @@ static struct {
     uint32_t dma_errors;
 } sensor_stats = {0};
 
-// Timer Callbacks // substituir: Block for x ms
+// Timer Callbacks
 void vBaroTimerCallback(TimerHandle_t xTimer) {
-	if (osKernelGetState() == osKernelRunning) {
-		BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-		xTaskNotifyFromISR(sensors_thread_id, SENSOR_NOTIFY_BARO_TIMER, eSetBits, &xHigherPriorityTaskWoken);
-		portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
-	}
+    if (osKernelGetState() == osKernelRunning) {
+        BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+        xTaskNotifyFromISR(sensors_thread_id, SENSOR_NOTIFY_BARO_TIMER, eSetBits, &xHigherPriorityTaskWoken);
+        portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+    }
 }
 
 void vBnoTimerCallback(TimerHandle_t xTimer) {
@@ -79,9 +79,6 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi) {
 			if (spi1_active_sensor == ACTIVE_SENSOR_IMU) {
 				ASM330LHHX_ParseDMABuffer(&imu_device);
 			}
-			else if (spi1_active_sensor == ACTIVE_SENSOR_BARO) {
-				// Barometer parsing
-			}
 		}
 		else if (hspi->Instance == SPI_MAG_INSTANCE) {
 			if (spi3_active_sensor == ACTIVE_SENSOR_MAG) {
@@ -113,7 +110,6 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) {
 
 		if (huart->Instance == UART_UBLOX_INSTANCE) {
 			sensor_stats.gps_errors++;
-			// Could handle recovery here if needed
 		}
 		portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 	}
@@ -132,6 +128,8 @@ void HAL_I2C_MemRxCpltCallback(I2C_HandleTypeDef *hi2c) {
 	if (osKernelGetState() == osKernelRunning) {
 		BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 		if (hi2c->Instance == I2C1) {
+
+            BNO055_ParseDMABuffer(&bno_device);
 			xTaskNotifyFromISR(sensors_thread_id, SENSOR_NOTIFY_DMA_COMPLETE, eSetBits, &xHigherPriorityTaskWoken);
 		}
 		portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
@@ -149,6 +147,27 @@ void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c) {
 	}
 }
 
+float pressure_to_height(int32_t pressure_pa, int32_t sealevel_pa,
+		float temperature_k) {
+	const float R = 8.314462618f;    // J/(mol·K)
+	const float g = 9.80665f;        // m/s²
+	const float M = 0.0289644f;      // kg/mol
+
+	// Input validation
+	if (pressure_pa <= 0 || sealevel_pa <= 0 || temperature_k <= 0) {
+		return NAN;
+	}
+
+	if (pressure_pa > sealevel_pa) {
+		// This might indicate below sea level or sensor error
+		// You can handle this case as needed
+	}
+
+	float pressure_ratio = (float) pressure_pa / (float) sealevel_pa;
+
+	return -(R * temperature_k) / (g * M) * logf(pressure_ratio);
+}
+
 // Initialization
 void sensors_thread_init(void) {
     printf("Initializing sensors...\r\n");
@@ -158,8 +177,10 @@ void sensors_thread_init(void) {
     if (!ASM330LHHX_Init(&imu_device, SPI_IMU_BARO)) {
         printf("ERROR: IMU init failed!\r\n");
     }
-    if (!ASM330LHHX_Configure(&imu_device)) {
-        printf("ERROR: IMU configure failed!\n");
+    else {
+		if (!ASM330LHHX_Configure(&imu_device)) {
+			printf("ERROR: IMU configure failed!\n");
+		}
     }
 
     // Initialize Magnetometer
@@ -201,37 +222,15 @@ void sensors_thread_init(void) {
     printf("Sensors initialized successfully!\r\n");
 }
 
-
-// for debug
-
-void debug_print_notifications(uint32_t ulNotificationValue) {
-    printf("Notification bits set: 0x%08lX\r\n", ulNotificationValue);
-
-    if (ulNotificationValue & SENSOR_NOTIFY_IMU_DRDY)
-        printf("  - IMU_DRDY (bit 0)\r\n");
-    if (ulNotificationValue & SENSOR_NOTIFY_MAG_DRDY)
-        printf("  - MAG_DRDY (bit 1)\r\n");
-    if (ulNotificationValue & SENSOR_NOTIFY_BARO_TIMER)
-        printf("  - BARO_TIMER (bit 2)\r\n");
-    if (ulNotificationValue & SENSOR_NOTIFY_BNO_TIMER)
-        printf("  - BNO_TIMER (bit 3)\r\n");
-    if (ulNotificationValue & SENSOR_NOTIFY_DMA_COMPLETE)
-        printf("  - DMA_COMPLETE (bit 4)\r\n");
-    if (ulNotificationValue & SENSOR_NOTIFY_DMA_ERROR)
-        printf("  - DMA_ERROR (bit 5)\r\n");
-    if (ulNotificationValue & SENSOR_NOTIFY_GPS_DATA)
-        printf("  - GPS_DATA (bit 6)\r\n");
-    if (ulNotificationValue & SENSOR_NOTIFY_GPS_DR)
-        printf("  - GPS_DR (bit 7)\r\n");
-}
-
 // Thread Main Loop
-
 void sensors_thread_function(void *argument) {
-    printf("Sensors thread started\r\n");
+
+	sensors_thread_init();
+
+	printf("Sensors thread started\r\n");
 
     uint32_t ulNotificationValue;
-    const TickType_t xMaxBlockTime = pdMS_TO_TICKS(100);
+    const TickType_t xMaxBlockTime = pdMS_TO_TICKS(10);
 
     ulTaskNotifyTake(pdTRUE, 0);
 
@@ -241,22 +240,8 @@ void sensors_thread_function(void *argument) {
     TickType_t last_stats_time = xTaskGetTickCount();
 
     while(1) {
-    	// UPDATE BAROMETER STATE MACHINE
-		// Call continuously (not just on timer) for responsive state transitions
-		if (spi1_active_sensor == ACTIVE_SENSOR_BARO) {
-			if (MS5607_Update(&baro_device)) {
-			// Conversion complete, will be processed on next DMA_COMPLETE notification
-			}
-		}
-
     	// WAIT FOR NOTIFICATIONS
 		xTaskNotifyWait(0, 0xFFFFFFFF, &ulNotificationValue, xMaxBlockTime);
-
-        if (ulNotificationValue == 0) {
-            continue;  // Timeout
-        }
-
-        //debug_print_notifications(ulNotificationValue);
 
         // INITIATE SENSOR READS
         if (ulNotificationValue & SENSOR_NOTIFY_IMU_DRDY) {
@@ -281,18 +266,16 @@ void sensors_thread_function(void *argument) {
             }
         }
 
+        // BAROMETER - Simple and direct
         if (ulNotificationValue & SENSOR_NOTIFY_BARO_TIMER) {
-			// Check if SPI1 available (shared with IMU)
-			if (spi1_active_sensor == ACTIVE_SENSOR_NONE) {
-				// If not currently reading, start a new read
-				if (baro_device.state == MS5607_STATE_IDLE) {
-					spi1_active_sensor = ACTIVE_SENSOR_BARO;
-					if (!MS5607_StartRead(&baro_device)) {
-						spi1_active_sensor = ACTIVE_SENSOR_NONE;
-						sensor_stats.baro_errors++;
-					}
-				}
-			}
+            // Blocking read - takes ~20ms
+            BARO_t baro_data;
+            if (MS5607_ReadTemperatureandPressure(&baro_device, &baro_data)) {
+                sensor_stats.baro_samples++;
+                data_handler_store_baro(&baro_data);
+            } else {
+                sensor_stats.baro_errors++;
+            }
         }
 
         if (ulNotificationValue & SENSOR_NOTIFY_BNO_TIMER) {
@@ -310,12 +293,11 @@ void sensors_thread_function(void *argument) {
 			// GPS idle line detected - parse available data
 			if (UBLOX_GPS_Update(&gps_device)) {
 				// Complete sentence available for processing
-				// Process happens below in DMA_COMPLETE section
 				ulNotificationValue |= SENSOR_NOTIFY_GPS_DR;
 			}
         }
 
-        // PROCESS COMPLETED DATA
+        // PROCESS COMPLETED DATA (DMA-based sensors only)
 
         if (ulNotificationValue & SENSOR_NOTIFY_DMA_COMPLETE) {
 
@@ -326,17 +308,6 @@ void sensors_thread_function(void *argument) {
                     data_handler_store_imu(&imu_data);
                 } else {
                     sensor_stats.imu_errors++;
-                }
-                spi1_active_sensor = ACTIVE_SENSOR_NONE;
-            }
-
-            else if (spi1_active_sensor == ACTIVE_SENSOR_BARO) {
-                BARO_t baro_data;
-                if (MS5607_ProcessData(&baro_device, &baro_data)) {
-                    sensor_stats.baro_samples++;
-                    data_handler_store_baro(&baro_data);
-                } else {
-                    sensor_stats.baro_errors++;
                 }
                 spi1_active_sensor = ACTIVE_SENSOR_NONE;
             }
@@ -389,7 +360,6 @@ void sensors_thread_function(void *argument) {
         }
 
         // STATISTICS
-
         if ((xTaskGetTickCount() - last_stats_time) > pdMS_TO_TICKS(5000)) {
             printf("Sensor Statistics\r\n");
             printf("IMU:  %lu samples, %lu errors\r\n", sensor_stats.imu_samples, sensor_stats.imu_errors);

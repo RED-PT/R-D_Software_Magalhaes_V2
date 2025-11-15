@@ -61,7 +61,7 @@ static void LoRa_WriteFifoDMA(uint8_t *data, uint8_t length) {
     CS_LORA_LOW();
     HAL_SPI_Transmit_DMA(SPI_LORA, g_lora_dma.tx_buffer, length + 1);
 }
-
+/*
 static void LoRa_ReadFifoDMA(uint8_t *buffer, uint8_t length) {
     // Wait for any previous DMA to complete
     while (g_lora_dma.spi_state != DMA_IDLE);
@@ -98,7 +98,7 @@ static void LoRa_ReadFifo(uint8_t *data, uint8_t length) {
     HAL_SPI_Receive(SPI_LORA, data, length, 100);
     CS_LORA_HIGH();
 }
-
+*/
 void LoRa_SPI_TxCpltCallback(void) {
 	CS_LORA_HIGH();
     g_lora_dma.dma_tx_complete = true;

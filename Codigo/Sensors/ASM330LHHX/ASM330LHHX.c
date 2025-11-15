@@ -33,7 +33,7 @@ bool ASM330LHHX_Init(ASM330LHHX_t *dev, SPI_HandleTypeDef *hspi) {
     dev_ctx.handle = (void*)hspi;
 
 
-    HAL_Delay(BOOT_TIME);
+    osDelay(BOOT_TIME);
 
     // Check device ID
     if (asm330lhhx_device_id_get(&dev_ctx, &whoami) != 0) {return false;}
@@ -52,11 +52,9 @@ bool ASM330LHHX_Configure(ASM330LHHX_t *dev) {
 
     // Restore default configuration
     if (asm330lhhx_reset_set(&dev_ctx, PROPERTY_ENABLE) != 0) {return false;}
-    /*
     do {
         asm330lhhx_reset_get(&dev_ctx, &rst);
     } while (rst);
-	*/
     // Disable I3C interface
     if (asm330lhhx_i3c_disable_set(&dev_ctx, ASM330LHHX_I3C_DISABLE) != 0) {return false;}
 
@@ -155,5 +153,5 @@ static int32_t platform_read(void *handle, uint8_t reg, uint8_t *bufp, uint16_t 
 }
 
 static void platform_delay(uint32_t ms) {
-    HAL_Delay(ms);
+    osDelay(ms);
 }
