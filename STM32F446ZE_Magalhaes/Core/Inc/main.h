@@ -71,6 +71,9 @@ void Error_Handler(void);
 #define LORA_DIO0_Pin GPIO_PIN_2
 #define LORA_DIO0_GPIO_Port GPIOB
 #define LORA_DIO0_EXTI_IRQn EXTI2_IRQn
+#define MAG_DRDY_Pin GPIO_PIN_15
+#define MAG_DRDY_GPIO_Port GPIOE
+#define MAG_DRDY_EXTI_IRQn EXTI15_10_IRQn
 #define IMU_DRDY_Pin GPIO_PIN_11
 #define IMU_DRDY_GPIO_Port GPIOB
 #define IMU_DRDY_EXTI_IRQn EXTI15_10_IRQn
@@ -80,9 +83,6 @@ void Error_Handler(void);
 #define MAG_CS_GPIO_Port GPIOB
 #define LD3_Pin GPIO_PIN_14
 #define LD3_GPIO_Port GPIOB
-#define MAG_DRDY_Pin GPIO_PIN_15
-#define MAG_DRDY_GPIO_Port GPIOB
-#define MAG_DRDY_EXTI_IRQn EXTI15_10_IRQn
 #define STLK_RX_Pin GPIO_PIN_8
 #define STLK_RX_GPIO_Port GPIOD
 #define STLK_TX_Pin GPIO_PIN_9

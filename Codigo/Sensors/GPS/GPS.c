@@ -7,11 +7,119 @@
 
 #include "GPS.h"
 #include <string.h>
+#include <stdio.h>
 
-// External functions from gps.c (reuse existing code)
-extern void GPS_save_data(GPS_t* gps, char *GPS_dma);
-extern int GPS_validate(char *nmeastr);
-extern void GPS_parse(GPS_t* gps, char *GPSstrParse);
+void GPS_save_data(GPS_t *gps, char *gps_buffer) {
+    // validate message
+    if (GPS_validate(gps_buffer)) {
+        // parse message
+        GPS_parse(gps, gps_buffer);
+
+        // gps lock
+        if (gps->lock) {
+            // debugging
+        }
+    } else {
+        printf("gps: mensagem invalida\r\n");
+    }
+}
+
+float GPS_nmea_to_dec(float deg_coord, char nsew) {
+    int degree = (int)(deg_coord / 100);
+    float minutes = deg_coord - degree * 100;
+    float dec_deg = minutes / 60;
+    float decimal = degree + dec_deg;
+    if (nsew == 'S' || nsew == 'W') { // return negative
+        decimal *= -1;
+    }
+    return decimal;
+}
+
+int GPS_validate(char *nmeastr) {
+    char check[3];
+    char checkcalcstr[3];
+    int i;
+    int calculated_check;
+    i = 0;
+    calculated_check = 0;
+    // check to ensure that the string starts with a $
+    if (nmeastr[i] == '$')
+        i++;
+    else
+        return 0;
+    //No NULL reached, 75 char largest possible NMEA message, no '*' reached
+    while ((nmeastr[i] != 0) && (nmeastr[i] != '*') && (i < strlen(nmeastr))) {
+        calculated_check ^= nmeastr[i]; // calculate the checksum
+        i++;
+    }
+    if (i >= strlen(nmeastr)) {
+        return 0; // the string was too long so return an error
+    }
+    if (nmeastr[i] == '*') {
+        check[0] = nmeastr[i + 1];    //put hex chars in check string
+        check[1] = nmeastr[i + 2];
+        check[2] = 0;
+    } else
+        return 0;    // no checksum separator found there for invalid
+    sprintf(checkcalcstr, "%02X", calculated_check);
+    return ((checkcalcstr[0] == check[0]) && (checkcalcstr[1] == check[1])) ?
+            1 : 0;
+}
+
+void GPS_parse(GPS_t *gps, char *GPSstrParse) {
+    // Temporary variables for NMEA format conversion
+    float nmea_lat, nmea_lon;
+    char ns, ew;
+    char msl_units;
+
+    if (!strncmp(GPSstrParse, "$GNGGA", 6)) {
+        if (sscanf(GPSstrParse, "$GNGGA,%f,%f,%c,%f,%c,%d,%d,%f,%f,%c",
+                &gps->utc_time, &nmea_lat, &ns, &nmea_lon, &ew,
+                (int*)&gps->lock, (int*)&gps->satellites,
+                &gps->hdop, &gps->msl_altitude, &msl_units) >= 1) {
+
+            // Convert NMEA to decimal degrees
+            gps->dec_latitude = GPS_nmea_to_dec(nmea_lat, ns);
+            gps->dec_longitude = GPS_nmea_to_dec(nmea_lon, ew);
+            return;
+        }
+    }
+
+    else if (!strncmp(GPSstrParse, "$GPGGA", 6)) {
+        if (sscanf(GPSstrParse, "$GPGGA,%f,%f,%c,%f,%c,%d,%d,%f,%f,%c",
+                &gps->utc_time, &nmea_lat, &ns, &nmea_lon, &ew,
+                (int*)&gps->lock, (int*)&gps->satellites,
+                &gps->hdop, &gps->msl_altitude, &msl_units) >= 1) {
+
+            // Convert NMEA to decimal degrees
+            gps->dec_latitude = GPS_nmea_to_dec(nmea_lat, ns);
+            gps->dec_longitude = GPS_nmea_to_dec(nmea_lon, ew);
+            return;
+        }
+    }
+
+    else if (!strncmp(GPSstrParse, "$GPRMC", 6)) {
+        char rmc_status;
+        int date;
+        float mag_dev;
+        char mag_dev_unit;
+
+        if (sscanf(GPSstrParse, "$GPRMC,%f,%c,%f,%c,%f,%c,%f,%f,%6d,%f,%c",
+                &gps->utc_time, &rmc_status, &nmea_lat, &ns, &nmea_lon, &ew,
+                &gps->speed_k, &gps->course_d, &date, &mag_dev, &mag_dev_unit) >= 1) {
+
+            // Convert NMEA to decimal degrees
+            gps->dec_latitude = GPS_nmea_to_dec(nmea_lat, ns);
+            gps->dec_longitude = GPS_nmea_to_dec(nmea_lon, ew);
+
+            // Set lock status from RMC 'A'ctive status
+            if (rmc_status == 'A') {
+                gps->lock = 1;
+            }
+            return;
+        }
+    }
+}
 
 bool UBLOX_GPS_Init(UBLOX_GPS_t *dev, UART_HandleTypeDef *huart) {
     if (!dev || !huart) {
@@ -39,13 +147,15 @@ bool UBLOX_GPS_StartDMA(UBLOX_GPS_t *dev) {
     }
 
     // Start circular DMA receive on UART
-    // This will run continuously and wrap around the buffer
-    if (HAL_UART_Receive_DMA(dev->huart, dev->dma_buffer,
-                             UBLOX_GPS_UART_BUFFER_SIZE) != HAL_OK) {
+    if (HAL_UART_Receive_DMA(dev->huart, dev->dma_buffer, UBLOX_GPS_UART_BUFFER_SIZE) != HAL_OK) {
         return false;
     }
-    // Disable half-transfer interrupt (we only care about new data)
+
+    // DISABLE half-transfer interrupt - only use complete and IDLE
     __HAL_DMA_DISABLE_IT(dev->huart->hdmarx, DMA_IT_HT);
+
+    // Enable UART IDLE interrupt
+    __HAL_UART_ENABLE_IT(dev->huart, UART_IT_IDLE);
 
     dev->state = UBLOX_STATE_RECEIVING;
 
@@ -68,6 +178,7 @@ bool UBLOX_GPS_Update(UBLOX_GPS_t *dev) {
 
     uint16_t dma_pos = UBLOX_GPS_GetDMAPosition(dev);
     uint16_t bytes_available;
+    uint16_t bytes_to_process;
     uint8_t byte;
 
     // Calculate bytes available in buffer
@@ -81,11 +192,15 @@ bool UBLOX_GPS_Update(UBLOX_GPS_t *dev) {
         return false;  // No new data
     }
 
-    // Process each available byte
-    while (bytes_available > 0) {
+    // CRITICAL FIX: Limit bytes processed per call to avoid blocking thread
+    bytes_to_process = (bytes_available > MAX_BYTES_PER_UPDATE) ?
+                        MAX_BYTES_PER_UPDATE : bytes_available;
+
+    // Process limited number of bytes
+    while (bytes_to_process > 0) {
         byte = dev->dma_buffer[dev->parse_tail];
         dev->parse_tail = (dev->parse_tail + 1) % UBLOX_GPS_UART_BUFFER_SIZE;
-        bytes_available--;
+        bytes_to_process--;
 
         // Look for sentence start ($)
         if (byte == '$') {
@@ -147,4 +262,127 @@ bool UBLOX_GPS_ProcessData(UBLOX_GPS_t *dev, GPS_t *output) {
     dev->state = UBLOX_STATE_RECEIVING;
 
     return true;
+}
+// Calculate UBX checksum
+static void UBX_CalculateChecksum(uint8_t *data, uint16_t len, uint8_t *ck_a, uint8_t *ck_b) {
+    *ck_a = 0;
+    *ck_b = 0;
+    for (uint16_t i = 0; i < len; i++) {
+        *ck_a += data[i];
+        *ck_b += *ck_a;
+    }
+}
+
+// Send UBX command to GPS
+bool UBLOX_GPS_SendUBX(UBLOX_GPS_t *dev, uint8_t msg_class, uint8_t msg_id,
+                       uint8_t *payload, uint16_t payload_len) {
+    if (!dev || !dev->huart) {
+        return false;
+    }
+
+    uint8_t buffer[256];
+    uint16_t idx = 0;
+
+    // Header
+    buffer[idx++] = UBX_SYNC1;
+    buffer[idx++] = UBX_SYNC2;
+    buffer[idx++] = msg_class;
+    buffer[idx++] = msg_id;
+    buffer[idx++] = payload_len & 0xFF;
+    buffer[idx++] = (payload_len >> 8) & 0xFF;
+
+    // Payload
+    if (payload && payload_len > 0) {
+        memcpy(&buffer[idx], payload, payload_len);
+        idx += payload_len;
+    }
+
+    // Checksum (over class, id, length, payload)
+    uint8_t ck_a, ck_b;
+    UBX_CalculateChecksum(&buffer[2], idx - 2, &ck_a, &ck_b);
+    buffer[idx++] = ck_a;
+    buffer[idx++] = ck_b;
+
+    // Send via UART
+    HAL_StatusTypeDef status = HAL_UART_Transmit(dev->huart, buffer, idx, 100);
+    HAL_Delay(50);  // Give GPS time to process
+
+    return (status == HAL_OK);
+}
+
+// Enable/disable specific NMEA message
+static bool UBLOX_GPS_SetNMEAMessage(UBLOX_GPS_t *dev, uint8_t msg_class, uint8_t msg_id, uint8_t rate) {
+    uint8_t payload[3];
+    payload[0] = msg_class;
+    payload[1] = msg_id;
+    payload[2] = rate;  // 0=disable, 1=enable
+
+    return UBLOX_GPS_SendUBX(dev, UBX_CLASS_CFG, UBX_CFG_MSG, payload, 3);
+}
+
+// Configure GPS for minimal output - ONLY GGA sentence at 1Hz
+bool UBLOX_GPS_ConfigureMinimal(UBLOX_GPS_t *dev) {
+
+    // Disable all NMEA messages first
+    UBLOX_GPS_SetNMEAMessage(dev, 0xF0, 0x00, 0);  // GGA off
+    UBLOX_GPS_SetNMEAMessage(dev, 0xF0, 0x01, 0);  // GLL off
+    UBLOX_GPS_SetNMEAMessage(dev, 0xF0, 0x02, 0);  // GSA off
+    UBLOX_GPS_SetNMEAMessage(dev, 0xF0, 0x03, 0);  // GSV off
+    UBLOX_GPS_SetNMEAMessage(dev, 0xF0, 0x04, 0);  // RMC off
+    UBLOX_GPS_SetNMEAMessage(dev, 0xF0, 0x05, 0);  // VTG off
+    UBLOX_GPS_SetNMEAMessage(dev, 0xF0, 0x06, 0);  // GRS off
+    UBLOX_GPS_SetNMEAMessage(dev, 0xF0, 0x07, 0);  // GST off
+    UBLOX_GPS_SetNMEAMessage(dev, 0xF0, 0x08, 0);  // ZDA off
+    UBLOX_GPS_SetNMEAMessage(dev, 0xF0, 0x09, 0);  // GBS off
+
+    HAL_Delay(200);
+
+    // Enable ONLY GGA (position + altitude)
+    // Or enable ONLY RMC if you prefer (has speed but less accurate altitude)
+    UBLOX_GPS_SetNMEAMessage(dev, 0xF0, 0x00, 1);  // GGA on
+    return true;
+}
+
+// Set GPS update rate (default 1000ms = 1Hz)
+bool UBLOX_GPS_SetRate(UBLOX_GPS_t *dev, uint16_t rate_ms) {
+    uint8_t payload[6];
+
+    // measRate (measurement rate in ms)
+    payload[0] = rate_ms & 0xFF;
+    payload[1] = (rate_ms >> 8) & 0xFF;
+
+    // navRate (how many measurements per nav solution, usually 1)
+    payload[2] = 0x01;
+    payload[3] = 0x00;
+
+    // timeRef (0=UTC, 1=GPS time)
+    payload[4] = 0x00;
+    payload[5] = 0x00;
+
+    return UBLOX_GPS_SendUBX(dev, UBX_CLASS_CFG, UBX_CFG_RATE, payload, 6);
+}
+
+// Save configuration to GPS flash (survives power cycle)
+bool UBLOX_GPS_SaveConfig(UBLOX_GPS_t *dev) {
+    uint8_t payload[13] = {0};
+
+    // Save to all storage layers
+    payload[0] = 0xFF;  // clearMask (clear all)
+    payload[1] = 0xFF;
+    payload[2] = 0xFF;
+    payload[3] = 0xFF;
+
+    payload[4] = 0xFF;  // saveMask (save all)
+    payload[5] = 0xFF;
+    payload[6] = 0xFF;
+    payload[7] = 0xFF;
+
+    payload[8] = 0xFF;  // loadMask (load all)
+    payload[9] = 0xFF;
+    payload[10] = 0xFF;
+    payload[11] = 0xFF;
+
+    payload[12] = 0x17; // deviceMask (BBR, Flash, EEPROM, SPI Flash)
+
+    return UBLOX_GPS_SendUBX(dev, UBX_CLASS_CFG, UBX_CFG_CFG, payload, 13);
 }

@@ -1,7 +1,7 @@
 /*
  * flash_data_handler.c
  *
- * Implementation of flash-based circular buffer system
+ * Implementation of flash-based circular buffer system with threshold notifications
  *
  *  Created on: Oct 10, 2025
  *      Author: Tomas Teixeira
@@ -10,6 +10,7 @@
 #include "flash_data_handler.h"
 #include <string.h>
 #include "print.h"
+#include "data_handler_thread.h"
 
 // Circular Buffers Instances
 static IMU_t imu_buffer[RAM_IMU_BUFFER_SIZE];
@@ -37,30 +38,48 @@ static uint32_t seq_mag = 0;
 static uint32_t seq_bno = 0;
 static uint32_t seq_gps = 0;
 
+// Helper: Check if buffer crossed threshold and notify data handler
+static void check_and_notify_threshold(void) {
+    // Only notify if data_handler_thread_id is set (it's running)
+    uint32_t available_imu = ram_circular_buffer_available(&cb_imu);
+    uint32_t available_baro = ram_circular_buffer_available(&cb_baro);
+    uint32_t available_mag = ram_circular_buffer_available(&cb_mag);
+    uint32_t available_bno = ram_circular_buffer_available(&cb_bno);
+    uint32_t available_gps = ram_circular_buffer_available(&cb_gps);
+
+    uint32_t threshold_imu = (cb_imu.capacity * BUFFER_FULL_THRESHOLD_PCT) / 100;
+    uint32_t threshold_baro = (cb_baro.capacity * BUFFER_FULL_THRESHOLD_PCT) / 100;
+    uint32_t threshold_mag = (cb_mag.capacity * BUFFER_FULL_THRESHOLD_PCT) / 100;
+    uint32_t threshold_bno = (cb_bno.capacity * BUFFER_FULL_THRESHOLD_PCT) / 100;
+    uint32_t threshold_gps = (cb_gps.capacity * BUFFER_FULL_THRESHOLD_PCT) / 100;
+
+    if ((available_imu > threshold_imu) ||
+        (available_baro > threshold_baro) ||
+        (available_mag > threshold_mag) ||
+        (available_bno > threshold_bno) ||
+        (available_gps > threshold_gps)) {
+
+        // Notify data handler that a buffer crossed threshold
+        data_handler_notify_threshold();
+    }
+}
+
 // Functions
 // - Initialization Functions
 void data_handler_init(void) {
     printf("Initializing Data Handler System...\r\n");
 
     // Initialize RAM circular buffers
-    ram_circular_buffer_init(&cb_imu, imu_buffer,
-                            RAM_IMU_BUFFER_SIZE, sizeof(IMU_t));
-    ram_circular_buffer_init(&cb_baro, baro_buffer,
-                            RAM_BARO_BUFFER_SIZE, sizeof(BARO_t));
-    ram_circular_buffer_init(&cb_mag, mag_buffer,
-                            RAM_MAG_BUFFER_SIZE, sizeof(MAG_t));
-    ram_circular_buffer_init(&cb_bno, bno_buffer,
-                            RAM_BNO_BUFFER_SIZE, sizeof(BNO_t));
-    ram_circular_buffer_init(&cb_gps, gps_buffer,
-                            RAM_GPS_BUFFER_SIZE, sizeof(GPS_t));
+    ram_circular_buffer_init(&cb_imu, imu_buffer, RAM_IMU_BUFFER_SIZE, sizeof(IMU_t));
+    ram_circular_buffer_init(&cb_baro, baro_buffer, RAM_BARO_BUFFER_SIZE, sizeof(BARO_t));
+    ram_circular_buffer_init(&cb_mag, mag_buffer, RAM_MAG_BUFFER_SIZE, sizeof(MAG_t));
+    ram_circular_buffer_init(&cb_bno, bno_buffer, RAM_BNO_BUFFER_SIZE, sizeof(BNO_t));
+    ram_circular_buffer_init(&cb_gps, gps_buffer, RAM_GPS_BUFFER_SIZE, sizeof(GPS_t));
 
     // Create queues (only passing pointers, so small size)
-    queue_to_estimator = xQueueCreate(QUEUE_LENGTH_ESTIMATOR,
-                                     sizeof(data_packet_t));
-    queue_to_telemetry = xQueueCreate(QUEUE_LENGTH_TELEMETRY,
-                                     sizeof(data_packet_t));
-    queue_to_sd = xQueueCreate(QUEUE_LENGTH_SD,
-                                   sizeof(data_packet_t));
+    queue_to_estimator = xQueueCreate(QUEUE_LENGTH_ESTIMATOR, sizeof(data_packet_t));
+    queue_to_telemetry = xQueueCreate(QUEUE_LENGTH_TELEMETRY, sizeof(data_packet_t));
+    queue_to_sd = xQueueCreate(QUEUE_LENGTH_SD, sizeof(data_packet_t));
 
     if (!queue_to_estimator || !queue_to_telemetry || !queue_to_sd) {
         printf("ERROR: Failed to create queues!\r\n");
@@ -75,8 +94,7 @@ void data_handler_init(void) {
     printf("GPS buffer:  %u bytes\r\n", RAM_GPS_BUFFER_SIZE * sizeof(GPS_t));
 }
 
-void ram_circular_buffer_init(ram_circular_buffer_t *cb, void *buffer,
-                              uint32_t capacity, uint32_t sample_size) {
+void ram_circular_buffer_init(ram_circular_buffer_t *cb, void *buffer, uint32_t capacity, uint32_t sample_size) {
     cb->buffer = buffer;
     cb->capacity = capacity;
     cb->head = 0;
@@ -90,8 +108,7 @@ void ram_circular_buffer_init(ram_circular_buffer_t *cb, void *buffer,
     }
 }
 
-bool ram_circular_buffer_write(ram_circular_buffer_t *cb, const void *data,
-                               const void **written_ptr) {
+bool ram_circular_buffer_write(ram_circular_buffer_t *cb, const void *data, const void **written_ptr) {
     // Take mutex with timeout to prevent deadlock
     if (xSemaphoreTake(cb->mutex, pdMS_TO_TICKS(5)) != pdTRUE) {
         return false;
@@ -171,6 +188,9 @@ void data_handler_store_imu(const IMU_t *imu_data) {
 
         // Distribute to consumers
         distribute_data_packet(&packet);
+
+        // Check if buffer crossed threshold
+        check_and_notify_threshold();
     }
 }
 
@@ -185,10 +205,11 @@ void data_handler_store_baro(const BARO_t *baro_data) {
             .sequence = seq_baro++,
             .source_cb = &cb_baro
         };
-        // vamos só enviar para o estimator. a data handler thread trata de enviar
-        // para o resto das queues quando os buffers tiverem cheios
-        // mudar de maneira a não enviar para o estimator em certos estados da FSM
+        // Send to estimator immediately (high priority)
         xQueueSend(queue_to_estimator, &packet, 0);
+
+        // Check if buffer crossed threshold (data_handler will flush to other queues)
+        check_and_notify_threshold();
     }
 }
 
@@ -203,10 +224,11 @@ void data_handler_store_mag(const MAG_t *mag_data) {
             .sequence = seq_mag++,
             .source_cb = &cb_mag
         };
-        // vamos só enviar para o estimator. a data handler thread trata de enviar
-		// para o resto das queues quando os buffers tiverem cheios
-        // mudar de maneira a não enviar para o estimator em certos estados da FSM
-		xQueueSend(queue_to_estimator, &packet, 0);
+        // Send to estimator immediately (high priority)
+        xQueueSend(queue_to_estimator, &packet, 0);
+
+        // Check if buffer crossed threshold
+        check_and_notify_threshold();
     }
 }
 
@@ -221,10 +243,11 @@ void data_handler_store_bno(const BNO_t *bno_data) {
             .sequence = seq_bno++,
             .source_cb = &cb_bno
         };
-        // vamos só enviar para o estimator. a data handler thread trata de enviar
-		// para o resto das queues quando os buffers tiverem cheios
-        // mudar de maneira a não enviar para o estimator em certos estados da FSM
-		xQueueSend(queue_to_estimator, &packet, 0);
+        // Send to estimator immediately
+        xQueueSend(queue_to_estimator, &packet, 0);
+
+        // Check if buffer crossed threshold
+        check_and_notify_threshold();
     }
 }
 
@@ -239,10 +262,11 @@ void data_handler_store_gps(const GPS_t *gps_data) {
             .sequence = seq_gps++,
             .source_cb = &cb_gps
         };
-        // vamos só enviar para o estimator. a data handler thread trata de enviar
-		// para o resto das queues quando os buffers tiverem cheios
-        // mudar de maneira a não enviar para o estimator em certos estados da FSM
-		xQueueSend(queue_to_estimator, &packet, 0);
+        // Send to estimator immediately
+        xQueueSend(queue_to_estimator, &packet, 0);
+
+        // Check if buffer crossed threshold
+        check_and_notify_threshold();
     }
 }
 

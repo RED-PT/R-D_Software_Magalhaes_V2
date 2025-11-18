@@ -23,13 +23,15 @@ typedef struct {
     volatile bool dma_rx_complete;  // DMA receive complete
     uint8_t tx_buffer[256];         // DMA-safe TX buffer
     uint8_t rx_buffer[256];         // DMA-safe RX buffer
+    uint8_t rx_length;              // Received packet length
+    int16_t last_rssi;              // Last packet RSSI
+    int8_t last_snr;                // Last packet SNR
 } LoRa_DMA_t;
 
 static LoRa_DMA_t g_lora_dma = {0};
 
 void LoRa_WriteReg(uint8_t reg, uint8_t value) {
     uint8_t tx_data[2] = {reg | 0x80, value};
-
     CS_LORA_LOW();
     HAL_SPI_Transmit(SPI_LORA, tx_data, 2, 100);
     CS_LORA_HIGH();
@@ -38,12 +40,10 @@ void LoRa_WriteReg(uint8_t reg, uint8_t value) {
 uint8_t LoRa_ReadReg(uint8_t reg) {
     uint8_t tx_data = reg & 0x7F;
     uint8_t rx_data = 0;
-
     CS_LORA_LOW();
     HAL_SPI_Transmit(SPI_LORA, &tx_data, 1, 100);
     HAL_SPI_Receive(SPI_LORA, &rx_data, 1, 100);
     CS_LORA_HIGH();
-
     return rx_data;
 }
 
@@ -61,8 +61,8 @@ static void LoRa_WriteFifoDMA(uint8_t *data, uint8_t length) {
     CS_LORA_LOW();
     HAL_SPI_Transmit_DMA(SPI_LORA, g_lora_dma.tx_buffer, length + 1);
 }
-/*
-static void LoRa_ReadFifoDMA(uint8_t *buffer, uint8_t length) {
+
+static void LoRa_ReadFifoDMA(uint8_t length) {
     // Wait for any previous DMA to complete
     while (g_lora_dma.spi_state != DMA_IDLE);
 
@@ -79,55 +79,33 @@ static void LoRa_ReadFifoDMA(uint8_t *buffer, uint8_t length) {
     HAL_SPI_Receive_DMA(SPI_LORA, g_lora_dma.rx_buffer, length);
 }
 
-// Blocking write to FIFO (for compatibility)
-static void LoRa_WriteFifo(uint8_t *data, uint8_t length) {
-    uint8_t tx_data = REG_FIFO | 0x80;
-
-    CS_LORA_LOW();
-    HAL_SPI_Transmit(SPI_LORA, &tx_data, 1, 100);
-    HAL_SPI_Transmit(SPI_LORA, data, length, 100);
-    CS_LORA_HIGH();
-}
-
-// Blocking read from FIFO (for compatibility)
-static void LoRa_ReadFifo(uint8_t *data, uint8_t length) {
-    uint8_t tx_data = REG_FIFO & 0x7F;
-
-    CS_LORA_LOW();
-    HAL_SPI_Transmit(SPI_LORA, &tx_data, 1, 100);
-    HAL_SPI_Receive(SPI_LORA, data, length, 100);
-    CS_LORA_HIGH();
-}
-*/
 void LoRa_SPI_TxCpltCallback(void) {
-	CS_LORA_HIGH();
+    CS_LORA_HIGH();
     g_lora_dma.dma_tx_complete = true;
     g_lora_dma.spi_state = DMA_IDLE;
 }
 
 void LoRa_SPI_RxCpltCallback(void) {
-	CS_LORA_HIGH();
+    CS_LORA_HIGH();
     g_lora_dma.dma_rx_complete = true;
     g_lora_dma.spi_state = DMA_IDLE;
 }
 
 // DIO0 interrupt handler (TX done / RX done)
+// IMPORTANT: This is called from ISR context!
 void LoRa_DIO0_IRQ_Handler(void) {
-    uint8_t irq_flags = LoRa_ReadReg(REG_IRQ_FLAGS);
+    // Don't read registers here - just set flags
+    // The thread will handle reading IRQ flags
+    uint8_t mode = LoRa_ReadReg(REG_OP_MODE) & 0x07;
 
-    if (irq_flags & IRQ_TX_DONE_MASK) {
+    if (mode == MODE_TX) {
         g_lora_dma.tx_done = true;
-        LoRa_WriteReg(REG_IRQ_FLAGS, IRQ_TX_DONE_MASK);
-    }
-
-    if (irq_flags & IRQ_RX_DONE_MASK) {
+    } else if (mode == MODE_RX_CONTINUOUS || mode == MODE_RX_SINGLE) {
         g_lora_dma.rx_done = true;
-        // Don't clear flag - let LoRa_Receive() handle it
     }
 }
 
 bool LoRa_Reset(void) {
-    // Software reset
     LoRa_Sleep();
     HAL_Delay(10);
 
@@ -137,6 +115,9 @@ bool LoRa_Reset(void) {
     g_lora_dma.rx_done = false;
     g_lora_dma.dma_tx_complete = false;
     g_lora_dma.dma_rx_complete = false;
+    g_lora_dma.rx_length = 0;
+    g_lora_dma.last_rssi = 0;
+    g_lora_dma.last_snr = 0;
 
     return true;
 }
@@ -302,4 +283,65 @@ void LoRa_WaitTxComplete(uint32_t timeout_ms) {
     }
 }
 
+bool LoRa_Available(void) {
+    return g_lora_dma.rx_done;
+}
 
+int LoRa_Receive(uint8_t *buffer, uint8_t max_length, LoRa_RxInfo_t *rx_info) {
+    if (!g_lora_dma.rx_done) {
+        return 0;  // No packet available
+    }
+
+    // Read IRQ flags
+    uint8_t irq_flags = LoRa_ReadReg(REG_IRQ_FLAGS);
+
+    // Clear RX done flag
+    LoRa_WriteReg(REG_IRQ_FLAGS, IRQ_RX_DONE_MASK);
+    g_lora_dma.rx_done = false;
+
+    // Check for CRC error
+    if (irq_flags & IRQ_PAYLOAD_CRC_ERROR_MASK) {
+        LoRa_WriteReg(REG_IRQ_FLAGS, IRQ_PAYLOAD_CRC_ERROR_MASK);
+        return -1;  // CRC error
+    }
+
+    // Read packet length
+    uint8_t rx_length = LoRa_ReadReg(REG_RX_NB_BYTES);
+    if (rx_length > max_length) {
+        rx_length = max_length;
+    }
+
+    // Set FIFO address to start of received packet
+    uint8_t fifo_rx_addr = LoRa_ReadReg(REG_FIFO_RX_CURRENT_ADDR);
+    LoRa_WriteReg(REG_FIFO_ADDR_PTR, fifo_rx_addr);
+
+    // Read FIFO via DMA
+    LoRa_ReadFifoDMA(rx_length);
+
+    // Wait for DMA to complete
+    while (!g_lora_dma.dma_rx_complete);
+
+    // Copy data from DMA buffer to user buffer
+    memcpy(buffer, g_lora_dma.rx_buffer, rx_length);
+
+    // Get signal quality metrics
+    if (rx_info != NULL) {
+        rx_info->rssi = LoRa_ReadReg(REG_PKT_RSSI_VALUE) - 157;
+        rx_info->snr = (int8_t)LoRa_ReadReg(REG_PKT_SNR_VALUE) / 4;
+        rx_info->length = rx_length;
+
+        // Store for later retrieval
+        g_lora_dma.last_rssi = rx_info->rssi;
+        g_lora_dma.last_snr = rx_info->snr;
+    }
+
+    return rx_length;
+}
+
+int16_t LoRa_GetRssi(void) {
+    return g_lora_dma.last_rssi;
+}
+
+int8_t LoRa_GetSnr(void) {
+    return g_lora_dma.last_snr;
+}

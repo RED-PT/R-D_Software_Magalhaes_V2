@@ -24,6 +24,7 @@ extern TIM_HandleTypeDef htim2;
 extern TIM_HandleTypeDef htim3;
 
 extern UART_HandleTypeDef huart1;
+extern UART_HandleTypeDef huart2;
 extern UART_HandleTypeDef huart3;
 
 //DMA
@@ -39,16 +40,15 @@ extern DMA_HandleTypeDef hdma_spi4_tx; // SD Card
 extern DMA_HandleTypeDef hdma_i2c1_rx; // BNO055
 extern DMA_HandleTypeDef hdma_i2c1_tx; // BNO055
 
-extern DMA_HandleTypeDef hdma_usart3_rx; // GPS Rx
-extern DMA_HandleTypeDef hdma_usart1_tx; // GPS Tx
+extern DMA_HandleTypeDef hdma_usart2_rx;
 
 //I2C
 #define I2C_BNO &hi2c1
 
 //UART
 #define UART_DEBUG &huart3
-#define UART_UBLOX &huart1
-#define UART_UBLOX_INSTANCE USART1
+#define UART_UBLOX &huart2
+#define UART_UBLOX_INSTANCE USART2
 #define UART_DEBUG_INSTANCE USART3
 
 //SPI
@@ -114,7 +114,7 @@ extern DMA_HandleTypeDef hdma_usart1_tx; // GPS Tx
 #define EXTI_IMU_PORT GPIOB
 #define EXTI_IMU_PIN GPIO_PIN_11
 
-#define EXTI_MAG_PORT GPIOB
+#define EXTI_MAG_PORT GPIOE
 #define EXTI_MAG_PIN GPIO_PIN_15
 
 #endif /* INC_CONFIG_H_ */

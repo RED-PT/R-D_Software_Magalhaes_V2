@@ -25,7 +25,7 @@ bool MMC5983MA_Init(MMC5983MA_t *dev, SPI_HandleTypeDef *hspi) {
     dev->data_ready = 0;
     memset(dev->read_buffer, 0, sizeof(dev->read_buffer));
 
-    osDelay(10);
+    HAL_Delay(10);
 
     // Read and verify Product ID
     if (!MMC5983MA_ReadRegister(dev, MMC5983MA_REG_PRODUCT_ID, &product_id)) {
@@ -41,7 +41,7 @@ bool MMC5983MA_Init(MMC5983MA_t *dev, SPI_HandleTypeDef *hspi) {
         return false;
     }
 
-    osDelay(2);
+    HAL_Delay(2);
 
     return true;
 }

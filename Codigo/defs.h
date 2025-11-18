@@ -79,40 +79,26 @@ typedef struct {
     uint32_t timestamp_ms; // Timestamp (milliseconds)
 } BARO_t;
 
-//	GPS: U-Blox Neo-9M
-typedef struct{
-	// Position
-	double dec_latitude;  // Latitude (degrees, -90 to +90)
-	double dec_longitude; // Longitude (degrees, -180 to +180)
-	float altitude_m;     // Altitude above mean sea level (meters)
+//	GPS: U-Blox Neo-9M/7M
+typedef struct {
+    // Position (WGS84)
+    double dec_latitude;   // Latitude (degrees, -90 to +90)
+    double dec_longitude;  // Longitude (degrees, -180 to +180)
+    float msl_altitude;    // Altitude above mean sea level (meters)
 
-    // GGA - Global Positioning System Fixed Data
-    float nmea_longitude;
-    float nmea_latitude;
-    float utc_time;
-    char ns, ew;
-    int lock; // https://receiverhelp.trimble.com/alloy-gnss/en-us/NMEA-0183messages_GGA.html
-    int satelites;
-    float hdop; // https://en.wikipedia.org/wiki/Dilution_of_precision_(navigation)#Interpretation
-    float msl_altitude;
-    char msl_units;
-    // RMC - Recommended Minimmum Specific GNS Data
-    char rmc_status;
-    float speed_k;
-    float course_d;
-    int date;
-    float magnetic_dev; // magnetic
-    char magnetic_dev_unit;
-//    // GLL
-//    char gll_status;
-//    // VTG - Course over ground, ground speed
-//    float course_t; // ground speed true
-//    char course_t_unit;
-//    char speed_k_unit;
-//    float speed_km; // speek km/hr
-//    char speed_km_unit;
+    // Velocity
+    float speed_k;         // Ground speed (knots)
+    float course_d;        // Course over ground (degrees, 0-360)
 
-    uint32_t timestamp_ms; // Timestamp (milliseconds)
+    // Quality indicators
+    uint8_t lock;          // Fix quality: 0=invalid, 1=GPS, 2=DGPS
+    uint8_t satellites;    // Number of satellites in use
+    float hdop;            // Horizontal dilution of precision
+
+    // Time (optional - for absolute time sync)
+    float utc_time;        // UTC time (HHMMSS.sss format)
+
+    uint32_t timestamp_ms; // System timestamp (milliseconds)
 } GPS_t;
 
 //	Temperature Readings

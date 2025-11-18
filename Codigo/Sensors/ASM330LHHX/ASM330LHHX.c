@@ -33,7 +33,7 @@ bool ASM330LHHX_Init(ASM330LHHX_t *dev, SPI_HandleTypeDef *hspi) {
     dev_ctx.handle = (void*)hspi;
 
 
-    osDelay(BOOT_TIME);
+    HAL_Delay(BOOT_TIME);
 
     // Check device ID
     if (asm330lhhx_device_id_get(&dev_ctx, &whoami) != 0) {return false;}

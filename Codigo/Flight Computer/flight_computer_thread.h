@@ -15,6 +15,7 @@
 #include "defs.h"
 #include "stm32f4xx_hal.h"
 #include "print.h"
+#include "flight_computer.h"
 
 void fsm_thread_function();
 

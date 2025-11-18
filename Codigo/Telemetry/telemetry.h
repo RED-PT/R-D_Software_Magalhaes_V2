@@ -11,7 +11,10 @@
 #include "defs.h"
 #include "Flight Computer/flight_computer.h"
 
-//	Telemetry
+// CRC calculation function
+uint16_t calculate_crc16(uint8_t *data, uint16_t length);
+
+//	Telemetry Packet Structures
 //	Fast Packet (50Hz)
 typedef struct{
 	uint32_t time;
@@ -44,7 +47,13 @@ typedef struct{
 	event_t type;
 	event_payload_u payload;
 	uint16_t crc16;
-
 } telemetry_event_t;
+
+// Radio TX packet structure (used by telemetry thread to send to radio)
+typedef struct {
+    uint8_t data[256];
+    uint8_t length;
+    uint8_t priority;  // 0=event (highest), 1=fast, 2=slow
+} radio_tx_packet_t;
 
 #endif /* TELEMETRY_TELEMETRY_H_ */

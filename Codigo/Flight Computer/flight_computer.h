@@ -9,7 +9,8 @@
 #define FLIGHT_COMPUTER_FLIGHT_COMPUTER_H_
 
 #include "defs.h"
-#include "mutex.h"
+#include "FreeRTOS.h"
+#include "semphr.h"
 
 
 //	FSM States, Sub-states, Profiles & Parameters
@@ -129,27 +130,16 @@ typedef union {
 
 
 // FSM Functions Prototypes
-// Initialize FSM (call once at boot)
+// FSM Functions Prototypes
 void fsm_init();
-
-// Inject an event (from threads)
 void fsm_handle_event(fsm_ctx_t* ctx, event_t event, const void* payload, uint16_t size);
-
-//
 int get_fsm_state();
-
-//
 int get_fsm_substate();
-
-//
 void set_fsm_state(int value);
-
-//
 void set_fsm_substate(int value);
-
 
 // Variables
 extern fsm_ctx_t fsm_ctx;
-
+extern SemaphoreHandle_t xFsmMutex;  // FreeRTOS mutex
 
 #endif /* FLIGHT_COMPUTER_FLIGHT_COMPUTER_H_ */

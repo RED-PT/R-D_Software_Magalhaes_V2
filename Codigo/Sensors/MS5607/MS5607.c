@@ -28,7 +28,7 @@ bool MS5607_Init(MS5607_t *dev, SPI_HandleTypeDef *hspi,
     dev->cs_pin = cs_pin;
 
     // Reset sensor
-    printf("MS5607: Sending reset command...\r\n");
+    //printf("MS5607: Sending reset command...\r\n");
     uint8_t cmd = CMD_RESET;
     MS5607_Select(dev);
     HAL_Delay(1);
@@ -41,7 +41,7 @@ bool MS5607_Init(MS5607_t *dev, SPI_HandleTypeDef *hspi,
     }
 
     HAL_Delay(10);
-    printf("MS5607: Reset complete, reading calibration...\r\n");
+    //printf("MS5607: Reset complete, reading calibration...\r\n");
 
     // Read calibration coefficients from PROM
     for (uint8_t i = 0; i < 7; i++) {
@@ -81,15 +81,7 @@ bool MS5607_Init(MS5607_t *dev, SPI_HandleTypeDef *hspi,
         printf("WARNING: C[1] = %u is outside typical range (30000-50000)\r\n", C[1]);
     }
 
-    printf("MS5607: Initialization successful!\r\n");
-    return true;
-}
-
-bool MS5607_Configure(MS5607_t *dev) {
-    if (!dev) {
-        return false;
-    }
-    // Nothing to configure - just return true
+    //printf("MS5607: Initialization successful!\r\n");
     return true;
 }
 
