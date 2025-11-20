@@ -8,22 +8,24 @@
 #include "hal_callbacks.h"
 #include "config.h"
 #include "Sensors/sensors_thread.h"
-#include "Radio/LORA Drivers/lora_sx1276.h"
+#include "Radio/LORA Drivers/lora_sx126x.h"
 
 // External thread handles
 extern osThreadId_t sensors_thread_id;
 
-// External sensor tracking variables
+// External sensor tracking variables (from sensors_thread.c)
 extern volatile active_sensor_t spi1_active_sensor;
 extern volatile active_sensor_t spi3_active_sensor;
 extern volatile active_sensor_t i2c1_active_sensor;
 
-// External sensor devices
+// External sensor devices (from sensors_thread.c)
 extern ASM330LHHX_t imu_device;
 extern MMC5983MA_t mag_device;
 extern BNO055_t bno_device;
 
+// ============================================================================
 // GPIO EXTI Callbacks
+// ============================================================================
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
     if (osKernelGetState() != osKernelRunning) return;
@@ -39,15 +41,18 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
         xTaskNotifyFromISR(sensors_thread_id, SENSOR_NOTIFY_MAG_DRDY,
                           eSetBits, &xHigherPriorityTaskWoken);
     }
-    // LoRa DIO0 interrupt
+    // SX126x DIO1 interrupt (PB2)
     else if (GPIO_Pin == EXTI_LORA_PIN) {
-        LoRa_DIO0_IRQ_Handler();
+        SX126x_DIO1_IRQ_Handler();
     }
 
     portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
 
+// ============================================================================
 // SPI Callbacks
+// ============================================================================
+
 void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi) {
     if (osKernelGetState() != osKernelRunning) return;
 
@@ -73,16 +78,16 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi) {
 }
 
 void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi) {
-    // LoRa SPI TX complete
-    if (hspi == SPI_LORA) {
-        LoRa_SPI_TxCpltCallback();
+    // SX126x SPI TX complete
+    if (hspi->Instance == SPI_LORA_INSTANCE) {
+        SX126x_SPI_TxCpltCallback();
     }
 }
 
 void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef *hspi) {
-    // LoRa SPI RX complete
-    if (hspi == SPI_LORA) {
-        LoRa_SPI_RxCpltCallback();
+    // SX126x SPI RX complete
+    if (hspi->Instance == SPI_LORA_INSTANCE) {
+        SX126x_SPI_RxCpltCallback();
     }
 }
 
@@ -92,13 +97,18 @@ void HAL_SPI_ErrorCallback(SPI_HandleTypeDef *hspi) {
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
     // Notify sensors thread of error
-    xTaskNotifyFromISR(sensors_thread_id, SENSOR_NOTIFY_DMA_ERROR,
-                      eSetBits, &xHigherPriorityTaskWoken);
+    if (hspi->Instance == SPI_IMU_BARO_INSTANCE || hspi->Instance == SPI_MAG_INSTANCE) {
+        xTaskNotifyFromISR(sensors_thread_id, SENSOR_NOTIFY_DMA_ERROR,
+                          eSetBits, &xHigherPriorityTaskWoken);
+    }
 
     portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
 
+// ============================================================================
 // I2C Callbacks
+// ============================================================================
+
 void HAL_I2C_MemRxCpltCallback(I2C_HandleTypeDef *hi2c) {
     if (osKernelGetState() != osKernelRunning) return;
 
@@ -126,7 +136,10 @@ void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c) {
     portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
 
+// ============================================================================
 // UART Callbacks (GPS)
+// ============================================================================
+
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
     if (osKernelGetState() != osKernelRunning) return;
 
@@ -142,7 +155,4 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) {
     // GPS error handling is done in sensors thread
-    // Just log the error here if needed
 }
-
-

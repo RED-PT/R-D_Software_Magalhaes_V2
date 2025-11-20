@@ -5,6 +5,7 @@
  *      Author: texman
  */
 
+// Includes
 #include "flight_computer.h"
 #include "flags.h"
 #include "defs.h"
@@ -16,60 +17,57 @@
 
 // Variables
 fsm_ctx_t fsm_ctx = {};
-SemaphoreHandle_t xFsmMutex = NULL;
 
-// Functions
+SemaphoreHandle_t xMutex = NULL;
+
+//Functions
 void fsm_init() {
+
 	printf("\r\n\r\nInitializing Flight Computer\r\n");
-
-	// Create FreeRTOS mutex
-	xFsmMutex = xSemaphoreCreateMutex();
-	if (xFsmMutex == NULL) {
-		printf("Failed to create FSM mutex\r\n");
-		return;
+	xMutex = xSemaphoreCreateMutex();
+	if (xMutex == NULL) {
+		printf("Failed to create mutex\r\n");
 	}
-	printf("FSM Mutex created successfully\r\n");
+	printf("Mutex created successfully\r\n");
 
-	memset(&fsm_ctx, 0, sizeof(fsm_ctx_t));
+	memset(&fsm_ctx, 0, sizeof(fsm_ctx_t)); // clear all fields
 	fsm_ctx.state = BOOT;
 	fsm_ctx.substate = SUB_NONE;
 	fsm_ctx.profile.type = NO_PROFILE;
 
-	printf("FSM Configured!\r\n");
+	printf("FSM Configed!\r\n");
+
 }
 
 int get_fsm_state() {
-	int state;
-	if (xSemaphoreTake(xFsmMutex, portMAX_DELAY) == pdTRUE) {
-		state = fsm_ctx.state;
-		xSemaphoreGive(xFsmMutex);
-	} else {
-		state = -1;  // Error
-	}
-	return state;
+
+	mutex_lock(&mutex_flags);
+	int fsm_state = fsm_ctx.state;
+	mutex_unlock(&mutex_flags);
+	return fsm_state;
 }
 
 int get_fsm_substate() {
-	int substate;
-	if (xSemaphoreTake(xFsmMutex, portMAX_DELAY) == pdTRUE) {
-		substate = fsm_ctx.substate;
-		xSemaphoreGive(xFsmMutex);
-	} else {
-		substate = -1;  // Error
-	}
-	return substate;
+
+	mutex_lock(&mutex_flags);
+	int fsm_substate = fsm_ctx.substate;
+	mutex_unlock(&mutex_flags);
+	return fsm_substate;
 }
 
 void set_fsm_state(int value) {
-	if (xSemaphoreTake(xFsmMutex, portMAX_DELAY) == pdTRUE) {
-		fsm_ctx.state = value;
-		xSemaphoreGive(xFsmMutex);
-	}
+
+	mutex_lock(&mutex_flags);
+	fsm_ctx.state = value;
+	mutex_unlock(&mutex_flags);
 }
 
 void set_fsm_substate(int value) {
-	if (xSemaphoreTake(xFsmMutex, portMAX_DELAY) == pdTRUE) {
-		fsm_ctx.substate = value;
-		xSemaphoreGive(xFsmMutex);
-	}
+
+	mutex_lock(&mutex_flags);
+	fsm_ctx.substate = value;
+	mutex_unlock(&mutex_flags);
 }
+
+
+

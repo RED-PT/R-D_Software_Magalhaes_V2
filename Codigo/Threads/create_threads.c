@@ -82,18 +82,6 @@ void create_threads() {
 
 	printf("Creating queues...\r\n");
 
-	// Radio TX queue: 10 packets * ~260 bytes = ~2.6KB
-	queue_to_radio_tx = xQueueCreate(10, sizeof(radio_tx_packet_t));
-	if (queue_to_radio_tx == NULL) {
-		printf("ERROR: Failed to create queue_to_radio_tx\r\n");
-	}
-
-	// Radio RX queue: 5 commands * ~40 bytes = ~200 bytes
-	queue_radio_rx_to_fsm = xQueueCreate(5, sizeof(command_packet_t));
-	if (queue_radio_rx_to_fsm == NULL) {
-		printf("ERROR: Failed to create queue_radio_rx_to_fsm\r\n");
-	}
-
 	// FSM events queue: 5 events * ~60 bytes = ~300 bytes
 	queue_fsm_events = xQueueCreate(5, sizeof(telemetry_event_t));
 	if (queue_fsm_events == NULL) {

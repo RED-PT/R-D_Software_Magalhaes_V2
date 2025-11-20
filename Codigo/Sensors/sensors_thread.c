@@ -118,7 +118,8 @@ void sensors_thread_init(void) {
 
 // Thread Main Loop - UNCHANGED from your original
 void sensors_thread_function(void *argument) {
-    sensors_thread_init();
+	data_handler_init();
+	sensors_thread_init();
     printf("Sensors thread started...\r\n");
 
     uint32_t ulNotificationValue;

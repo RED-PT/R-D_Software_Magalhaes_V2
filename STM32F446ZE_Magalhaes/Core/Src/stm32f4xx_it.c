@@ -20,13 +20,13 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "stm32f4xx_it.h"
+/* Private includes ----------------------------------------------------------*/
+/* USER CODE BEGIN Includes */
 #include "FreeRTOS.h"
 #include "task.h"
 #include "timers.h"
 #include "cmsis_os.h"
 #include "Sensors/sensors_thread.h"
-/* Private includes ----------------------------------------------------------*/
-/* USER CODE BEGIN Includes */
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -412,9 +412,7 @@ void EXTI15_10_IRQHandler(void)
   /* USER CODE BEGIN EXTI15_10_IRQn 0 */
 
   /* USER CODE END EXTI15_10_IRQn 0 */
-  HAL_GPIO_EXTI_IRQHandler(IMU_DRDY_Pin);
   HAL_GPIO_EXTI_IRQHandler(USER_Btn_Pin);
-  HAL_GPIO_EXTI_IRQHandler(MAG_DRDY_Pin);
   /* USER CODE BEGIN EXTI15_10_IRQn 1 */
 
   /* USER CODE END EXTI15_10_IRQn 1 */

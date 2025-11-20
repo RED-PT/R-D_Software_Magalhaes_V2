@@ -152,9 +152,6 @@ int main(void)
   MX_SPI4_Init();
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
-  // NÃO REMOVER - faz funcionar os printf()
-  //RetargetInitNoProtection(UART_DEBUG);
-  //sensors_thread_init(); removed; added to thread
   /* USER CODE END 2 */
 
   /* Init scheduler */
@@ -183,8 +180,7 @@ int main(void)
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
   RetargetInit(UART_DEBUG);
-  fsm_init();
-  data_handler_init();
+  fsm_init(); // MOVER PARA A THREAD????
   create_threads();
   /* USER CODE END RTOS_THREADS */
 
@@ -349,7 +345,7 @@ static void MX_SPI2_Init(void)
   hspi2.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi2.Init.CLKPhase = SPI_PHASE_1EDGE;
   hspi2.Init.NSS = SPI_NSS_SOFT;
-  hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_4;
+  hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_8;
   hspi2.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi2.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi2.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
@@ -785,16 +781,24 @@ static void MX_GPIO_Init(void)
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOE_CLK_ENABLE();
   __HAL_RCC_GPIOC_CLK_ENABLE();
+  __HAL_RCC_GPIOF_CLK_ENABLE();
   __HAL_RCC_GPIOH_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
+  __HAL_RCC_GPIOG_CLK_ENABLE();
   __HAL_RCC_GPIOD_CLK_ENABLE();
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(LORA_RESET_GPIO_Port, LORA_RESET_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, LD1_Pin|IMU_CS_Pin|LD3_Pin|LD2_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, LORA_CS_Pin|MAG_CS_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(LORA_CS_GPIO_Port, LORA_CS_Pin, GPIO_PIN_SET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(MAG_CS_GPIO_Port, MAG_CS_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOD, CS_SD_Pin|CS_BARO_Pin, GPIO_PIN_RESET);
@@ -805,6 +809,13 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(USER_Btn_GPIO_Port, &GPIO_InitStruct);
 
+  /*Configure GPIO pin : LORA_RESET_Pin */
+  GPIO_InitStruct.Pin = LORA_RESET_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(LORA_RESET_GPIO_Port, &GPIO_InitStruct);
+
   /*Configure GPIO pins : LD1_Pin LD3_Pin LD2_Pin */
   GPIO_InitStruct.Pin = LD1_Pin|LD3_Pin|LD2_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
@@ -812,8 +823,8 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : IMU_CS_Pin LORA_CS_Pin MAG_CS_Pin */
-  GPIO_InitStruct.Pin = IMU_CS_Pin|LORA_CS_Pin|MAG_CS_Pin;
+  /*Configure GPIO pins : IMU_CS_Pin MAG_CS_Pin */
+  GPIO_InitStruct.Pin = IMU_CS_Pin|MAG_CS_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
@@ -825,17 +836,18 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(LORA_DIO0_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : MAG_DRDY_Pin */
-  GPIO_InitStruct.Pin = MAG_DRDY_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  /*Configure GPIO pin : LORA_BUSY_Pin */
+  GPIO_InitStruct.Pin = LORA_BUSY_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_PULLDOWN;
-  HAL_GPIO_Init(MAG_DRDY_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(LORA_BUSY_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : IMU_DRDY_Pin */
-  GPIO_InitStruct.Pin = IMU_DRDY_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
-  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
-  HAL_GPIO_Init(IMU_DRDY_GPIO_Port, &GPIO_InitStruct);
+  /*Configure GPIO pin : LORA_CS_Pin */
+  GPIO_InitStruct.Pin = LORA_CS_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+  HAL_GPIO_Init(LORA_CS_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : CS_SD_Pin CS_BARO_Pin */
   GPIO_InitStruct.Pin = CS_SD_Pin|CS_BARO_Pin;
