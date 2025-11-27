@@ -1,8 +1,5 @@
 /*
  * telemetry.h
- *
- *  Created on: Oct 7, 2025
- *      Author: Tomas Teixeira
  */
 
 #ifndef TELEMETRY_TELEMETRY_H_
@@ -12,9 +9,10 @@
 #include "Flight Computer/flight_computer.h"
 #include "stm32f4xx_hal.h"
 
-#define TELEM_PACKET_FAST  0x01
-#define TELEM_PACKET_SLOW  0x02
-#define TELEM_PACKET_EVENT 0x03
+#define TELEM_PACKET_FAST    0x01
+#define TELEM_PACKET_SLOW    0x02
+#define TELEM_PACKET_EVENT   0x03
+#define TELEM_PACKET_COMMAND 0x10  // Novo!
 
 typedef struct __attribute__((packed)) {
 	uint8_t packet_type;
@@ -49,6 +47,15 @@ typedef struct __attribute__((packed)) {
 	event_payload_u payload;
 	uint16_t crc16;
 } telemetry_event_t;
+
+// Novo: Command packet
+typedef struct __attribute__((packed)) {
+	uint8_t packet_type;  // 0x10
+	uint32_t time;
+	command_t cmd;        // Usa command_t do flight_computer.h
+	uint8_t payload[32];
+	uint16_t crc16;
+} command_packet_t;
 
 typedef struct {
 	uint8_t buffer[128];

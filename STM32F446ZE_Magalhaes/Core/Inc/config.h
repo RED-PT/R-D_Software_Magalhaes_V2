@@ -26,6 +26,7 @@ extern TIM_HandleTypeDef htim3;
 extern UART_HandleTypeDef huart1;
 extern UART_HandleTypeDef huart2;
 extern UART_HandleTypeDef huart3;
+extern UART_HandleTypeDef huart6;
 
 //DMA
 extern DMA_HandleTypeDef hdma_spi1_rx; // IMU + Baro
@@ -41,6 +42,8 @@ extern DMA_HandleTypeDef hdma_i2c1_rx; // BNO055
 extern DMA_HandleTypeDef hdma_i2c1_tx; // BNO055
 
 extern DMA_HandleTypeDef hdma_usart2_rx;
+extern DMA_HandleTypeDef hdma_usart6_rx;
+extern DMA_HandleTypeDef hdma_usart6_tx;
 
 //I2C
 #define I2C_BNO &hi2c1
@@ -50,6 +53,8 @@ extern DMA_HandleTypeDef hdma_usart2_rx;
 #define UART_UBLOX &huart2
 #define UART_UBLOX_INSTANCE USART2
 #define UART_DEBUG_INSTANCE USART3
+#define UART_RADIO &huart6
+#define UART_RADIO_INSTANCE USART6
 
 //SPI
 #define SPI_IMU_BARO &hspi1
@@ -64,7 +69,7 @@ extern DMA_HandleTypeDef hdma_usart2_rx;
 #define CS_LORA_PORT GPIOG
 #define CS_LORA_PIN GPIO_PIN_1
 #define RESET_LORA_PORT GPIOF
-#define RESET_LORA_PIN GPIO_PIN_9
+#define RESET_LORA_PIN GPIO_PIN_15 //(mudar)
 #define BUSY_LORA_PORT GPIOG
 #define BUSY_LORA_PIN GPIO_PIN_0
 
@@ -125,5 +130,10 @@ extern DMA_HandleTypeDef hdma_usart2_rx;
 
 #define EXTI_MAG_PORT GPIOE
 #define EXTI_MAG_PIN GPIO_PIN_15
+
+#define RADIO_M0_PORT GPIOF
+#define RADIO_M0_PIN GPIO_PIN_9
+#define RADIO_M1_PORT GPIOG
+#define RADIO_M1_PIN GPIO_PIN_0
 
 #endif /* INC_CONFIG_H_ */

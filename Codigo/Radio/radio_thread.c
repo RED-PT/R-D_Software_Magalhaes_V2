@@ -1,137 +1,119 @@
 /*
  * radio_thread.c
  *
- *  Created on: Nov 19, 2025
- *      Author: Tomas Teixeira
- *
- *  Radio thread for SX126x LoRa communication
+ *  Simple radio thread - just transmits telemetry
  */
 
 #include "radio_thread.h"
-#include "Radio/LORA Drivers/lora_sx126x.h"
+#include "Radio/LORA Drivers/e22_uart_dma.h"
 #include "Telemetry/telemetry.h"
 #include "Radio/CRC16/crc16.h"
 #include "cmsis_os.h"
 
-#define RADIO_RX_BUFFER_SIZE 256
-#define GS_COMM_ATTEMPTS 5
-#define GS_COMM_TIMEOUT_MS 2000
 #define QUEUE_RADIO_LENGTH 10
-
-typedef struct __attribute__((packed)) {
-    uint32_t time;
-    command_t cmd;
-    uint8_t payload[32];
-    uint16_t crc16;
-} command_packet_t;
-
-static uint8_t rx_buffer[RADIO_RX_BUFFER_SIZE];
-static bool gs_online = false;
+#define RX_BUFFER_SIZE 256
 
 QueueHandle_t queue_to_radio = NULL;
 
 extern osThreadId_t radio_thread_id;
 extern fsm_ctx_t fsm_ctx;
 
-static bool ping_ground_station(void) {
-    command_packet_t ping_pkt = {0};
-    ping_pkt.time = HAL_GetTick();
-    ping_pkt.cmd = CMD_PING;
-    ping_pkt.crc16 = crc16_calculate((uint8_t*)&ping_pkt, sizeof(command_packet_t) - 2);
+static uint8_t rx_buffer[RX_BUFFER_SIZE];
 
-    if (!SX126x_TransmitDMA((uint8_t*)&ping_pkt, sizeof(command_packet_t))) {
-        return false;
-    }
+static void send_command_response(command_t cmd) {
+    command_packet_t response;
+    memset(&response, 0, sizeof(command_packet_t));
 
-    SX126x_WaitTxComplete(1000);
+    response.packet_type = TELEM_PACKET_COMMAND;
+    response.time = HAL_GetTick();
+    response.cmd = cmd;
+    response.crc16 = crc16_calculate((uint8_t*)&response, sizeof(command_packet_t) - 2);
 
-    SX126x_SetRx(GS_COMM_TIMEOUT_MS);
-
-    uint32_t start = HAL_GetTick();
-    while ((HAL_GetTick() - start) < GS_COMM_TIMEOUT_MS) {
-        if (SX126x_Available()) {
-            SX126x_RxInfo_t rx_info;
-            int len = SX126x_Receive(rx_buffer, RADIO_RX_BUFFER_SIZE, &rx_info);
-
-            if (len == sizeof(command_packet_t)) {
-                command_packet_t *rx_pkt = (command_packet_t*)rx_buffer;
-                uint16_t calc_crc = crc16_calculate(rx_buffer, sizeof(command_packet_t) - 2);
-
-                if (calc_crc == rx_pkt->crc16 && rx_pkt->cmd == CMD_PING) {
-                    printf("[RADIO] GS OK (RSSI=%d SNR=%d)\r\n", rx_info.rssi, rx_info.snr);
-                    return true;
-                }
-            }
-        }
-        vTaskDelay(pdMS_TO_TICKS(50));
-    }
-
-    return false;
+    // Send directly (bypass queue for commands)
+    while (E22_IsBusy()) vTaskDelay(pdMS_TO_TICKS(1));
+    E22_Transmit((uint8_t*)&response, sizeof(command_packet_t));
 }
 
-static bool init_radio_comm(void) {
-    SX126x_LoRaConfig_t config = {
-        .frequency_hz = 433000000,
-        .spreading_factor = SX126X_LORA_SF7,
-        .bandwidth = SX126X_LORA_BW_125,
-        .coding_rate = SX126X_LORA_CR_4_5,
-        .tx_power_dbm = 22,
-        .preamble_length = 8,
-        .sync_word = 0x1424,
-        .enable_crc = true,
-        .invert_iq = false
-    };
-
-    if (!SX126x_Init(&config)) {
-        printf("[RADIO] INIT FAIL\r\n");
-        return false;
+static void process_command(command_packet_t *cmd) {
+    // Verify CRC
+    uint16_t calc_crc = crc16_calculate((uint8_t*)cmd, sizeof(command_packet_t) - 2);
+    if (calc_crc != cmd->crc16) {
+        printf("[RADIO] Bad CRC: %04X != %04X\r\n", calc_crc, cmd->crc16);
+        return;
     }
 
-    printf("[RADIO] Init OK, ping GS...\r\n");
+    printf("[RADIO] RX: ");
 
-    for (int i = 0; i < GS_COMM_ATTEMPTS; i++) {
-        if (ping_ground_station()) {
-            gs_online = true;
-            printf("[RADIO] GS online\r\n");
-            return true;
-        }
-        printf("[RADIO] Ping %d/%d fail\r\n", i+1, GS_COMM_ATTEMPTS);
-        vTaskDelay(pdMS_TO_TICKS(500));
-    }
+    switch(cmd->cmd) {
+        case CMD_PING:
+            printf("PING -> sending PONG\r\n");
+            send_command_response(CMD_PING);  // Send PING back as acknowledgment
+            break;
 
-    printf("[RADIO] GS offline\r\n");
-    return false;
-}
-
-static void process_command(command_packet_t *pkt) {
-    switch (pkt->cmd) {
         case CMD_ARM:
-            printf("[RADIO] CMD_ARM\r\n");
+            printf("ARM (queued for FSM)\r\n");
+            // TODO: When FSM ready, queue command
+            send_command_response(CMD_ARM);
             break;
 
         case CMD_DISARM:
-            printf("[RADIO] CMD_DISARM\r\n");
+            printf("DISARM (queued for FSM)\r\n");
+            send_command_response(CMD_DISARM);
+            break;
+
+        case CMD_START_TEST:
+            printf("START_TEST (queued for FSM)\r\n");
+            send_command_response(CMD_START_TEST);
             break;
 
         case CMD_LAUNCH:
-            printf("[RADIO] CMD_LAUNCH\r\n");
+            printf("LAUNCH (queued for FSM)\r\n");
+            send_command_response(CMD_LAUNCH);
             break;
 
         case CMD_ABORT:
-            printf("[RADIO] CMD_ABORT\r\n");
+            printf("ABORT (queued for FSM)\r\n");
+            send_command_response(CMD_ABORT);
             break;
 
         case CMD_FORCE_SAFE:
-            printf("[RADIO] CMD_FORCE_SAFE\r\n");
+            printf("FORCE_SAFE (queued for FSM)\r\n");
+            send_command_response(CMD_FORCE_SAFE);
+            break;
+
+        case CMD_SET_PROFILE:
+            printf("SET_PROFILE (queued for FSM)\r\n");
+            send_command_response(CMD_SET_PROFILE);
+            break;
+
+        case CMD_SET_TARGET_ALT:
+            printf("SET_TARGET_ALT (queued for FSM)\r\n");
+            send_command_response(CMD_SET_TARGET_ALT);
             break;
 
         default:
+            printf("UNKNOWN (%d)\r\n", cmd->cmd);
             break;
     }
+}
+
+static bool init_radio(void) {
+    printf("[RADIO] Initializing E22-900T22S...\r\n");
+
+    if (!E22_Init(UART_RADIO)) {
+        printf("[RADIO] E22 Init FAIL\r\n");
+        return false;
+    }
+
+    printf("[RADIO] E22 OK (using current config)\r\n");
+    return true;
 }
 
 void radio_thread_function() {
     radio_packet_t tx_pkt;
+    uint32_t tx_count = 0;
+    uint32_t rx_count = 0;
+    uint32_t rx_check_count = 0;  // Contador de checks
 
     printf("[RADIO] Thread started\r\n");
 
@@ -142,41 +124,65 @@ void radio_thread_function() {
         return;
     }
 
-    if (!init_radio_comm()) {
-        printf("[RADIO] Init failed, suspending\r\n");
+    if (!init_radio()) {
+        printf("[RADIO] Init failed\r\n");
         vTaskSuspend(NULL);
         return;
     }
 
-    SX126x_SetRx(0xFFFFFF);
+    printf("[RADIO] TX/RX loop started\r\n");
 
     while(1) {
+        // TX: Send telemetry
         if (xQueueReceive(queue_to_radio, &tx_pkt, pdMS_TO_TICKS(10)) == pdTRUE) {
-            if (!SX126x_IsTxBusy()) {
-                SX126x_TransmitDMA(tx_pkt.buffer, tx_pkt.length);
+            uint32_t wait_start = HAL_GetTick();
+            while (E22_IsBusy() && (HAL_GetTick() - wait_start < 100)) {
+                vTaskDelay(pdMS_TO_TICKS(1));
             }
-        }
 
-        if (SX126x_Available()) {
-            SX126x_RxInfo_t rx_info;
-            int len = SX126x_Receive(rx_buffer, RADIO_RX_BUFFER_SIZE, &rx_info);
-
-            if (len == sizeof(command_packet_t)) {
-                command_packet_t *pkt = (command_packet_t*)rx_buffer;
-                uint16_t calc_crc = crc16_calculate(rx_buffer, sizeof(command_packet_t) - 2);
-
-                if (calc_crc == pkt->crc16) {
-                    process_command(pkt);
-                } else {
-                    printf("[RADIO] CRC fail\r\n");
+            if (!E22_IsBusy()) {
+                if (E22_Transmit(tx_pkt.buffer, tx_pkt.length)) {
+                    tx_count++;
+                    if (tx_count % 20 == 0) {
+                        printf("[RADIO] TX: %lu, RX: %lu\r\n", tx_count, rx_count);
+                    }
                 }
             }
         }
 
-        vTaskDelay(pdMS_TO_TICKS(5));
-    }
-}
+        // RX: Check for incoming commands
+        rx_check_count++;
 
-bool radio_is_gs_online(void) {
-    return gs_online;
+        // Debug every 500 checks (~5s)
+        if (rx_check_count % 500 == 0) {
+            if (E22_Available()) {
+                printf("[RADIO] RX available!\r\n");
+            } else {
+                printf("[RADIO] No RX data (checked %lu times)\r\n", rx_check_count);
+            }
+        }
+
+        if (E22_Available()) {
+            printf("[RADIO] E22_Available() = true\r\n");
+            int len = E22_Receive(rx_buffer, RX_BUFFER_SIZE);
+            printf("[RADIO] Received %d bytes\r\n", len);
+
+            if (len == sizeof(command_packet_t)) {
+                command_packet_t *cmd = (command_packet_t*)rx_buffer;
+
+                printf("[RADIO] Packet type: 0x%02X\r\n", cmd->packet_type);
+
+                if (cmd->packet_type == TELEM_PACKET_COMMAND) {
+                    rx_count++;
+                    process_command(cmd);
+                } else {
+                    printf("[RADIO] Wrong packet type (expected 0x10)\r\n");
+                }
+            } else {
+                printf("[RADIO] Wrong length: %d (expected %d)\r\n", len, sizeof(command_packet_t));
+            }
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(10));
+    }
 }

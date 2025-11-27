@@ -9,6 +9,7 @@
 #include "config.h"
 #include "Sensors/sensors_thread.h"
 #include "Radio/LORA Drivers/lora_sx126x.h"
+#include "Radio/LORA Drivers/e22_uart_dma.h"
 
 // External thread handles
 extern osThreadId_t sensors_thread_id;
@@ -139,6 +140,12 @@ void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c) {
 // ============================================================================
 // UART Callbacks (GPS)
 // ============================================================================
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
+    // E22 TX complete
+    if (huart->Instance == UART_RADIO_INSTANCE) {
+        E22_UART_TxCpltCallback();
+    }
+}
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
     if (osKernelGetState() != osKernelRunning) return;
@@ -150,8 +157,19 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
                           eSetBits, &xHigherPriorityTaskWoken);
     }
 
+    else if (huart->Instance == UART_RADIO_INSTANCE) {
+            E22_UART_RxCpltCallback();
+    }
+
     portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
+
+void HAL_UART_RxHalfCpltCallback(UART_HandleTypeDef *huart) {
+    if (huart->Instance == UART_RADIO_INSTANCE) {
+        E22_UART_RxHalfCpltCallback();
+    }
+}
+
 
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) {
     // GPS error handling is done in sensors thread

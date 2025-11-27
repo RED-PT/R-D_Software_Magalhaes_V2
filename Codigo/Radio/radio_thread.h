@@ -21,6 +21,5 @@
 extern QueueHandle_t queue_to_radio;
 
 void radio_thread_function();
-bool radio_is_gs_online(void);
 
 #endif /* RADIO_RADIO_THREAD_H_ */
