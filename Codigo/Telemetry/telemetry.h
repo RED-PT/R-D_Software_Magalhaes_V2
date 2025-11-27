@@ -50,11 +50,11 @@ typedef struct __attribute__((packed)) {
 
 // Novo: Command packet
 typedef struct __attribute__((packed)) {
-	uint8_t packet_type;  // 0x10
-	uint32_t time;
-	command_t cmd;        // Usa command_t do flight_computer.h
-	uint8_t payload[32];
-	uint16_t crc16;
+    uint8_t packet_type;  // 0x10
+    uint32_t time;
+    uint8_t cmd;          // ALTERADO: de command_t para uint8_t
+    uint8_t payload[32];
+    uint16_t crc16;
 } command_packet_t;
 
 typedef struct {

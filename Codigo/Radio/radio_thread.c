@@ -115,6 +115,9 @@ void radio_thread_function() {
     uint32_t rx_count = 0;
     uint32_t rx_check_count = 0;  // Contador de checks
 
+    uint8_t packet_buffer[sizeof(command_packet_t) * 2]; // Espaço para acumular
+    uint16_t packet_len = 0;
+
     printf("[RADIO] Thread started\r\n");
 
     queue_to_radio = xQueueCreate(QUEUE_RADIO_LENGTH, sizeof(radio_packet_t));
@@ -163,23 +166,45 @@ void radio_thread_function() {
         }
 
         if (E22_Available()) {
-            printf("[RADIO] E22_Available() = true\r\n");
+            // 1. Ler o que chegou para um buffer temporário
             int len = E22_Receive(rx_buffer, RX_BUFFER_SIZE);
-            printf("[RADIO] Received %d bytes\r\n", len);
 
-            if (len == sizeof(command_packet_t)) {
-                command_packet_t *cmd = (command_packet_t*)rx_buffer;
-
-                printf("[RADIO] Packet type: 0x%02X\r\n", cmd->packet_type);
-
-                if (cmd->packet_type == TELEM_PACKET_COMMAND) {
-                    rx_count++;
-                    process_command(cmd);
-                } else {
-                    printf("[RADIO] Wrong packet type (expected 0x10)\r\n");
-                }
+            // 2. Adicionar ao nosso acumulador (protegendo contra overflow)
+            if (packet_len + len <= sizeof(packet_buffer)) {
+                memcpy(&packet_buffer[packet_len], rx_buffer, len);
+                packet_len += len;
             } else {
-                printf("[RADIO] Wrong length: %d (expected %d)\r\n", len, sizeof(command_packet_t));
+                // Buffer cheio e sem pacote válido? Reset para evitar travamento
+                packet_len = 0;
+                printf("[RADIO] Buffer overflow, resetting RX\r\n");
+            }
+
+            // 3. Verificar se já temos pelo menos um pacote inteiro (40 bytes)
+            if (packet_len >= sizeof(command_packet_t)) {
+
+                command_packet_t *cmd = (command_packet_t*)packet_buffer;
+
+                // Verificação simples de sincronia (O primeiro byte deve ser 0x10)
+                if (cmd->packet_type == TELEM_PACKET_COMMAND) {
+
+                    // Temos um pacote válido!
+                    printf("[RADIO] Command received! Processing...\r\n");
+                    process_command(cmd); // Processa o comando
+
+                    // 4. Limpar o pacote processado do buffer (Shift left)
+                    uint16_t remaining = packet_len - sizeof(command_packet_t);
+                    if (remaining > 0) {
+                        memmove(packet_buffer, &packet_buffer[sizeof(command_packet_t)], remaining);
+                    }
+                    packet_len = remaining;
+
+                } else {
+                    // Perdemos a sincronia (o primeiro byte não é o cabeçalho)
+                    // Descartar 1 byte e tentar encontrar o cabeçalho no próximo loop
+                    printf("[RADIO] Sync lost (byte 0x%02X), shifting...\r\n", packet_buffer[0]);
+                    packet_len--;
+                    memmove(packet_buffer, &packet_buffer[1], packet_len);
+                }
             }
         }
 
