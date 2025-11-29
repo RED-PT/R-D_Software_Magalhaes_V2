@@ -80,7 +80,7 @@ typedef struct{
 
 } fsm_ctx_t;
 
-//	Commands (inputs from GroundStationâ†’FlightComputer)
+//	Commands (inputs from GroundStationÃ¢â€ â€™FlightComputer)
 typedef enum{
 	CMD_NONE = 0,
 	CMD_PING,

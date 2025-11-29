@@ -101,12 +101,5 @@ typedef struct {
     uint32_t timestamp_ms; // System timestamp (milliseconds)
 } GPS_t;
 
-//	Temperature Readings
-typedef struct {
-	float  temp_ms;
-	float temp_cpu;
-	float  adc_voltage;
-	uint32_t timestamp;
-} temperature_readings_t;
 
 #endif /* INC_DEFS_H_ */

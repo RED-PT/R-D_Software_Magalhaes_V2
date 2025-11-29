@@ -1,7 +1,5 @@
 /*
  * telemetry_thread.c
- *
- *  Simple telemetry - just sends data at fixed rate
  */
 
 #include "telemetry_thread.h"
@@ -9,8 +7,8 @@
 #include "Radio/radio_thread.h"
 #include "cmsis_os.h"
 
-#define FAST_TELEM_PERIOD_MS 1000  // 1Hz para teste
-#define SLOW_TELEM_PERIOD_MS 3000  // 0.33Hz
+#define FAST_TELEM_PERIOD_MS 1000   // 1Hz
+#define SLOW_TELEM_PERIOD_MS 3000   // 0.33Hz
 
 extern osThreadId_t telemetry_thread_id;
 extern fsm_ctx_t fsm_ctx;
@@ -66,7 +64,7 @@ static void send_slow_telemetry(void) {
 void telemetry_thread_function() {
     data_packet_t packet;
 
-    printf("[TELEM] Thread started (simplified mode)\r\n");
+    printf("[TELEM] Thread started\r\n");
 
     last_fast_tick = xTaskGetTickCount();
     last_slow_tick = xTaskGetTickCount();

@@ -236,7 +236,7 @@ void sensors_thread_function(void *argument) {
             i2c1_active_sensor = ACTIVE_SENSOR_NONE;
         }
 
-        if ((xTaskGetTickCount() - last_stats_time) > pdMS_TO_TICKS(5000)) {
+        if ((xTaskGetTickCount() - last_stats_time) > pdMS_TO_TICKS(10000)) {
             printf("Sensor Statistics\r\n");
             printf("IMU:  %lu samples, %lu errors\r\n", sensor_stats.imu_samples, sensor_stats.imu_errors);
             printf("MAG:  %lu samples, %lu errors\r\n", sensor_stats.mag_samples, sensor_stats.mag_errors);

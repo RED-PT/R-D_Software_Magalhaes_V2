@@ -68,6 +68,3 @@ void set_fsm_substate(int value) {
 	fsm_ctx.substate = value;
 	mutex_unlock(&mutex_flags);
 }
-
-
-

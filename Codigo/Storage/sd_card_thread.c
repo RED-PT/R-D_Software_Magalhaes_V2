@@ -253,7 +253,7 @@ void sd_card_thread_function(void *argument) {
             last_flush = now;
         }
 
-        if ((now - last_stats) >= pdMS_TO_TICKS(5000)) {
+        if ((now - last_stats) >= pdMS_TO_TICKS(10000)) {
             UBaseType_t queue_msgs = uxQueueMessagesWaiting(queue_to_sd);
             printf("SD: %lu pkts logged, buf:%lu/%u bytes, queue:%lu msgs\r\n",
                    stats_packets, buffer_pos, SD_WRITE_BUFFER_SIZE, queue_msgs);

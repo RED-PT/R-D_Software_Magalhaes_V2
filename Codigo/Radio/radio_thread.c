@@ -1,7 +1,7 @@
 /*
  * radio_thread.c
  *
- *  Simple radio thread - just transmits telemetry
+ * Fixed: Added proper packet accumulation for RX
  */
 
 #include "radio_thread.h"
@@ -11,199 +11,213 @@
 #include "cmsis_os.h"
 
 #define QUEUE_RADIO_LENGTH 10
-#define RX_BUFFER_SIZE 256
+
+// RX packet accumulator
+#define RX_PACKET_BUFFER_SIZE 64
+static uint8_t rx_packet_buffer[RX_PACKET_BUFFER_SIZE];
+static uint16_t rx_packet_idx = 0;
+static uint32_t rx_last_byte_time = 0;
+#define RX_PACKET_TIMEOUT_MS 100  // Reset if no data for 100ms
 
 QueueHandle_t queue_to_radio = NULL;
 
 extern osThreadId_t radio_thread_id;
 extern fsm_ctx_t fsm_ctx;
 
-static uint8_t rx_buffer[RX_BUFFER_SIZE];
-
-static void send_command_response(command_t cmd) {
-    command_packet_t response;
-    memset(&response, 0, sizeof(command_packet_t));
-
-    response.packet_type = TELEM_PACKET_COMMAND;
-    response.time = HAL_GetTick();
-    response.cmd = cmd;
-    response.crc16 = crc16_calculate((uint8_t*)&response, sizeof(command_packet_t) - 2);
-
-    // Send directly (bypass queue for commands)
-    while (E22_IsBusy()) vTaskDelay(pdMS_TO_TICKS(1));
-    E22_Transmit((uint8_t*)&response, sizeof(command_packet_t));
+// ============================================================================
+// Get expected packet size based on packet type
+// ============================================================================
+static uint16_t get_expected_packet_size(uint8_t packet_type) {
+    switch (packet_type) {
+        case TELEM_PACKET_FAST:    return sizeof(telemetry_fast_t);
+        case TELEM_PACKET_SLOW:    return sizeof(telemetry_slow_t);
+        case TELEM_PACKET_EVENT:   return sizeof(telemetry_event_t);
+        case TELEM_PACKET_COMMAND: return sizeof(command_packet_t);
+        default: return 0;  // Unknown packet type
+    }
 }
 
+// ============================================================================
+// Send ACK
+// ============================================================================
+static void send_command_ack(uint8_t cmd, uint8_t ack_status, uint8_t current_state) {
+    command_packet_t ack;
+    memset(&ack, 0, sizeof(command_packet_t));
+
+    ack.packet_type = TELEM_PACKET_COMMAND;
+    ack.time = HAL_GetTick();
+    ack.cmd = cmd;
+    ack.ack_status = ack_status;
+    ack.current_state = current_state;
+    ack.crc16 = crc16_calculate((uint8_t*)&ack, sizeof(command_packet_t) - 2);
+
+    printf("[RADIO] Sending ACK for cmd=%d status=%d\r\n", cmd, ack_status);
+
+    // Wait for TX to be free
+    uint32_t wait_start = HAL_GetTick();
+    while (E22_IsBusy() && (HAL_GetTick() - wait_start < 100)) {
+        vTaskDelay(pdMS_TO_TICKS(1));
+    }
+
+    if (E22_Transmit((uint8_t*)&ack, sizeof(command_packet_t))) {
+        printf("[RADIO] ACK sent OK\r\n");
+    } else {
+        printf("[RADIO] ACK TX FAIL\r\n");
+    }
+}
+
+// ============================================================================
+// Process Command
+// ============================================================================
 static void process_command(command_packet_t *cmd) {
+    printf("[RADIO] Processing command: CMD=%d\r\n", cmd->cmd);
+
     // Verify CRC
     uint16_t calc_crc = crc16_calculate((uint8_t*)cmd, sizeof(command_packet_t) - 2);
+
     if (calc_crc != cmd->crc16) {
-        printf("[RADIO] Bad CRC: %04X != %04X\r\n", calc_crc, cmd->crc16);
+        printf("[RADIO] CRC FAIL! calc=0x%04X recv=0x%04X\r\n", calc_crc, cmd->crc16);
         return;
     }
 
-    printf("[RADIO] RX: ");
+    printf("[RADIO] CRC OK! CMD=%d\r\n", cmd->cmd);
 
-    switch(cmd->cmd) {
-        case CMD_PING:
-            printf("PING -> sending PONG\r\n");
-            send_command_response(CMD_PING);  // Send PING back as acknowledgment
-            break;
-
-        case CMD_ARM:
-            printf("ARM (queued for FSM)\r\n");
-            // TODO: When FSM ready, queue command
-            send_command_response(CMD_ARM);
-            break;
-
-        case CMD_DISARM:
-            printf("DISARM (queued for FSM)\r\n");
-            send_command_response(CMD_DISARM);
-            break;
-
-        case CMD_START_TEST:
-            printf("START_TEST (queued for FSM)\r\n");
-            send_command_response(CMD_START_TEST);
-            break;
-
-        case CMD_LAUNCH:
-            printf("LAUNCH (queued for FSM)\r\n");
-            send_command_response(CMD_LAUNCH);
-            break;
-
-        case CMD_ABORT:
-            printf("ABORT (queued for FSM)\r\n");
-            send_command_response(CMD_ABORT);
-            break;
-
-        case CMD_FORCE_SAFE:
-            printf("FORCE_SAFE (queued for FSM)\r\n");
-            send_command_response(CMD_FORCE_SAFE);
-            break;
-
-        case CMD_SET_PROFILE:
-            printf("SET_PROFILE (queued for FSM)\r\n");
-            send_command_response(CMD_SET_PROFILE);
-            break;
-
-        case CMD_SET_TARGET_ALT:
-            printf("SET_TARGET_ALT (queued for FSM)\r\n");
-            send_command_response(CMD_SET_TARGET_ALT);
-            break;
-
-        default:
-            printf("UNKNOWN (%d)\r\n", cmd->cmd);
-            break;
-    }
+    // TODO: Actually process the command (queue to FSM, etc.)
+    // For now, just send ACK
+    send_command_ack(cmd->cmd, 0, fsm_ctx.state);
 }
 
-static bool init_radio(void) {
-    printf("[RADIO] Initializing E22-900T22S...\r\n");
+// ============================================================================
+// Process received byte - accumulates into packet buffer
+// Returns true if a complete packet was processed
+// ============================================================================
+static bool process_rx_byte(uint8_t byte) {
+    uint32_t now = HAL_GetTick();
 
-    if (!E22_Init(UART_RADIO)) {
-        printf("[RADIO] E22 Init FAIL\r\n");
+    // Timeout: reset if too long since last byte
+    if (rx_packet_idx > 0 && (now - rx_last_byte_time) > RX_PACKET_TIMEOUT_MS) {
+        printf("[RADIO] RX timeout, resetting buffer (had %u bytes)\r\n", rx_packet_idx);
+        rx_packet_idx = 0;
+    }
+
+    rx_last_byte_time = now;
+
+    // First byte: check if it's a valid packet type
+    if (rx_packet_idx == 0) {
+        uint16_t expected = get_expected_packet_size(byte);
+        if (expected == 0) {
+            // Invalid packet type, discard
+            printf("[RADIO] Invalid packet type: 0x%02X\r\n", byte);
+            return false;
+        }
+    }
+
+    // Store byte
+    if (rx_packet_idx < RX_PACKET_BUFFER_SIZE) {
+        rx_packet_buffer[rx_packet_idx++] = byte;
+    } else {
+        // Buffer overflow, reset
+        printf("[RADIO] RX buffer overflow!\r\n");
+        rx_packet_idx = 0;
         return false;
     }
 
-    printf("[RADIO] E22 OK (using current config)\r\n");
-    return true;
+    // Check if we have a complete packet
+    uint8_t packet_type = rx_packet_buffer[0];
+    uint16_t expected_size = get_expected_packet_size(packet_type);
+
+    if (rx_packet_idx >= expected_size) {
+        // Complete packet received!
+        printf("[RADIO] Complete packet: type=0x%02X size=%u\r\n", packet_type, rx_packet_idx);
+
+        // Process based on type
+        if (packet_type == TELEM_PACKET_COMMAND) {
+            command_packet_t *cmd = (command_packet_t*)rx_packet_buffer;
+            process_command(cmd);
+        } else {
+            printf("[RADIO] Ignoring non-command packet type=0x%02X\r\n", packet_type);
+        }
+
+        // Reset for next packet
+        rx_packet_idx = 0;
+        return true;
+    }
+
+    return false;
 }
 
+// ============================================================================
+// Radio Thread
+// ============================================================================
 void radio_thread_function() {
     radio_packet_t tx_pkt;
     uint32_t tx_count = 0;
     uint32_t rx_count = 0;
-    uint32_t rx_check_count = 0;  // Contador de checks
-
-    uint8_t packet_buffer[sizeof(command_packet_t) * 2]; // Espaço para acumular
-    uint16_t packet_len = 0;
+    uint32_t loop_count = 0;
 
     printf("[RADIO] Thread started\r\n");
 
+    // Create TX queue
     queue_to_radio = xQueueCreate(QUEUE_RADIO_LENGTH, sizeof(radio_packet_t));
-    if (queue_to_radio == NULL) {
-        printf("[RADIO] Queue create FAIL\r\n");
+    if (!queue_to_radio) {
+        printf("[RADIO] Queue creation FAILED!\r\n");
         vTaskSuspend(NULL);
-        return;
+    }
+    printf("[RADIO] Queue created\r\n");
+
+    // Initialize E22
+    if (!E22_Init(UART_RADIO)) {
+        printf("[RADIO] E22 Init FAILED!\r\n");
+        vTaskSuspend(NULL);
     }
 
-    if (!init_radio()) {
-        printf("[RADIO] Init failed\r\n");
-        vTaskSuspend(NULL);
-        return;
-    }
+    printf("[RADIO] E22 Init OK\r\n");
+    printf("[RADIO] Packet sizes: CMD=%u FAST=%u SLOW=%u\r\n",
+           sizeof(command_packet_t), sizeof(telemetry_fast_t), sizeof(telemetry_slow_t));
+    printf("[RADIO] Loop starting...\r\n");
 
-    printf("[RADIO] TX/RX loop started\r\n");
+    // Initialize RX state
+    rx_packet_idx = 0;
+    rx_last_byte_time = HAL_GetTick();
 
     while(1) {
-        // TX: Send telemetry
-        if (xQueueReceive(queue_to_radio, &tx_pkt, pdMS_TO_TICKS(10)) == pdTRUE) {
+        loop_count++;
+
+        // Stats every 5 seconds
+        if (loop_count % 500 == 0) {
+            printf("[RADIO] Loop %lu | TX=%lu RX=%lu\r\n", loop_count, tx_count, rx_count);
+        }
+
+        // ========================================
+        // TX: Send telemetry packets from queue
+        // ========================================
+        if (xQueueReceive(queue_to_radio, &tx_pkt, 0) == pdTRUE) {
+            // Wait for TX to be free
             uint32_t wait_start = HAL_GetTick();
             while (E22_IsBusy() && (HAL_GetTick() - wait_start < 100)) {
                 vTaskDelay(pdMS_TO_TICKS(1));
             }
 
-            if (!E22_IsBusy()) {
-                if (E22_Transmit(tx_pkt.buffer, tx_pkt.length)) {
-                    tx_count++;
-                    if (tx_count % 20 == 0) {
-                        printf("[RADIO] TX: %lu, RX: %lu\r\n", tx_count, rx_count);
-                    }
-                }
-            }
-        }
-
-        // RX: Check for incoming commands
-        rx_check_count++;
-
-        // Debug every 500 checks (~5s)
-        if (rx_check_count % 500 == 0) {
-            if (E22_Available()) {
-                printf("[RADIO] RX available!\r\n");
+            if (E22_Transmit(tx_pkt.buffer, tx_pkt.length)) {
+                tx_count++;
             } else {
-                printf("[RADIO] No RX data (checked %lu times)\r\n", rx_check_count);
+                printf("[RADIO] TX FAIL\r\n");
             }
         }
 
+        // ========================================
+        // RX: Process incoming bytes one at a time
+        // ========================================
         if (E22_Available()) {
-            // 1. Ler o que chegou para um buffer temporário
-            int len = E22_Receive(rx_buffer, RX_BUFFER_SIZE);
+            uint8_t temp_buf[64];
+            int bytes_read = E22_Receive(temp_buf, sizeof(temp_buf));
 
-            // 2. Adicionar ao nosso acumulador (protegendo contra overflow)
-            if (packet_len + len <= sizeof(packet_buffer)) {
-                memcpy(&packet_buffer[packet_len], rx_buffer, len);
-                packet_len += len;
-            } else {
-                // Buffer cheio e sem pacote válido? Reset para evitar travamento
-                packet_len = 0;
-                printf("[RADIO] Buffer overflow, resetting RX\r\n");
-            }
-
-            // 3. Verificar se já temos pelo menos um pacote inteiro (40 bytes)
-            if (packet_len >= sizeof(command_packet_t)) {
-
-                command_packet_t *cmd = (command_packet_t*)packet_buffer;
-
-                // Verificação simples de sincronia (O primeiro byte deve ser 0x10)
-                if (cmd->packet_type == TELEM_PACKET_COMMAND) {
-
-                    // Temos um pacote válido!
-                    printf("[RADIO] Command received! Processing...\r\n");
-                    process_command(cmd); // Processa o comando
-
-                    // 4. Limpar o pacote processado do buffer (Shift left)
-                    uint16_t remaining = packet_len - sizeof(command_packet_t);
-                    if (remaining > 0) {
-                        memmove(packet_buffer, &packet_buffer[sizeof(command_packet_t)], remaining);
+            if (bytes_read > 0) {
+                // Process each byte through the packet accumulator
+                for (int i = 0; i < bytes_read; i++) {
+                    if (process_rx_byte(temp_buf[i])) {
+                        rx_count++;
                     }
-                    packet_len = remaining;
-
-                } else {
-                    // Perdemos a sincronia (o primeiro byte não é o cabeçalho)
-                    // Descartar 1 byte e tentar encontrar o cabeçalho no próximo loop
-                    printf("[RADIO] Sync lost (byte 0x%02X), shifting...\r\n", packet_buffer[0]);
-                    packet_len--;
-                    memmove(packet_buffer, &packet_buffer[1], packet_len);
                 }
             }
         }

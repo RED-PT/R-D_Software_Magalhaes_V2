@@ -119,7 +119,7 @@ void data_handler_thread_function(void *argument) {
     const TickType_t safety_timeout = pdMS_TO_TICKS(SAFETY_FLUSH_TIMEOUT_MS);
 
     TickType_t last_monitor = xTaskGetTickCount();
-    const TickType_t monitor_period = pdMS_TO_TICKS(5000);
+    const TickType_t monitor_period = pdMS_TO_TICKS(10000);
 
     uint32_t ulNotificationValue;
     uint32_t flush_count = 0;

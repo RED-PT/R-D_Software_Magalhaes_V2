@@ -7,6 +7,8 @@
 static UART_HandleTypeDef *e22_uart = NULL;
 
 #define RX_BUFFER_SIZE 512
+#define E22_MAX_PACKET_SIZE 64
+
 static uint8_t rx_dma_buffer[RX_BUFFER_SIZE];
 static volatile uint16_t rx_read_pos = 0;
 
@@ -100,7 +102,11 @@ bool E22_Configure(E22_Config_t *config) {
 }
 
 bool E22_Transmit(uint8_t *data, uint16_t length) {
-    if (!data || length == 0 || length > 240 || tx_busy) {
+    if (!data || length == 0 || length > E22_MAX_PACKET_SIZE || tx_busy) {
+        if (length > E22_MAX_PACKET_SIZE) {
+            printf("[E22] TX FAIL: %d bytes > %d max\r\n",
+                   length, E22_MAX_PACKET_SIZE);
+        }
         return false;
     }
 
@@ -128,15 +134,41 @@ void E22_UART_RxCpltCallback(void) {
 }
 
 bool E22_Available(void) {
+    static uint32_t ore_count = 0;
+    static uint32_t check_count = 0;
+
+    check_count++;
+
     uint16_t dma_remaining = __HAL_DMA_GET_COUNTER(e22_uart->hdmarx);
     uint16_t dma_pos = RX_BUFFER_SIZE - dma_remaining;
 
-    // Debug
-    static uint32_t last_print = 0;
-    if (HAL_GetTick() - last_print > 5000) {
-        printf("[E22] DMA: remaining=%u, pos=%u, read=%u\r\n",
-               dma_remaining, dma_pos, rx_read_pos);
-        last_print = HAL_GetTick();
+    // Print SEMPRE que dma_pos muda
+    static uint16_t last_dma_pos = 0;
+    if (dma_pos != last_dma_pos) {
+        printf("[E22] DMA MOVED! pos=%u->%u read=%u\r\n",
+               last_dma_pos, dma_pos, rx_read_pos);
+        last_dma_pos = dma_pos;
+    }
+
+    if (__HAL_UART_GET_FLAG(e22_uart, UART_FLAG_ORE)) {
+        ore_count++;
+        printf("[E22] ORE #%lu!\r\n", ore_count);
+
+        __HAL_UART_CLEAR_OREFLAG(e22_uart);
+        __HAL_UART_CLEAR_NEFLAG(e22_uart);
+        __HAL_UART_CLEAR_FEFLAG(e22_uart);
+
+        HAL_UART_AbortReceive(e22_uart);
+        rx_read_pos = 0;
+        HAL_UART_Receive_DMA(e22_uart, rx_dma_buffer, RX_BUFFER_SIZE);
+
+        return false;
+    }
+
+    // Print a cada 1000 checks
+    if (check_count % 1000 == 0) {
+        printf("[E22] Checked %lu times | pos=%u read=%u\r\n",
+               check_count, dma_pos, rx_read_pos);
     }
 
     return (dma_pos != rx_read_pos);
@@ -157,6 +189,14 @@ int E22_Receive(uint8_t *buffer, uint16_t max_length) {
         rx_read_pos++;
         if (rx_read_pos >= RX_BUFFER_SIZE) rx_read_pos = 0;
     }
+
+    // Print SEMPRE que lê bytes
+    printf("[E22] Receive() read %u bytes\r\n", count);
+    printf("[E22] First 10 bytes: ");
+    for(int i = 0; i < count && i < 10; i++) {
+        printf("%02X ", buffer[i]);
+    }
+    printf("\r\n");
 
     return count;
 }

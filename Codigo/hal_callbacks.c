@@ -172,5 +172,7 @@ void HAL_UART_RxHalfCpltCallback(UART_HandleTypeDef *huart) {
 
 
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) {
-    // GPS error handling is done in sensors thread
+	if (huart->Instance == USART6) {
+		printf("ERROERRO DMA\r\n");
+	}
 }
