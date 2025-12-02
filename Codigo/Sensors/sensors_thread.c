@@ -62,8 +62,10 @@ void sensors_thread_init(void) {
 
     if (!imu_ok) {
         printf("ERROR: IMU init failed!\r\n");
+        //sensors não estão wired up
         HAL_NVIC_DisableIRQ(EXTI15_10_IRQn);
         __HAL_GPIO_EXTI_CLEAR_IT(GPIO_PIN_11);
+
     } else {
         bool imu_cfg = ASM330LHHX_Configure(&imu_device);
         fsm_report_init_status("IMU_CONFIG", imu_cfg);
@@ -76,7 +78,6 @@ void sensors_thread_init(void) {
     printf("Initializing Magnetometer...\r\n");
     bool mag_ok = MMC5983MA_Init(&mag_device, SPI_MAG);
     fsm_report_init_status("MAG_INIT", mag_ok);
-
     if (!mag_ok) {
         printf("ERROR: MAG init failed!\r\n");
         __HAL_GPIO_EXTI_CLEAR_IT(GPIO_PIN_15);

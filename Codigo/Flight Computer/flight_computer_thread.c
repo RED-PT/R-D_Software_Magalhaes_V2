@@ -26,9 +26,6 @@
 #define PARAM_THROTTLE_MIN      6
 #define PARAM_THROTTLE_MAX      7
 
-// Event sequence
-static uint8_t event_seq = 0;
-
 // Boot report storage
 static boot_report_t boot_report = {0};
 static uint8_t boot_error_idx = 0;

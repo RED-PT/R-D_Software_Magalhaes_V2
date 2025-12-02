@@ -96,7 +96,7 @@ FRESULT Scan_SD(char *pat) {
 	DIR dir;
 	UINT i;
 	char buf[50];
-	char fname[20];
+	char fname[30];
 	char path[20];
 	sprintf(path, "%s", pat);
 
@@ -564,131 +564,6 @@ void Read_File(int index, void *buffer, int offset, size_t length) {
 	}
 }
 
-void Read_All_Files() {
-
-	/*int count = 0;
-	 char nome[30];
-	 vectornav_imu_typedef buffer_vectornav_imu;
-	 sprintf(nome, "%s_%d.txt","vectornav_imu", SD_CARD_NUMBER);
-	 int index_aux = Open_File(nome);
-	 custom_open_file* cof = get_open_file(index_aux);
-
-	 printf("yaw (º),pitch (º),roll (º),uncomp_accel_x (m/s^2),uncomp_accel_y (m/s^2),uncomp_accel_z (m/s^2),"
-	 "uncomp_angular_rate_x (rad/s),uncomp_angular_rate_y (rad/s),uncomp_angular_rate_z (rad/s),press (Pa),altitude (m),"
-	 "accel_according_to_gravity (m/s^2),accel_x (m/s^2),accel_y (m/s^2),accel_z (m/s^2),angular_rate_x (rad/s),"
-	 "angular_rate_y (rad/s),angular_rate_z (rad/s),accel_N (m/s^2),accel_E (m/s^2),accel_D (m/s^2),time (ms)\r\n");
-
-	 while((count + sizeof(buffer_vectornav_imu)) < f_size(&cof->open_file)){
-
-	 Read_File(index_aux, &buffer_vectornav_imu, count, sizeof(buffer_vectornav_imu));
-
-	 printf("%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%lu\r\n",
-	 buffer_vectornav_imu.yaw, buffer_vectornav_imu.pitch, buffer_vectornav_imu.roll, buffer_vectornav_imu.uncomp_accel_x, buffer_vectornav_imu.uncomp_accel_y, buffer_vectornav_imu.uncomp_accel_z,
-	 buffer_vectornav_imu.uncomp_angular_rate_x, buffer_vectornav_imu.uncomp_angular_rate_y, buffer_vectornav_imu.uncomp_angular_rate_z, buffer_vectornav_imu.press, buffer_vectornav_imu.altitude,
-	 buffer_vectornav_imu.accel_according_to_gravity, buffer_vectornav_imu.accel_x, buffer_vectornav_imu.accel_y, buffer_vectornav_imu.accel_z, buffer_vectornav_imu.angular_rate_x, buffer_vectornav_imu.angular_rate_y,
-	 buffer_vectornav_imu.angular_rate_z, buffer_vectornav_imu.accel_N, buffer_vectornav_imu.accel_E, buffer_vectornav_imu.accel_D, buffer_vectornav_imu.time);
-
-	 count = count + sizeof(buffer_vectornav_imu);
-	 }
-	 printf("\r\n");
-	 count = 0;
-
-
-	 GPS_t buffer_ublox = {};
-	 sprintf(nome, "%s_%d.txt","ublox_gps", SD_CARD_NUMBER);
-	 index_aux = Open_File(nome);
-	 cof = get_open_file(index_aux);
-
-	 printf("dec_longitude (º),dec_latitude (º),altitude_ft (ft),nmea_longitude (º),nmea_latitude (º),utc_time (HH:MM:SS),ns (N,S),ew (E,W),lock (bool),satelites,hdop,msl_altitude,msl_units,rmc_status,speed_k,course_d,date,magnetic_dev,magnetic_dev_unit,time (ms)\r\n");
-
-	 while((count + sizeof(buffer_ublox)) < f_size(&cof->open_file)){
-
-	 Read_File(index_aux, &buffer_ublox, count, sizeof(buffer_ublox));
-
-	 printf("%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%c,%c,%d,%d,%.6f,%.2f,%c,%c,%.6f,%.6f,%d,%.6f,%c,%lu\r\n",
-	 buffer_ublox.dec_longitude, buffer_ublox.dec_latitude, buffer_ublox.altitude_ft,
-	 buffer_ublox.nmea_longitude, buffer_ublox.nmea_latitude, buffer_ublox.utc_time,
-	 buffer_ublox.ns, buffer_ublox.ew, buffer_ublox.lock, buffer_ublox.satelites,
-	 buffer_ublox.hdop, buffer_ublox.msl_altitude, buffer_ublox.msl_units,
-	 buffer_ublox.rmc_status, buffer_ublox.speed_k, buffer_ublox.course_d,
-	 buffer_ublox.date, buffer_ublox.magnetic_dev, buffer_ublox.magnetic_dev_unit,
-	 buffer_ublox.time);
-	 count = count + sizeof(buffer_ublox);
-	 }
-	 printf("\r\n");
-	 count = 0;
-
-
-	 kalman_filter_movimento_horizontal_typedef buffer_kalman_horizontal = {};
-	 sprintf(nome, "%s_%d.txt","kalman_horizontal", SD_CARD_NUMBER);
-	 index_aux = Open_File(nome);
-	 cof = get_open_file(index_aux);
-
-	 printf("filtered_lat_pos(º),filtered_lat_vel (m/s),filtered_lat_acc (m/s^2),filtered_lon_pos (º),filtered_lon_vel (m/s),filtered_lon_acc (m/s^2),flight mode, time (ms)\r\n, vn_mag_x (gauss), vn_mag_y (gauss), vn_mag_z (gauss)");
-
-	 while((count + sizeof(buffer_kalman_horizontal)) < f_size(&cof->open_file)){
-
-	 Read_File(index_aux, &buffer_kalman_horizontal, count, sizeof(buffer_kalman_horizontal));
-
-	 printf("%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%d,%lu,%.6f,%.6f,%.6f\r\n",
-	 buffer_kalman_horizontal.filtered_lat_pos, buffer_kalman_horizontal.filtered_lat_vel,
-	 buffer_kalman_horizontal.filtered_lat_acc, buffer_kalman_horizontal.filtered_lon_pos,
-	 buffer_kalman_horizontal.filtered_lon_vel, buffer_kalman_horizontal.filtered_lon_acc,
-	 buffer_kalman_horizontal.flight_mode, buffer_kalman_horizontal.time,
-	 buffer_kalman_horizontal.mag_x, buffer_kalman_horizontal.mag_y, buffer_kalman_horizontal.mag_z);
-
-	 count = count + sizeof(buffer_kalman_horizontal);
-	 }
-	 printf("\r\n");
-	 count = 0;
-
-
-	 kalman_filter_movimento_vertical_typedef buffer_kalman_vertical = {};
-	 sprintf(nome, "%s_%d.txt","kalman_vertical", SD_CARD_NUMBER);
-	 index_aux = Open_File(nome);
-	 cof = get_open_file(index_aux);
-
-	 printf("filtered_altitude (m),filtered_velocity (m/s),filtered_acceleration (m/s^2),time (ms)\r\n");
-
-	 while((count + sizeof(buffer_kalman_vertical)) < f_size(&cof->open_file)){
-
-	 Read_File(index_aux, &buffer_kalman_vertical, count, sizeof(buffer_kalman_vertical));
-
-	 printf("%.6f,%.6f,%.6f,%lu\r\n",
-	 buffer_kalman_vertical.filtered_altitude,
-	 buffer_kalman_vertical.filtered_velocity,
-	 buffer_kalman_vertical.filtered_acceleration,
-	 buffer_kalman_vertical.time);
-
-	 count = count + sizeof(buffer_kalman_vertical);
-	 }
-	 printf("\r\n");
-	 count = 0;
-
-
-	 controller_typedef buffer_controller = {};
-	 sprintf(nome, "%s_%d.txt","controller", SD_CARD_NUMBER);
-	 index_aux = Open_File(nome);
-	 cof = get_open_file(index_aux);
-
-	 printf("previsao_apogeu (m),airbrakes (0-1),LQI (bool),time (ms)\r\n");
-
-	 while((count + sizeof(buffer_controller)) < f_size(&cof->open_file)){
-
-	 Read_File(index_aux, &buffer_controller, count, sizeof(buffer_controller));
-
-	 printf("%.6f,%.6f,%lu\r\n",
-	 buffer_controller.previsão_apogeu,
-	 buffer_controller.airbrakes,
-	 buffer_controller.time);
-
-	 count = count + sizeof(buffer_controller);
-	 }
-	 printf("\r\n");
-	 count = 0;
-
-	 printf("All files have been printed\r\n");*/
-}
 
 //* =============================>>>>>>>> FUNCTIONS CUSTOM OPEN FILE =====================================>>>>>>> */
 

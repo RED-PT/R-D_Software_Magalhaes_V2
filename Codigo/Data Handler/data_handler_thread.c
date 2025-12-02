@@ -136,6 +136,7 @@ void data_handler_thread_function() {
 
         bool should_flush = false;
         const char *flush_reason = "";
+        (void)flush_reason;
 
         // EVENT 1: Buffer threshold crossed (50% full)
         if (ulNotificationValue & DATA_HANDLER_NOTIFY_THRESHOLD) {
