@@ -1,10 +1,7 @@
 /*
  * telemetry.h
  *
- * Telemetry packet definitions for ground station communication
- *
- *  Created on: Oct 10, 2025
- *      Author: Tomas Teixeira
+ * TDMA-aware telemetry packet definitions
  */
 
 #ifndef TELEMETRY_TELEMETRY_H_
@@ -23,134 +20,140 @@
 #define TELEM_PACKET_SLOW       0x02
 #define TELEM_PACKET_EVENT      0x03
 #define TELEM_PACKET_COMMAND    0x04
-#define TELEM_PACKET_STATUS     0x05
+#define TELEM_PACKET_SYNC       0x05
 
 // ============================================================================
-// Fast Telemetry Packet (10 Hz during flight)
-// Critical sensor data for real-time monitoring
+// TDMA Configuration
+// ============================================================================
+#define TDMA_SUPERFRAME_MS      1000    // 1 second superframe
+#define TDMA_SLOT_MS            100     // 100ms per slot
+#define TDMA_SLOTS_PER_FRAME    10      // 10 slots per superframe
+#define TDMA_TX_SLOTS           8       // Slots 0-7 for fast telemetry
+#define TDMA_SLOW_SLOT          8       // Slot 8 for slow telemetry
+#define TDMA_RX_SLOT            9       // Slot 9 for GS commands
+
+// ============================================================================
+// Fast Telemetry Packet (slots 0-7)
 // ============================================================================
 typedef struct __attribute__((packed)) {
     uint8_t packet_type;        // TELEM_PACKET_FAST
+    uint8_t frame_id;           // Superframe counter (mod 256)
+    uint8_t slot_id;            // Current slot (0-9)
+    uint8_t seq;                // Sequence number
+    uint8_t flags;              // Event flags
     uint32_t time;              // Timestamp [ms]
+
+    // FSM state
     uint8_t state;              // FSM state
     uint8_t substate;           // FSM substate
 
-    // IMU data (if available)
-    int16_t accel_x;            // [mg] scaled
+    // Command ACK (piggyback)
+    uint8_t last_cmd_seq_acked; // Last command SEQ acknowledged
+    uint8_t last_cmd_status;    // 0=OK, 1=rejected, 2=error
+
+    // IMU data
+    int16_t accel_x;            // [mg]
     int16_t accel_y;
     int16_t accel_z;
-    int16_t gyro_x;             // [0.01 dps] scaled
+    int16_t gyro_x;             // [0.01 dps]
     int16_t gyro_y;
     int16_t gyro_z;
 
-    // Barometer data
-    int32_t pressure;           // [0.01 mbar] scaled
-    int16_t baro_temp;          // [0.01 C] scaled
-    int16_t altitude;           // [0.1 m] scaled
+    // Barometer
+    int16_t altitude;           // [0.1 m]
+    int16_t vario;              // [0.01 m/s] vertical velocity
 
-    // BNO055 orientation
-    int16_t heading;            // [0.01 deg] scaled
-    int16_t pitch;              // [0.01 deg] scaled
-    int16_t roll;               // [0.01 deg] scaled
+    // Orientation
+    int16_t pitch;              // [0.1 deg]
+    int16_t roll;               // [0.1 deg]
 
-    uint16_t crc16;             // CRC16 checksum
-} telemetry_fast_t;
+    uint16_t crc16;
+} telemetry_fast_t;  // 38 bytes
 
 // ============================================================================
-// Slow Telemetry Packet (1 Hz or slower)
-// Non-critical data, status info
+// Slow Telemetry Packet (slot 8)
 // ============================================================================
 typedef struct __attribute__((packed)) {
     uint8_t packet_type;        // TELEM_PACKET_SLOW
+    uint8_t frame_id;           // Superframe counter
+    uint8_t slot_id;            // Should be 8
+    uint8_t seq;                // Sequence number
     uint32_t time;              // Timestamp [ms]
 
-    // GPS data
+    // GPS
     int32_t latitude;           // [1e-7 deg]
     int32_t longitude;          // [1e-7 deg]
     int16_t gps_altitude;       // [0.1 m]
-    uint8_t gps_lock;           // Fix type
-    uint8_t satellites;         // Number of satellites
-    uint16_t hdop;              // [0.01]
-
-    // Temperature readings
-    int16_t temp_imu;           // [0.01 C]
-    int16_t temp_baro;          // [0.01 C]
+    uint8_t gps_lock;
+    uint8_t satellites;
 
     // System status
-    uint8_t battery_pct;        // Battery percentage
-    uint8_t sd_status;          // SD card status
-    uint16_t free_heap;         // FreeRTOS heap [bytes]
+    int16_t pressure;           // [0.1 mbar offset from 1000]
+    int16_t temp_baro;          // [0.1 C]
+    uint8_t battery_pct;
+    uint8_t sd_status;
+    uint16_t free_heap;
 
-    uint16_t crc16;             // CRC16 checksum
-} telemetry_slow_t;
+    uint16_t crc16;
+} telemetry_slow_t;  // 32 bytes
 
 // ============================================================================
-// Event Packet (sent on state changes, faults, etc.)
+// Event Packet (sent in any TX slot when event occurs)
 // ============================================================================
 typedef struct __attribute__((packed)) {
     uint8_t packet_type;        // TELEM_PACKET_EVENT
-    uint32_t time;              // Timestamp [ms]
-    uint8_t event_type;         // Event type (EVT_*)
-    uint8_t state;              // Current FSM state
-    uint8_t substate;           // Current FSM substate
+    uint8_t frame_id;
+    uint8_t slot_id;
+    uint8_t seq;
+    uint32_t time;
 
-    // Event payload (union for different event types)
-    union {
-        // State change
-        struct {
-            uint8_t old_state;
-            uint8_t old_sub;
-            uint8_t new_state;
-            uint8_t new_sub;
-            uint8_t reason;
-        } state_change;
+    uint8_t event_type;
+    uint8_t state;
+    uint8_t substate;
+    uint8_t payload[24];
 
-        // Fault
-        struct {
-            uint16_t code;
-            char desc[32];
-        } fault;
-
-        // Generic message
-        char msg[40];
-
-        // Raw bytes
-        uint8_t raw[40];
-    } payload;
-
-    uint16_t crc16;             // CRC16 checksum
-} telemetry_event_t;
+    uint16_t crc16;
+} telemetry_event_t;  // 38 bytes
 
 // ============================================================================
-// Command Packet (ground station -> flight computer)
+// Command Packet (GS → FC, slot 9)
 // ============================================================================
 typedef struct __attribute__((packed)) {
     uint8_t packet_type;        // TELEM_PACKET_COMMAND
-    uint32_t time;              // Timestamp [ms]
-    uint8_t cmd;                // Command type (CMD_*)
-    uint8_t ack_status;         // 0=OK, 1=rejected, 2=queued (for responses)
-    uint8_t current_state;      // Current FSM state (for responses)
-
-    // Command payload (optional, for commands with parameters)
-    union {
-        struct {
-            uint8_t profile_type;
-            float target_alt;
-            float flare_alt;
-        } profile;
-
-        float target_altitude;
-
-        uint8_t raw[16];
-    } payload;
-
-    uint16_t crc16;             // CRC16 checksum
-} command_packet_t;
+    uint8_t frame_id;           // GS superframe counter
+    uint8_t cmd_id;             // Command type
+    uint8_t cmd_seq;            // Command sequence for ACK
+    uint32_t time;              // GS timestamp
+    uint8_t params[8];          // Command parameters
+    uint16_t crc16;
+} command_packet_t;  // 16 bytes
 
 // ============================================================================
-// Radio Packet Wrapper (for queue transmission)
+// Sync Beacon Packet (GS → FC, slot 9, when no commands)
 // ============================================================================
-#define RADIO_MAX_PACKET_SIZE   64
+typedef struct __attribute__((packed)) {
+    uint8_t packet_type;        // TELEM_PACKET_SYNC
+    uint8_t frame_id;           // GS superframe counter
+    uint8_t slot_id;            // Should be 9
+    uint8_t reserved;
+    uint32_t gs_time;           // GS timestamp for sync
+    uint16_t crc16;
+} sync_packet_t;  // 10 bytes
+
+// ============================================================================
+// Telemetry Flags
+// ============================================================================
+#define TELEM_FLAG_EVENT_PENDING    (1 << 0)
+#define TELEM_FLAG_LOW_BATTERY      (1 << 1)
+#define TELEM_FLAG_SD_ERROR         (1 << 2)
+#define TELEM_FLAG_GPS_LOCK         (1 << 3)
+#define TELEM_FLAG_ARMED            (1 << 4)
+#define TELEM_FLAG_FLIGHT           (1 << 5)
+
+// ============================================================================
+// Radio Packet Wrapper
+// ============================================================================
+#define RADIO_MAX_PACKET_SIZE   48
 
 typedef struct {
     uint16_t length;
@@ -158,7 +161,7 @@ typedef struct {
 } radio_packet_t;
 
 // ============================================================================
-// Temperature Readings Structure
+// Temperature Readings
 // ============================================================================
 typedef struct {
     float imu_temp_c;
@@ -166,28 +169,20 @@ typedef struct {
 } temperature_readings_t;
 
 // ============================================================================
-// Telemetry Build Functions
+// Build Functions
 // ============================================================================
+uint16_t telemetry_build_fast(telemetry_fast_t *pkt, uint8_t frame_id, uint8_t slot_id,
+                               uint8_t seq, const void *fsm_ctx,
+                               const IMU_t *imu, const BARO_t *baro, const BNO_t *bno,
+                               uint8_t last_cmd_seq, uint8_t last_cmd_status);
 
-// Build fast telemetry packet
-// Returns: packet length on success, 0 on failure
-uint16_t telemetry_build_fast(telemetry_fast_t *pkt,
-                               const void *fsm_ctx,
-                               const IMU_t *imu,
-                               const BARO_t *baro,
-                               const BNO_t *bno);
+uint16_t telemetry_build_slow(telemetry_slow_t *pkt, uint8_t frame_id, uint8_t seq,
+                               const GPS_t *gps, const BARO_t *baro,
+                               uint8_t battery_pct, uint8_t sd_status);
 
-// Build slow telemetry packet
-uint16_t telemetry_build_slow(telemetry_slow_t *pkt,
-                               const temperature_readings_t *temps,
-                               const GPS_t *gps);
-
-// Build event packet
-uint16_t telemetry_build_event(telemetry_event_t *pkt,
-                                uint8_t event_type,
-                                uint8_t state,
-                                uint8_t substate,
-                                const void *payload,
-                                uint16_t payload_size);
+uint16_t telemetry_build_event(telemetry_event_t *pkt, uint8_t frame_id, uint8_t slot_id,
+                                uint8_t seq, uint8_t event_type,
+                                uint8_t state, uint8_t substate,
+                                const void *payload, uint16_t payload_size);
 
 #endif /* TELEMETRY_TELEMETRY_H_ */

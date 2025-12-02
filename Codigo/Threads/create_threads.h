@@ -54,6 +54,8 @@ extern TimerHandle_t xBnoTimer;
 extern QueueHandle_t queue_to_radio_tx;
 extern QueueHandle_t queue_radio_rx_to_fsm;
 extern QueueHandle_t queue_fsm_events;
+extern QueueHandle_t queue_cmd_to_fsm;
+extern QueueHandle_t queue_event_to_fsm;
 
 // Stream Buffers
 extern StreamBufferHandle_t stream_buffer_gps;

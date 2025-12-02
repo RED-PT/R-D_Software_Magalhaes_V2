@@ -1,227 +1,450 @@
 /*
- * radio_thread.c
+ * radio_thread.c - FIXED VERSION v3
  *
- * Fixed: Added proper packet accumulation for RX
+ * Key fixes:
+ * - slot_index properly updated
+ * - One TX per slot only
+ * - Guard time before RX slot to avoid collision
+ * - Better ACK tracking
  */
 
 #include "radio_thread.h"
 #include "Radio/LORA Drivers/e22_uart_dma.h"
-#include "Telemetry/telemetry.h"
 #include "Radio/CRC16/crc16.h"
 #include "cmsis_os.h"
+#include "FreeRTOS.h"
+#include "semphr.h"
+#include <string.h>
 
-#define QUEUE_RADIO_LENGTH 10
+// TDMA timing
+#define SLOT_DURATION_MS        TDMA_SLOT_MS
+#define FRAME_DURATION_MS       TDMA_SUPERFRAME_MS
+#define SYNC_TIMEOUT_FRAMES     10
+#define SYNC_CORRECTION_THRESH  10
+#define E22_TURNAROUND_MS       30      // E22 TX->RX turnaround time
 
-// RX packet accumulator
-#define RX_PACKET_BUFFER_SIZE 64
-static uint8_t rx_packet_buffer[RX_PACKET_BUFFER_SIZE];
-static uint16_t rx_packet_idx = 0;
-static uint32_t rx_last_byte_time = 0;
-#define RX_PACKET_TIMEOUT_MS 100  // Reset if no data for 100ms
+// TX timing within slot
+#define TX_START_OFFSET_MS      5       // Start TX 5ms into slot
+#define TX_END_OFFSET_MS        70      // Stop TX 70ms into slot (leave 30ms guard)
+#define RX_SLOT_GUARD_MS        20      // Don't TX in last 20ms of slot 8
 
-QueueHandle_t queue_to_radio = NULL;
+// When UNSYNCED, TX beacon every N seconds
+#define UNSYNC_BEACON_INTERVAL_MS  5000
 
-extern osThreadId_t radio_thread_id;
+// State
+tdma_ctx_t tdma_ctx = {0};
+radio_stats_t radio_stats = {0};
+
 extern fsm_ctx_t fsm_ctx;
 
+// Latest sensor data
+static IMU_t latest_imu = {0};
+static BARO_t latest_baro = {0};
+static BNO_t latest_bno = {0};
+static GPS_t latest_gps = {0};
+static SemaphoreHandle_t sensor_mutex = NULL;
+
+// RX packet accumulator
+#define RX_BUFFER_SIZE 64
+static uint8_t rx_buffer[RX_BUFFER_SIZE];
+static uint16_t rx_idx = 0;
+static uint32_t rx_last_byte_tick = 0;
+#define RX_TIMEOUT_MS 50
+
+// TX tracking
+static uint32_t last_tx_tick = 0;
+static uint32_t last_unsync_beacon_tick = 0;
+static bool tx_done_this_slot = false;  // Prevent multiple TX per slot
+
 // ============================================================================
-// Get expected packet size based on packet type
+// Sensor Data Update
 // ============================================================================
-static uint16_t get_expected_packet_size(uint8_t packet_type) {
-    switch (packet_type) {
-        case TELEM_PACKET_FAST:    return sizeof(telemetry_fast_t);
-        case TELEM_PACKET_SLOW:    return sizeof(telemetry_slow_t);
-        case TELEM_PACKET_EVENT:   return sizeof(telemetry_event_t);
-        case TELEM_PACKET_COMMAND: return sizeof(command_packet_t);
-        default: return 0;  // Unknown packet type
+void radio_update_sensor_data(const IMU_t *imu, const BARO_t *baro,
+                               const BNO_t *bno, const GPS_t *gps) {
+    if (sensor_mutex && xSemaphoreTake(sensor_mutex, pdMS_TO_TICKS(5)) == pdTRUE) {
+        if (imu) memcpy(&latest_imu, imu, sizeof(IMU_t));
+        if (baro) memcpy(&latest_baro, baro, sizeof(BARO_t));
+        if (bno) memcpy(&latest_bno, bno, sizeof(BNO_t));
+        if (gps) memcpy(&latest_gps, gps, sizeof(GPS_t));
+        xSemaphoreGive(sensor_mutex);
     }
 }
 
 // ============================================================================
-// Send ACK
+// TDMA Timing
 // ============================================================================
-static void send_command_ack(uint8_t cmd, uint8_t ack_status, uint8_t current_state) {
-    command_packet_t ack;
-    memset(&ack, 0, sizeof(command_packet_t));
+static uint8_t get_current_slot(void) {
+    uint32_t elapsed = HAL_GetTick() - tdma_ctx.frame_start_tick;
+    return (elapsed / SLOT_DURATION_MS) % TDMA_SLOTS_PER_FRAME;
+}
 
-    ack.packet_type = TELEM_PACKET_COMMAND;
-    ack.time = HAL_GetTick();
-    ack.cmd = cmd;
-    ack.ack_status = ack_status;
-    ack.current_state = current_state;
-    ack.crc16 = crc16_calculate((uint8_t*)&ack, sizeof(command_packet_t) - 2);
+static uint32_t get_time_in_slot(void) {
+    uint32_t elapsed = HAL_GetTick() - tdma_ctx.frame_start_tick;
+    return elapsed % SLOT_DURATION_MS;
+}
 
-    printf("[RADIO] Sending ACK for cmd=%d status=%d\r\n", cmd, ack_status);
+static void advance_frame(void) {
+    tdma_ctx.frame_id++;
+    tdma_ctx.frame_start_tick += FRAME_DURATION_MS;
+    // Don't reset slot_index here - it's calculated dynamically
+}
 
-    // Wait for TX to be free
-    uint32_t wait_start = HAL_GetTick();
-    while (E22_IsBusy() && (HAL_GetTick() - wait_start < 100)) {
-        vTaskDelay(pdMS_TO_TICKS(1));
-    }
+static bool can_transmit(void) {
+    // Don't TX if we recently transmitted (E22 turnaround)
+    uint32_t since_tx = HAL_GetTick() - last_tx_tick;
+    if (since_tx < E22_TURNAROUND_MS) return false;
 
-    if (E22_Transmit((uint8_t*)&ack, sizeof(command_packet_t))) {
-        printf("[RADIO] ACK sent OK\r\n");
+    // Don't TX if E22 is busy
+    if (E22_IsBusy()) return false;
+
+    // Already transmitted this slot
+    if (tx_done_this_slot) return false;
+
+    return true;
+}
+
+static void sync_to_gs(uint8_t gs_frame_id, uint32_t gs_time) {
+    uint32_t now = HAL_GetTick();
+
+    // When we receive a sync, we know GS sent it at the START of slot 9
+    // Align our frame so slot 9 starts at this moment
+    uint32_t new_frame_start = now - (TDMA_RX_SLOT * SLOT_DURATION_MS);
+
+    if (tdma_ctx.state == TDMA_SYNCED) {
+        // Already synced - check if we need correction
+        int32_t error = (int32_t)(new_frame_start - tdma_ctx.frame_start_tick);
+
+        if (error > SYNC_CORRECTION_THRESH || error < -SYNC_CORRECTION_THRESH) {
+            tdma_ctx.frame_start_tick = new_frame_start;
+            radio_stats.sync_corrections++;
+        }
     } else {
-        printf("[RADIO] ACK TX FAIL\r\n");
+        // First sync - hard align
+        tdma_ctx.frame_start_tick = new_frame_start;
+        tdma_ctx.state = TDMA_SYNCED;
+        printf("[RADIO] SYNCED! frame=%u\r\n", gs_frame_id);
+    }
+
+    tdma_ctx.frame_id = gs_frame_id;
+    tdma_ctx.last_sync_tick = now;
+    tdma_ctx.missed_sync_count = 0;
+}
+
+// ============================================================================
+// TX Functions
+// ============================================================================
+static void tx_fast_telemetry(uint8_t slot) {
+    if (!can_transmit()) return;
+
+    telemetry_fast_t pkt;
+
+    if (sensor_mutex && xSemaphoreTake(sensor_mutex, pdMS_TO_TICKS(2)) == pdTRUE) {
+        telemetry_build_fast(&pkt, tdma_ctx.frame_id, slot,
+                             tdma_ctx.fast_seq++, &fsm_ctx,
+                             &latest_imu, &latest_baro, &latest_bno,
+                             tdma_ctx.last_cmd_seq_received, tdma_ctx.last_cmd_status);
+        xSemaphoreGive(sensor_mutex);
+    } else {
+        telemetry_build_fast(&pkt, tdma_ctx.frame_id, slot,
+                             tdma_ctx.fast_seq++, &fsm_ctx,
+                             NULL, NULL, NULL,
+                             tdma_ctx.last_cmd_seq_received, tdma_ctx.last_cmd_status);
+    }
+
+    if (E22_Transmit((uint8_t*)&pkt, sizeof(pkt)) == E22_OK) {
+        radio_stats.tx_fast++;
+        last_tx_tick = HAL_GetTick();
+        tx_done_this_slot = true;
+    }
+}
+
+static void tx_slow_telemetry(uint8_t slot) {
+    if (!can_transmit()) return;
+
+    telemetry_slow_t pkt;
+
+    if (sensor_mutex && xSemaphoreTake(sensor_mutex, pdMS_TO_TICKS(2)) == pdTRUE) {
+        telemetry_build_slow(&pkt, tdma_ctx.frame_id, tdma_ctx.slow_seq++,
+                             &latest_gps, &latest_baro, 100, 1);
+        xSemaphoreGive(sensor_mutex);
+    } else {
+        telemetry_build_slow(&pkt, tdma_ctx.frame_id, tdma_ctx.slow_seq++,
+                             NULL, NULL, 100, 1);
+    }
+
+    if (E22_Transmit((uint8_t*)&pkt, sizeof(pkt)) == E22_OK) {
+        radio_stats.tx_slow++;
+        last_tx_tick = HAL_GetTick();
+        tx_done_this_slot = true;
     }
 }
 
 // ============================================================================
-// Process Command
+// RX Functions
 // ============================================================================
+static uint16_t get_packet_size(uint8_t type) {
+    switch (type) {
+        case TELEM_PACKET_COMMAND: return sizeof(command_packet_t);
+        case TELEM_PACKET_SYNC:    return sizeof(sync_packet_t);
+        default: return 0;
+    }
+}
+
 static void process_command(command_packet_t *cmd) {
-    printf("[RADIO] Processing command: CMD=%d\r\n", cmd->cmd);
-
-    // Verify CRC
     uint16_t calc_crc = crc16_calculate((uint8_t*)cmd, sizeof(command_packet_t) - 2);
-
     if (calc_crc != cmd->crc16) {
-        printf("[RADIO] CRC FAIL! calc=0x%04X recv=0x%04X\r\n", calc_crc, cmd->crc16);
+        radio_stats.crc_errors++;
         return;
     }
 
-    printf("[RADIO] CRC OK! CMD=%d\r\n", cmd->cmd);
+    radio_stats.rx_cmd++;
 
-    // TODO: Actually process the command (queue to FSM, etc.)
-    // For now, just send ACK
-    send_command_ack(cmd->cmd, 0, fsm_ctx.state);
+    // Store for ACK piggyback
+    tdma_ctx.last_cmd_seq_received = cmd->cmd_seq;
+
+    // Forward command to FSM thread via queue
+    fsm_cmd_msg_t fsm_msg = {0};
+    fsm_msg.cmd = (fsm_command_t)cmd->cmd_id;
+    fsm_msg.cmd_seq = cmd->cmd_seq;
+    memcpy(&fsm_msg.payload, cmd->params, sizeof(cmd->params));
+
+    if (fsm_send_command(fsm_msg.cmd, fsm_msg.cmd_seq, &fsm_msg.payload, sizeof(fsm_msg.payload))) {
+        tdma_ctx.last_cmd_status = 0;  // Queued OK
+        printf("[RADIO] CMD %d -> FSM queue\r\n", cmd->cmd_id);
+    } else {
+        tdma_ctx.last_cmd_status = 2;  // Queue full
+        printf("[RADIO] CMD queue FULL!\r\n");
+    }
+
+    // Sync timing
+    sync_to_gs(cmd->frame_id, cmd->time);
+}
+static void process_sync(sync_packet_t *sync) {
+    uint16_t calc_crc = crc16_calculate((uint8_t*)sync, sizeof(sync_packet_t) - 2);
+    if (calc_crc != sync->crc16) {
+        radio_stats.crc_errors++;
+        return;
+    }
+
+    radio_stats.rx_sync++;
+    sync_to_gs(sync->frame_id, sync->gs_time);
 }
 
-// ============================================================================
-// Process received byte - accumulates into packet buffer
-// Returns true if a complete packet was processed
-// ============================================================================
 static bool process_rx_byte(uint8_t byte) {
     uint32_t now = HAL_GetTick();
 
-    // Timeout: reset if too long since last byte
-    if (rx_packet_idx > 0 && (now - rx_last_byte_time) > RX_PACKET_TIMEOUT_MS) {
-        printf("[RADIO] RX timeout, resetting buffer (had %u bytes)\r\n", rx_packet_idx);
-        rx_packet_idx = 0;
+    // Timeout: reset buffer if no bytes for a while
+    if (rx_idx > 0 && (now - rx_last_byte_tick) > RX_TIMEOUT_MS) {
+        rx_idx = 0;
     }
+    rx_last_byte_tick = now;
 
-    rx_last_byte_time = now;
-
-    // First byte: check if it's a valid packet type
-    if (rx_packet_idx == 0) {
-        uint16_t expected = get_expected_packet_size(byte);
+    // First byte: validate packet type
+    if (rx_idx == 0) {
+        uint16_t expected = get_packet_size(byte);
         if (expected == 0) {
-            // Invalid packet type, discard
-            printf("[RADIO] Invalid packet type: 0x%02X\r\n", byte);
-            return false;
+            return false;  // Not a packet type we're looking for
         }
     }
 
     // Store byte
-    if (rx_packet_idx < RX_PACKET_BUFFER_SIZE) {
-        rx_packet_buffer[rx_packet_idx++] = byte;
+    if (rx_idx < RX_BUFFER_SIZE) {
+        rx_buffer[rx_idx++] = byte;
     } else {
-        // Buffer overflow, reset
-        printf("[RADIO] RX buffer overflow!\r\n");
-        rx_packet_idx = 0;
+        rx_idx = 0;
         return false;
     }
 
-    // Check if we have a complete packet
-    uint8_t packet_type = rx_packet_buffer[0];
-    uint16_t expected_size = get_expected_packet_size(packet_type);
+    // Check for complete packet
+    uint8_t type = rx_buffer[0];
+    uint16_t expected = get_packet_size(type);
 
-    if (rx_packet_idx >= expected_size) {
-        // Complete packet received!
-        printf("[RADIO] Complete packet: type=0x%02X size=%u\r\n", packet_type, rx_packet_idx);
-
-        // Process based on type
-        if (packet_type == TELEM_PACKET_COMMAND) {
-            command_packet_t *cmd = (command_packet_t*)rx_packet_buffer;
-            process_command(cmd);
-        } else {
-            printf("[RADIO] Ignoring non-command packet type=0x%02X\r\n", packet_type);
+    if (rx_idx >= expected) {
+        if (type == TELEM_PACKET_COMMAND) {
+            process_command((command_packet_t*)rx_buffer);
+        } else if (type == TELEM_PACKET_SYNC) {
+            process_sync((sync_packet_t*)rx_buffer);
         }
-
-        // Reset for next packet
-        rx_packet_idx = 0;
+        rx_idx = 0;
         return true;
     }
 
     return false;
 }
 
+static void process_rx_data(void) {
+    uint8_t temp[64];
+    int bytes = E22_Receive(temp, sizeof(temp));
+
+    for (int i = 0; i < bytes; i++) {
+        process_rx_byte(temp[i]);
+    }
+}
+
 // ============================================================================
-// Radio Thread
+// Mode Handlers
+// ============================================================================
+static void handle_synced_mode(void) {
+    uint32_t now = HAL_GetTick();
+
+    // Check for frame rollover
+    if ((now - tdma_ctx.frame_start_tick) >= FRAME_DURATION_MS) {
+        advance_frame();
+
+        // Check sync timeout
+        tdma_ctx.missed_sync_count++;
+        if (tdma_ctx.missed_sync_count >= SYNC_TIMEOUT_FRAMES) {
+            tdma_ctx.state = TDMA_UNSYNCED;
+            printf("[RADIO] Lost sync!\r\n");
+            return;
+        }
+    }
+
+    // Get current slot and time within slot
+    uint8_t slot = get_current_slot();
+    uint32_t time_in_slot = get_time_in_slot();
+
+    // Update global slot_index for other code that needs it
+    tdma_ctx.slot_index = slot;
+
+    // Detect slot change -> reset tx_done flag
+    static uint8_t last_slot = 255;
+    if (slot != last_slot) {
+        last_slot = slot;
+        tx_done_this_slot = false;
+    }
+
+    // Slot behavior based on current slot
+    if (slot < TDMA_TX_SLOTS) {
+        // Slots 0-7: Fast telemetry
+        // TX window: 5ms to 70ms into slot
+        if (time_in_slot >= TX_START_OFFSET_MS && time_in_slot < TX_END_OFFSET_MS) {
+            tx_fast_telemetry(slot);
+        }
+        // RX in second half of slot (after TX done)
+        if (time_in_slot >= TX_END_OFFSET_MS || tx_done_this_slot) {
+            process_rx_data();
+        }
+    }
+    else if (slot == TDMA_SLOW_SLOT) {
+        // Slot 8: Slow telemetry
+        // TX early, but stop before slot 9 to avoid collision with GS
+        if (time_in_slot >= TX_START_OFFSET_MS && time_in_slot < (SLOT_DURATION_MS - RX_SLOT_GUARD_MS)) {
+            tx_slow_telemetry(slot);
+        }
+        // RX after TX
+        if (tx_done_this_slot) {
+            process_rx_data();
+        }
+    }
+    else {
+        // Slot 9: RX only - listen for GS commands/sync
+        process_rx_data();
+    }
+}
+
+static void handle_unsynced_mode(void) {
+    uint32_t now = HAL_GetTick();
+
+    // In UNSYNCED mode: mostly listen, occasionally beacon
+
+    // Send a beacon every UNSYNC_BEACON_INTERVAL_MS so GS knows we're alive
+    if ((now - last_unsync_beacon_tick) >= UNSYNC_BEACON_INTERVAL_MS) {
+        if (!E22_IsBusy()) {
+            // Send with slot=0 since we don't know real slot
+            telemetry_fast_t pkt;
+            if (sensor_mutex && xSemaphoreTake(sensor_mutex, pdMS_TO_TICKS(2)) == pdTRUE) {
+                telemetry_build_fast(&pkt, tdma_ctx.frame_id, 0,
+                                     tdma_ctx.fast_seq++, &fsm_ctx,
+                                     &latest_imu, &latest_baro, &latest_bno,
+                                     tdma_ctx.last_cmd_seq_received, tdma_ctx.last_cmd_status);
+                xSemaphoreGive(sensor_mutex);
+            } else {
+                telemetry_build_fast(&pkt, tdma_ctx.frame_id, 0,
+                                     tdma_ctx.fast_seq++, &fsm_ctx,
+                                     NULL, NULL, NULL,
+                                     tdma_ctx.last_cmd_seq_received, tdma_ctx.last_cmd_status);
+            }
+
+            if (E22_Transmit((uint8_t*)&pkt, sizeof(pkt)) == E22_OK) {
+                radio_stats.tx_fast++;
+                last_tx_tick = HAL_GetTick();
+            }
+            last_unsync_beacon_tick = now;
+        }
+    }
+
+    // Continuously process RX data
+    process_rx_data();
+
+    // Keep frame counter advancing (free-running when unsynced)
+    if ((now - tdma_ctx.frame_start_tick) >= FRAME_DURATION_MS) {
+        tdma_ctx.frame_id++;
+        tdma_ctx.frame_start_tick = now;
+    }
+}
+
+// ============================================================================
+// Main Thread
 // ============================================================================
 void radio_thread_function() {
-    radio_packet_t tx_pkt;
-    uint32_t tx_count = 0;
-    uint32_t rx_count = 0;
-    uint32_t loop_count = 0;
+    printf("[RADIO] Thread starting...\r\n");
+    fsm_report_thread_started("RADIO");
 
-    printf("[RADIO] Thread started\r\n");
-
-    // Create TX queue
-    queue_to_radio = xQueueCreate(QUEUE_RADIO_LENGTH, sizeof(radio_packet_t));
-    if (!queue_to_radio) {
-        printf("[RADIO] Queue creation FAILED!\r\n");
-        vTaskSuspend(NULL);
+    // Initialize
+    sensor_mutex = xSemaphoreCreateMutex();
+    if (!sensor_mutex) {
+        printf("[RADIO] Mutex create failed!\r\n");
     }
-    printf("[RADIO] Queue created\r\n");
 
-    // Initialize E22
     if (!E22_Init(UART_RADIO)) {
-        printf("[RADIO] E22 Init FAILED!\r\n");
+        printf("[RADIO] Init FAIL\r\n");
+        fsm_report_init_status("RADIO", false);
         vTaskSuspend(NULL);
     }
+    fsm_report_init_status("RADIO", true);
+    printf("[RADIO] E22 initialized\r\n");
+    printf("[RADIO] Packet sizes: FAST=%u SLOW=%u CMD=%u SYNC=%u\r\n",
+           sizeof(telemetry_fast_t), sizeof(telemetry_slow_t),
+           sizeof(command_packet_t), sizeof(sync_packet_t));
 
-    printf("[RADIO] E22 Init OK\r\n");
-    printf("[RADIO] Packet sizes: CMD=%u FAST=%u SLOW=%u\r\n",
-           sizeof(command_packet_t), sizeof(telemetry_fast_t), sizeof(telemetry_slow_t));
-    printf("[RADIO] Loop starting...\r\n");
+    // Start in UNSYNCED state
+    memset(&tdma_ctx, 0, sizeof(tdma_ctx));
+    tdma_ctx.state = TDMA_UNSYNCED;
+    tdma_ctx.frame_start_tick = HAL_GetTick();
+    last_tx_tick = 0;
+    last_unsync_beacon_tick = 0;
+    tx_done_this_slot = false;
 
-    // Initialize RX state
-    rx_packet_idx = 0;
-    rx_last_byte_time = HAL_GetTick();
+    uint32_t last_stats_tick = HAL_GetTick();
 
-    while(1) {
-        loop_count++;
+    printf("[RADIO] Waiting for GS sync...\r\n");
 
-        // Stats every 5 seconds
-        if (loop_count % 500 == 0) {
-            printf("[RADIO] Loop %lu | TX=%lu RX=%lu\r\n", loop_count, tx_count, rx_count);
+    while (1) {
+        uint32_t now = HAL_GetTick();
+
+        if (tdma_ctx.state == TDMA_SYNCED) {
+            handle_synced_mode();
+        } else {
+            handle_unsynced_mode();
         }
 
-        // ========================================
-        // TX: Send telemetry packets from queue
-        // ========================================
-        if (xQueueReceive(queue_to_radio, &tx_pkt, 0) == pdTRUE) {
-            // Wait for TX to be free
-            uint32_t wait_start = HAL_GetTick();
-            while (E22_IsBusy() && (HAL_GetTick() - wait_start < 100)) {
-                vTaskDelay(pdMS_TO_TICKS(1));
-            }
+        // Stats every 10 seconds
+        if ((now - last_stats_tick) >= 10000) {
+            (void)E22_GetStats();
 
-            if (E22_Transmit(tx_pkt.buffer, tx_pkt.length)) {
-                tx_count++;
-            } else {
-                printf("[RADIO] TX FAIL\r\n");
-            }
+            printf("[RADIO] %s F=%u slot=%u | TX: f=%lu s=%lu | RX: cmd=%lu sync=%lu | CRC=%lu | ack_seq=%u\r\n",
+                   tdma_ctx.state == TDMA_SYNCED ? "SYNC" : "UNSYNC",
+                   tdma_ctx.frame_id, tdma_ctx.slot_index,
+                   radio_stats.tx_fast, radio_stats.tx_slow,
+                   radio_stats.rx_cmd, radio_stats.rx_sync,
+                   radio_stats.crc_errors,
+                   tdma_ctx.last_cmd_seq_received);
+
+            last_stats_tick = now;
         }
 
-        // ========================================
-        // RX: Process incoming bytes one at a time
-        // ========================================
-        if (E22_Available()) {
-            uint8_t temp_buf[64];
-            int bytes_read = E22_Receive(temp_buf, sizeof(temp_buf));
-
-            if (bytes_read > 0) {
-                // Process each byte through the packet accumulator
-                for (int i = 0; i < bytes_read; i++) {
-                    if (process_rx_byte(temp_buf[i])) {
-                        rx_count++;
-                    }
-                }
-            }
-        }
-
-        vTaskDelay(pdMS_TO_TICKS(10));
+        // Fast loop for responsive operation
+        vTaskDelay(pdMS_TO_TICKS(2));
     }
 }

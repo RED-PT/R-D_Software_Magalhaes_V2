@@ -1,8 +1,5 @@
 /*
  * estimator_thread.h
- *
- *  Created on: Oct 10, 2025
- *      Author: Tomas Teixeira
  */
 
 #ifndef ESTIMATOR_ESTIMATOR_THREAD_H_
@@ -17,8 +14,8 @@
 #include "print.h"
 
 #include "Data Handler/flash_data_handler.h"
+#include "Flight Computer/flight_computer.h"
 
 void estimator_thread_function();
-
 
 #endif /* ESTIMATOR_ESTIMATOR_THREAD_H_ */

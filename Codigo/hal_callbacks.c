@@ -163,12 +163,13 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 
     portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
-
+/*
 void HAL_UART_RxHalfCpltCallback(UART_HandleTypeDef *huart) {
     if (huart->Instance == UART_RADIO_INSTANCE) {
         E22_UART_RxHalfCpltCallback();
     }
 }
+*/
 
 
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) {

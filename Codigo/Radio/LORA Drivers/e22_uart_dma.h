@@ -1,8 +1,7 @@
 /*
  * e22_uart_dma.h
  *
- *  Created on: Nov 24, 2025
- *      Author: Tomas Teixeira
+ * Clean E22 driver with minimal debug output
  */
 
 #ifndef RADIO_LORA_DRIVERS_E22_UART_DMA_H_
@@ -19,40 +18,44 @@
 #define E22_MODE_CONFIG  2  // M0=0, M1=1: Configuration
 #define E22_MODE_SLEEP   3  // M0=1, M1=1: Sleep
 
-// Config structure
-typedef struct {
-    uint8_t address_high;
-    uint8_t address_low;
-    uint8_t channel;        // 0-83 (862-931MHz)
-    uint8_t air_data_rate;  // 0=2.4k, 1=4.8k, 2=9.6k, etc
-    uint8_t tx_power;       // 0=22dBm, 1=17dBm, 2=13dBm, 3=10dBm
-} E22_Config_t;
+// Error codes
+typedef enum {
+    E22_OK = 0,
+    E22_ERR_BUSY,
+    E22_ERR_TIMEOUT,
+    E22_ERR_OVERFLOW,
+    E22_ERR_INVALID_PARAM
+} E22_Status_t;
 
+// Statistics
 typedef struct {
-    uint8_t buffer[256];
-    uint16_t length;
-    int16_t rssi;
-} E22_Packet_t;
+    uint32_t tx_packets;
+    uint32_t tx_bytes;
+    uint32_t rx_packets;
+    uint32_t rx_bytes;
+    uint32_t rx_overruns;
+    uint32_t tx_failures;
+} E22_Stats_t;
 
 // Init/Config
 bool E22_Init(UART_HandleTypeDef *huart);
 void E22_SetMode(uint8_t mode);
-bool E22_Configure(E22_Config_t *config);
 bool E22_Reset(void);
 
 // TX/RX
-bool E22_Transmit(uint8_t *data, uint16_t length);
-bool E22_Available(void);
+E22_Status_t E22_Transmit(uint8_t *data, uint16_t length);
+uint16_t E22_Available(void);
 int E22_Receive(uint8_t *buffer, uint16_t max_length);
+void E22_FlushRx(void);
 
 // Status
 bool E22_IsBusy(void);
-int16_t E22_GetLastRSSI(void);
+E22_Stats_t E22_GetStats(void);
+void E22_ResetStats(void);
 
-// DMA Callbacks (called from hal_callbacks.c)
+// DMA Callbacks
 void E22_UART_TxCpltCallback(void);
 void E22_UART_RxCpltCallback(void);
-void E22_UART_RxHalfCpltCallback(void);
-
+void E22_UART_ErrorCallback(void);
 
 #endif /* RADIO_LORA_DRIVERS_E22_UART_DMA_H_ */

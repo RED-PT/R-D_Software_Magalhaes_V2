@@ -16,6 +16,7 @@
 #include "cmsis_os.h"
 #include <stdio.h>
 #include <string.h>
+#include "Flight Computer/flight_computer.h"
 
 static FATFS fs;
 static FIL file;
@@ -42,7 +43,11 @@ static void sd_card_init(void) {
     FRESULT res = f_mount(&fs, "", 0);
     if (res != FR_OK) {
         printf("ERROR: Failed to mount SD (error %d)\r\n", res);
+        fsm_report_init_status("SD_CARD", false);
         return;
+    }
+    else {
+    	fsm_report_init_status("SD_CARD", true);
     }
 
     printf("SD card mounted\r\n");
@@ -219,8 +224,9 @@ static void log_data_packet(const data_packet_t *packet) {
 
 void sd_card_thread_function(void *argument) {
     printf("SD Logger thread started...\r\n");
+    fsm_report_thread_started("SD_CARD");
 
-    sd_card_init();
+    sd_card_init();  // Inside this, report status
     sd_card_configure();
 
     TickType_t last_flush = xTaskGetTickCount();

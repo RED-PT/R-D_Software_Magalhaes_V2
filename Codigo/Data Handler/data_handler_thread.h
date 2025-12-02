@@ -29,7 +29,7 @@
 
 extern osThreadId_t data_handler_thread_id;
 
-void data_handler_thread_function(void *argument);
+void data_handler_thread_function();
 void data_handler_notify_threshold(void);
 
 #endif /* DATA_HANDLER_DATA_HANDLER_THREAD_H_ */

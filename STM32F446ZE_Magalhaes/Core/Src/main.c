@@ -185,7 +185,7 @@ int main(void)
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
   RetargetInit(UART_DEBUG);
-  fsm_init(); // MOVER PARA A THREAD????
+  //fsm_init(); // MOVER PARA A THREAD????
   create_threads();
   /* USER CODE END RTOS_THREADS */
 

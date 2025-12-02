@@ -1,70 +1,73 @@
+/*
+ * e22_uart_dma.c
+ *
+ * Clean E22 UART driver - minimal debug output, production ready
+ */
+
 #include "e22_uart_dma.h"
 #include "FreeRTOS.h"
 #include "task.h"
 #include <string.h>
-#include <stdio.h>
 
 static UART_HandleTypeDef *e22_uart = NULL;
 
-#define RX_BUFFER_SIZE 512
+#define RX_BUFFER_SIZE 256
+#define TX_BUFFER_SIZE 128
 #define E22_MAX_PACKET_SIZE 64
 
+// Circular RX buffer
 static uint8_t rx_dma_buffer[RX_BUFFER_SIZE];
 static volatile uint16_t rx_read_pos = 0;
 
+// TX buffer
 static volatile bool tx_busy = false;
-static uint8_t tx_buffer[256];
+static uint8_t tx_buffer[TX_BUFFER_SIZE];
 
-static int16_t last_rssi = -999;
+// Statistics
+static E22_Stats_t stats = {0};
 
-// Use pinos do config.h
-#define M0_E22_PORT RADIO_M0_PORT
-#define M0_E22_PIN RADIO_M0_PIN
-#define M1_E22_PORT RADIO_M1_PORT
-#define M1_E22_PIN RADIO_M1_PIN
-
-#define M0_LOW()  HAL_GPIO_WritePin(M0_E22_PORT, M0_E22_PIN, GPIO_PIN_RESET)
-#define M0_HIGH() HAL_GPIO_WritePin(M0_E22_PORT, M0_E22_PIN, GPIO_PIN_SET)
-#define M1_LOW()  HAL_GPIO_WritePin(M1_E22_PORT, M1_E22_PIN, GPIO_PIN_RESET)
-#define M1_HIGH() HAL_GPIO_WritePin(M1_E22_PORT, M1_E22_PIN, GPIO_PIN_SET)
+// Mode control macros
+#define M0_LOW()  HAL_GPIO_WritePin(RADIO_M0_PORT, RADIO_M0_PIN, GPIO_PIN_RESET)
+#define M0_HIGH() HAL_GPIO_WritePin(RADIO_M0_PORT, RADIO_M0_PIN, GPIO_PIN_SET)
+#define M1_LOW()  HAL_GPIO_WritePin(RADIO_M1_PORT, RADIO_M1_PIN, GPIO_PIN_RESET)
+#define M1_HIGH() HAL_GPIO_WritePin(RADIO_M1_PORT, RADIO_M1_PIN, GPIO_PIN_SET)
 
 void E22_SetMode(uint8_t mode) {
     switch(mode) {
         case E22_MODE_NORMAL: M0_LOW(); M1_LOW(); break;
-        case E22_MODE_WOR: M0_HIGH(); M1_LOW(); break;
+        case E22_MODE_WOR:    M0_HIGH(); M1_LOW(); break;
         case E22_MODE_CONFIG: M0_LOW(); M1_HIGH(); break;
-        case E22_MODE_SLEEP: M0_HIGH(); M1_HIGH(); break;
+        case E22_MODE_SLEEP:  M0_HIGH(); M1_HIGH(); break;
     }
-    HAL_Delay(100);
+    HAL_Delay(50);  // Mode switch settling time
 }
 
 bool E22_Init(UART_HandleTypeDef *huart) {
+    if (!huart) return false;
+
     e22_uart = huart;
     rx_read_pos = 0;
     tx_busy = false;
+    memset(&stats, 0, sizeof(stats));
 
-    printf("[E22] Forcing Normal Mode...\r\n");
+    // Force normal mode
+    M0_LOW();
+    M1_LOW();
+    HAL_Delay(200);
 
-    // FORÇA modo normal!
-    HAL_GPIO_WritePin(RADIO_M0_PORT, RADIO_M0_PIN, GPIO_PIN_RESET);
-    HAL_GPIO_WritePin(RADIO_M1_PORT, RADIO_M1_PIN, GPIO_PIN_RESET);
-    HAL_Delay(500);
-
-    printf("[E22] M0=0, M1=0\r\n");
-
+    // Start circular DMA reception
     HAL_UART_Receive_DMA(e22_uart, rx_dma_buffer, RX_BUFFER_SIZE);
 
-    printf("[E22] Init complete\r\n");
     return true;
 }
 
 bool E22_Reset(void) {
-    printf("[E22] Resetting...\r\n");
     E22_SetMode(E22_MODE_SLEEP);
-    HAL_Delay(200);
+    HAL_Delay(100);
     E22_SetMode(E22_MODE_NORMAL);
-    HAL_Delay(200);
+    HAL_Delay(100);
 
+    // Restart DMA
     HAL_UART_AbortReceive(e22_uart);
     rx_read_pos = 0;
     HAL_UART_Receive_DMA(e22_uart, rx_dma_buffer, RX_BUFFER_SIZE);
@@ -72,139 +75,103 @@ bool E22_Reset(void) {
     return true;
 }
 
-bool E22_Configure(E22_Config_t *config) {
-    if (!config) return false;
-
-    printf("[E22] Config: ADDR=%02X%02X CH=%d\r\n",
-           config->address_high, config->address_low, config->channel);
-
-    E22_SetMode(E22_MODE_CONFIG);
-    HAL_Delay(200);
-
-    // Escrever SÓ os registos essenciais
-    uint8_t cfg[6];
-    cfg[0] = 0xC0;  // Write command
-    cfg[1] = 0x00;  // Start ADDH register
-    cfg[2] = 0x03;  // Write 3 bytes
-    cfg[3] = config->address_high;  // REG0: ADDH
-    cfg[4] = config->address_low;   // REG1: ADDL
-    cfg[5] = config->channel;       // REG5: Channel
-
-    // Enviar via blocking (mais confiável para config)
-    HAL_UART_Transmit(e22_uart, cfg, 6, 1000);
-    HAL_Delay(200);
-
-    E22_SetMode(E22_MODE_NORMAL);
-    HAL_Delay(200);
-
-    printf("[E22] Config done\r\n");
-    return true;
-}
-
-bool E22_Transmit(uint8_t *data, uint16_t length) {
-    if (!data || length == 0 || length > E22_MAX_PACKET_SIZE || tx_busy) {
-        if (length > E22_MAX_PACKET_SIZE) {
-            printf("[E22] TX FAIL: %d bytes > %d max\r\n",
-                   length, E22_MAX_PACKET_SIZE);
-        }
-        return false;
-    }
+E22_Status_t E22_Transmit(uint8_t *data, uint16_t length) {
+    if (!data || length == 0) return E22_ERR_INVALID_PARAM;
+    if (length > E22_MAX_PACKET_SIZE) return E22_ERR_INVALID_PARAM;
+    if (tx_busy) return E22_ERR_BUSY;
 
     memcpy(tx_buffer, data, length);
-
     tx_busy = true;
+
     HAL_StatusTypeDef status = HAL_UART_Transmit_DMA(e22_uart, tx_buffer, length);
 
     if (status != HAL_OK) {
         tx_busy = false;
-        return false;
+        stats.tx_failures++;
+        return E22_ERR_TIMEOUT;
     }
 
-    return true;
+    stats.tx_packets++;
+    stats.tx_bytes += length;
+    return E22_OK;
 }
 
 void E22_UART_TxCpltCallback(void) {
     tx_busy = false;
 }
 
-void E22_UART_RxHalfCpltCallback(void) {
+void E22_UART_ErrorCallback(void) {
+    // Clear error flags and restart DMA
+    __HAL_UART_CLEAR_OREFLAG(e22_uart);
+    __HAL_UART_CLEAR_NEFLAG(e22_uart);
+    __HAL_UART_CLEAR_FEFLAG(e22_uart);
+
+    stats.rx_overruns++;
+
+    HAL_UART_AbortReceive(e22_uart);
+    rx_read_pos = 0;
+    HAL_UART_Receive_DMA(e22_uart, rx_dma_buffer, RX_BUFFER_SIZE);
 }
 
-void E22_UART_RxCpltCallback(void) {
-}
-
-bool E22_Available(void) {
-    static uint32_t ore_count = 0;
-    static uint32_t check_count = 0;
-
-    check_count++;
+uint16_t E22_Available(void) {
+    // Check for UART errors
+    if (__HAL_UART_GET_FLAG(e22_uart, UART_FLAG_ORE)) {
+        E22_UART_ErrorCallback();
+        return 0;
+    }
 
     uint16_t dma_remaining = __HAL_DMA_GET_COUNTER(e22_uart->hdmarx);
     uint16_t dma_pos = RX_BUFFER_SIZE - dma_remaining;
 
-    // Print SEMPRE que dma_pos muda
-    static uint16_t last_dma_pos = 0;
-    if (dma_pos != last_dma_pos) {
-        printf("[E22] DMA MOVED! pos=%u->%u read=%u\r\n",
-               last_dma_pos, dma_pos, rx_read_pos);
-        last_dma_pos = dma_pos;
+    if (dma_pos >= rx_read_pos) {
+        return dma_pos - rx_read_pos;
+    } else {
+        return RX_BUFFER_SIZE - rx_read_pos + dma_pos;
     }
-
-    if (__HAL_UART_GET_FLAG(e22_uart, UART_FLAG_ORE)) {
-        ore_count++;
-        printf("[E22] ORE #%lu!\r\n", ore_count);
-
-        __HAL_UART_CLEAR_OREFLAG(e22_uart);
-        __HAL_UART_CLEAR_NEFLAG(e22_uart);
-        __HAL_UART_CLEAR_FEFLAG(e22_uart);
-
-        HAL_UART_AbortReceive(e22_uart);
-        rx_read_pos = 0;
-        HAL_UART_Receive_DMA(e22_uart, rx_dma_buffer, RX_BUFFER_SIZE);
-
-        return false;
-    }
-
-    // Print a cada 1000 checks
-    if (check_count % 1000 == 0) {
-        printf("[E22] Checked %lu times | pos=%u read=%u\r\n",
-               check_count, dma_pos, rx_read_pos);
-    }
-
-    return (dma_pos != rx_read_pos);
 }
 
 int E22_Receive(uint8_t *buffer, uint16_t max_length) {
     if (!buffer || max_length == 0) return 0;
 
+    uint16_t available = E22_Available();
+    if (available == 0) return 0;
+
+    uint16_t to_read = (available < max_length) ? available : max_length;
+    uint16_t count = 0;
+
     uint16_t dma_remaining = __HAL_DMA_GET_COUNTER(e22_uart->hdmarx);
     uint16_t dma_pos = RX_BUFFER_SIZE - dma_remaining;
 
-    if (dma_pos == rx_read_pos) return 0;
-
-    uint16_t count = 0;
-
-    while (rx_read_pos != dma_pos && count < max_length) {
+    while (rx_read_pos != dma_pos && count < to_read) {
         buffer[count++] = rx_dma_buffer[rx_read_pos];
-        rx_read_pos++;
-        if (rx_read_pos >= RX_BUFFER_SIZE) rx_read_pos = 0;
+        rx_read_pos = (rx_read_pos + 1) % RX_BUFFER_SIZE;
     }
 
-    // Print SEMPRE que lê bytes
-    printf("[E22] Receive() read %u bytes\r\n", count);
-    printf("[E22] First 10 bytes: ");
-    for(int i = 0; i < count && i < 10; i++) {
-        printf("%02X ", buffer[i]);
+    if (count > 0) {
+        stats.rx_packets++;
+        stats.rx_bytes += count;
     }
-    printf("\r\n");
 
     return count;
+}
+
+void E22_FlushRx(void) {
+    uint16_t dma_remaining = __HAL_DMA_GET_COUNTER(e22_uart->hdmarx);
+    rx_read_pos = RX_BUFFER_SIZE - dma_remaining;
 }
 
 bool E22_IsBusy(void) {
     return tx_busy;
 }
 
-int16_t E22_GetLastRSSI(void) {
-    return last_rssi;
+E22_Stats_t E22_GetStats(void) {
+    return stats;
+}
+
+void E22_ResetStats(void) {
+    memset(&stats, 0, sizeof(stats));
+}
+
+void E22_UART_RxCpltCallback(void) {
+    // Circular DMA - nothing to do
 }

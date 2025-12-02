@@ -21,7 +21,8 @@ TimerHandle_t xBnoTimer = NULL;
 QueueHandle_t queue_to_radio_tx = NULL;
 QueueHandle_t queue_radio_rx_to_fsm = NULL;
 QueueHandle_t queue_fsm_events = NULL;
-
+QueueHandle_t queue_cmd_to_fsm = NULL;
+QueueHandle_t queue_event_to_fsm = NULL;
 // Stream Buffer
 StreamBufferHandle_t stream_buffer_gps;
 
@@ -87,6 +88,16 @@ void create_threads() {
 	if (queue_fsm_events == NULL) {
 		printf("ERROR: Failed to create queue_fsm_events\r\n");
 	}
+
+    queue_cmd_to_fsm = xQueueCreate(8, sizeof(fsm_cmd_msg_t));
+    if (queue_cmd_to_fsm == NULL) {
+        printf("ERROR: Failed to create queue_cmd_to_fsm\r\n");
+    }
+
+    queue_event_to_fsm = xQueueCreate(8, sizeof(fsm_event_msg_t));
+    if (queue_event_to_fsm == NULL) {
+        printf("ERROR: Failed to create queue_event_to_fsm\r\n");
+    }
 
 	printf("Queues created successfully\r\n");
 

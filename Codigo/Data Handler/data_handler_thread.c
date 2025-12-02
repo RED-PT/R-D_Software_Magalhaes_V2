@@ -112,8 +112,10 @@ static void flush_all_buffers(void) {
     flush_buffer_to_queues(&cb_gps, DATA_TYPE_GPS, &seq_tel_gps);
 }
 
-void data_handler_thread_function(void *argument) {
+void data_handler_thread_function() {
     printf("Data Handler thread started...\r\n");
+    fsm_report_thread_started("DATA_HANDLER");
+    fsm_report_init_status("DATA_HANDLER", true);
 
     TickType_t last_safety_flush = xTaskGetTickCount();
     const TickType_t safety_timeout = pdMS_TO_TICKS(SAFETY_FLUSH_TIMEOUT_MS);

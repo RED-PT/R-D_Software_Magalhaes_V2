@@ -159,16 +159,27 @@ bool ram_circular_buffer_is_empty(ram_circular_buffer_t *cb) {
 }
 
 static void distribute_data_packet(const data_packet_t *packet) {
-    // Send to estimator (non-blocking, high priority data only)
-    if (packet->type == DATA_TYPE_IMU || packet->type == DATA_TYPE_MAG) {
-        xQueueSend(queue_to_estimator, packet, 0);
+    // Check FSM state for conditional routing
+    // NOTE: Use different names to avoid shadowing the global queue handles!
+    bool should_queue_to_est = fsm_should_queue_to_estimator();
+    bool should_queue_to_sd = fsm_should_queue_to_sd();
+
+    // Send to estimator only if in appropriate state
+    if (should_queue_to_est) {
+        if (packet->type == DATA_TYPE_IMU ||
+            packet->type == DATA_TYPE_BARO ||
+            packet->type == DATA_TYPE_MAG) {
+            xQueueSend(queue_to_estimator, packet, 0);
+        }
     }
 
-    // Send to telemetry (non-blocking)
+    // Always send to telemetry (for GS monitoring)
     xQueueSend(queue_to_telemetry, packet, 0);
 
-    // Send to sd (non-blocking, can drop if full)
-    xQueueSend(queue_to_sd, packet, 0);
+    // Send to SD only if logging enabled
+    if (should_queue_to_sd) {
+        xQueueSend(queue_to_sd, packet, 0);
+    }
 }
 
 // Helper Functions for Sensors

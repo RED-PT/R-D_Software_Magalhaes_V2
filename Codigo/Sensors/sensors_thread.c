@@ -57,49 +57,66 @@ void sensors_thread_init(void) {
 
     // Initialize IMU
     printf("Initializing IMU...\r\n");
-    if (!ASM330LHHX_Init(&imu_device, SPI_IMU_BARO)) {
+    bool imu_ok = ASM330LHHX_Init(&imu_device, SPI_IMU_BARO);
+    fsm_report_init_status("IMU_INIT", imu_ok);
+
+    if (!imu_ok) {
         printf("ERROR: IMU init failed!\r\n");
         HAL_NVIC_DisableIRQ(EXTI15_10_IRQn);
         __HAL_GPIO_EXTI_CLEAR_IT(GPIO_PIN_11);
-    }
-    else {
-        if (!ASM330LHHX_Configure(&imu_device)) {
-            printf("ERROR: IMU configure failed!\n");
+    } else {
+        bool imu_cfg = ASM330LHHX_Configure(&imu_device);
+        fsm_report_init_status("IMU_CONFIG", imu_cfg);
+        if (!imu_cfg) {
+            printf("ERROR: IMU configure failed!\r\n");
         }
     }
 
     // Initialize Magnetometer
     printf("Initializing Magnetometer...\r\n");
-    if (!MMC5983MA_Init(&mag_device, SPI_MAG)) {
+    bool mag_ok = MMC5983MA_Init(&mag_device, SPI_MAG);
+    fsm_report_init_status("MAG_INIT", mag_ok);
+
+    if (!mag_ok) {
         printf("ERROR: MAG init failed!\r\n");
         __HAL_GPIO_EXTI_CLEAR_IT(GPIO_PIN_15);
-    }
-    else {
-        if (!MMC5983MA_Configure(&mag_device)) {
+    } else {
+        bool mag_cfg = MMC5983MA_Configure(&mag_device);
+        fsm_report_init_status("MAG_CONFIG", mag_cfg);
+        if (!mag_cfg) {
             printf("ERROR: MAG configure failed!\r\n");
         }
     }
 
     // Initialize Barometer
     printf("Initializing Barometer...\r\n");
-    if (!MS5607_Init(&baro_device, SPI_IMU_BARO, CS_BARO_PORT, CS_BARO_PIN)) {
+    bool baro_ok = MS5607_Init(&baro_device, SPI_IMU_BARO, CS_BARO_PORT, CS_BARO_PIN);
+    fsm_report_init_status("BARO_INIT", baro_ok);
+    if (!baro_ok) {
         printf("ERROR: BARO init failed!\r\n");
     }
 
     // Initialize BNO055
     printf("Initializing BNO055...\r\n");
-    if (!BNO055_Init(&bno_device, I2C_BNO)) {
+    bool bno_ok = BNO055_Init(&bno_device, I2C_BNO);
+    fsm_report_init_status("BNO_INIT", bno_ok);
+
+    if (!bno_ok) {
         printf("ERROR: BNO init failed!\r\n");
-    }
-    else {
-        if (!BNO055_Configure(&bno_device)) {
+    } else {
+        bool bno_cfg = BNO055_Configure(&bno_device);
+        fsm_report_init_status("BNO_CONFIG", bno_cfg);
+        if (!bno_cfg) {
             printf("ERROR: BNO configure failed!\r\n");
         }
     }
 
     // Initialize GPS
     printf("Initializing GPS...\r\n");
-    if (!UBLOX_GPS_Init(&gps_device, UART_UBLOX)) {
+    bool gps_ok = UBLOX_GPS_Init(&gps_device, UART_UBLOX);
+    fsm_report_init_status("GPS_INIT", gps_ok);
+
+    if (!gps_ok) {
         printf("ERROR: GPS init failed!\r\n");
     } else {
         HAL_Delay(500);
@@ -108,19 +125,23 @@ void sensors_thread_init(void) {
         UBLOX_GPS_SaveConfig(&gps_device);
         HAL_Delay(500);
 
-        if (!UBLOX_GPS_StartDMA(&gps_device)) {
+        bool gps_dma = UBLOX_GPS_StartDMA(&gps_device);
+        fsm_report_init_status("GPS_CONFIG", gps_dma);
+        if (!gps_dma) {
             printf("ERROR: GPS DMA start failed!\r\n");
         }
     }
 
-    printf("Sensors initialized successfully!\r\n");
+    printf("Sensors initialization complete!\r\n");
 }
 
 // Thread Main Loop - UNCHANGED from your original
 void sensors_thread_function(void *argument) {
 	data_handler_init();
 	sensors_thread_init();
-    printf("Sensors thread started...\r\n");
+
+	printf("Sensors thread started...\r\n");
+	fsm_report_thread_started("SENSORS");
 
     uint32_t ulNotificationValue;
     const TickType_t xMaxBlockTime = pdMS_TO_TICKS(10);
