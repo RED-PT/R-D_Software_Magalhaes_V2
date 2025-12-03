@@ -1,9 +1,11 @@
 /*
- * MS5607.c - Altimeter Driver - CORRECTED BIT SHIFTS
+ * MS5607.c - Altimeter Driver with Launch Pad Calibration
  *
  *  Created on: Oct 16, 2025
  *      Author: Tomas Teixeira
- *  Fixed: Bit shift error causing pressure to be half of actual value
+ *
+ *  Calibration feature: Stores reference pressure at launch pad to compute
+ *  AGL (Above Ground Level) altitude instead of MSL altitude.
  */
 
 #include "MS5607.h"
@@ -28,7 +30,6 @@ bool MS5607_Init(MS5607_t *dev, SPI_HandleTypeDef *hspi,
     dev->cs_pin = cs_pin;
 
     // Reset sensor
-    //printf("MS5607: Sending reset command...\r\n");
     uint8_t cmd = CMD_RESET;
     MS5607_Select(dev);
     HAL_Delay(1);
@@ -41,7 +42,6 @@ bool MS5607_Init(MS5607_t *dev, SPI_HandleTypeDef *hspi,
     }
 
     HAL_Delay(10);
-    //printf("MS5607: Reset complete, reading calibration...\r\n");
 
     // Read calibration coefficients from PROM
     for (uint8_t i = 0; i < 7; i++) {
@@ -65,23 +65,19 @@ bool MS5607_Init(MS5607_t *dev, SPI_HandleTypeDef *hspi,
         }
 
         C[i] = ((uint16_t)rx_buf[0] << 8) | rx_buf[1];
-        //printf("C[%d] = 0x%04X (%u) [raw bytes: 0x%02X 0x%02X]\r\n",
-        //i, C[i], C[i], rx_buf[0], rx_buf[1]);
     }
 
     // Validate calibration coefficients
     if (C[0] == 0x0000 || C[0] == 0xFFFF) {
         printf("ERROR: Invalid C[0] = 0x%04X - sensor not responding!\r\n", C[0]);
-        printf("Check: SPI wiring, chip select, power supply\r\n");
         return false;
     }
 
-    // Additional validation - typical ranges from datasheet
-    if (C[1] < 30000 || C[1] > 50000) {
-        printf("WARNING: C[1] = %u is outside typical range (30000-50000)\r\n", C[1]);
-    }
+    return true;
+}
 
-    //printf("MS5607: Initialization successful!\r\n");
+bool MS5607_Configure(MS5607_t *dev) {
+    // MS5607 doesn't need additional configuration after init
     return true;
 }
 
@@ -102,7 +98,6 @@ bool MS5607_ReadTemperatureandPressure(MS5607_t *dev, BARO_t *output) {
     MS5607_Deselect(dev);
 
     if (status != HAL_OK) {
-        printf("ERROR: Failed to send D2 conversion command\r\n");
         return false;
     }
 
@@ -115,7 +110,6 @@ bool MS5607_ReadTemperatureandPressure(MS5607_t *dev, BARO_t *output) {
     status = HAL_SPI_Transmit(dev->hspi, &cmd, 1, HAL_MAX_DELAY);
     if (status != HAL_OK) {
         MS5607_Deselect(dev);
-        printf("ERROR: Failed to send ADC read command for D2\r\n");
         return false;
     }
 
@@ -123,7 +117,6 @@ bool MS5607_ReadTemperatureandPressure(MS5607_t *dev, BARO_t *output) {
     MS5607_Deselect(dev);
 
     if (status != HAL_OK) {
-        printf("ERROR: Failed to receive D2 ADC data\r\n");
         return false;
     }
 
@@ -136,7 +129,6 @@ bool MS5607_ReadTemperatureandPressure(MS5607_t *dev, BARO_t *output) {
     MS5607_Deselect(dev);
 
     if (status != HAL_OK) {
-        printf("ERROR: Failed to send D1 conversion command\r\n");
         return false;
     }
 
@@ -148,7 +140,6 @@ bool MS5607_ReadTemperatureandPressure(MS5607_t *dev, BARO_t *output) {
     status = HAL_SPI_Transmit(dev->hspi, &cmd, 1, HAL_MAX_DELAY);
     if (status != HAL_OK) {
         MS5607_Deselect(dev);
-        printf("ERROR: Failed to send ADC read command for D1\r\n");
         return false;
     }
 
@@ -156,7 +147,6 @@ bool MS5607_ReadTemperatureandPressure(MS5607_t *dev, BARO_t *output) {
     MS5607_Deselect(dev);
 
     if (status != HAL_OK) {
-        printf("ERROR: Failed to receive D1 ADC data\r\n");
         return false;
     }
 
@@ -166,31 +156,111 @@ bool MS5607_ReadTemperatureandPressure(MS5607_t *dev, BARO_t *output) {
     int64_t dT = (int64_t)D2 - ((int64_t)C[5] << 8);
     int32_t TEMP = 2000 + (int32_t)((dT * (int64_t)C[6]) >> 23);
 
-    // Calculate pressure offset and sensitivity
-    // CRITICAL FIX: Changed << 16 to << 17 for OFF, and << 15 to << 16 for SENS
+    // Calculate pressure offset and sensitivity (CORRECTED bit shifts)
     int64_t OFF = ((int64_t)C[2] << 17) + (((int64_t)dT * (int64_t)C[4]) >> 7);
     int64_t SENS = ((int64_t)C[1] << 16) + (((int64_t)dT * (int64_t)C[3]) >> 8);
 
     // Calculate final pressure
     int32_t P = (int32_t)(((((int64_t)D1 * SENS) >> 21) - OFF) >> 15);
 
-
     // Convert to output format
     output->temperature_c = (float)TEMP / 100.0f;
     output->pressure_mbar = (float)P / 100.0f;
 
-    // Calculate altitude using barometric formula
+    // Calculate MSL altitude using barometric formula (uncalibrated)
     #define SEA_LEVEL_PRESSURE 1013.25f
     float pressure_ratio = output->pressure_mbar / SEA_LEVEL_PRESSURE;
     output->altitude_m = 44330.0f * (1.0f - powf(pressure_ratio, 1.0f / 5.255f));
 
     output->timestamp_ms = HAL_GetTick();
 
-    // Debug output
-    //printf("D2=%lu D1=%lu T=%.2fC P=%.2fmbar Alt=%.1fm\r\n",
-    //       D2, D1, output->temperature_c, output->pressure_mbar, output->altitude_m);
+    return true;
+}
+
+// ============================================================================
+// Calibration Functions
+// ============================================================================
+
+bool MS5607_StartCalibration(MS5607_t *dev, baro_calibration_t *cal) {
+    if (!cal) return false;
+
+    // Reset calibration state
+    cal->is_calibrated = false;
+    cal->samples_collected = 0;
+    cal->pressure_sum = 0.0f;
+    cal->reference_pressure_mbar = 0.0f;
+    cal->reference_altitude_m = 0.0f;
+    cal->temperature_at_cal_c = 0.0f;
+    cal->calibration_timestamp = 0;
+
+    printf("[BARO] Starting calibration (%d samples)...\r\n", BARO_CALIBRATION_SAMPLES);
+    return true;
+}
+
+bool MS5607_AddCalibrationSample(MS5607_t *dev, baro_calibration_t *cal) {
+    if (!dev || !cal) return false;
+    if (cal->samples_collected >= BARO_CALIBRATION_SAMPLES) return false;
+
+    BARO_t reading;
+    if (!MS5607_ReadTemperatureandPressure(dev, &reading)) {
+        printf("[BARO] Failed to read sample %d\r\n", cal->samples_collected);
+        return false;
+    }
+
+    cal->pressure_sum += reading.pressure_mbar;
+    cal->temperature_at_cal_c = reading.temperature_c;  // Use last temp
+    cal->samples_collected++;
 
     return true;
+}
+
+bool MS5607_FinishCalibration(baro_calibration_t *cal) {
+    if (!cal) return false;
+    if (cal->samples_collected < BARO_CALIBRATION_SAMPLES) {
+        printf("[BARO] Not enough samples: %d/%d\r\n",
+               cal->samples_collected, BARO_CALIBRATION_SAMPLES);
+        return false;
+    }
+
+    // Calculate average pressure
+    cal->reference_pressure_mbar = cal->pressure_sum / (float)cal->samples_collected;
+    cal->calibration_timestamp = HAL_GetTick();
+    cal->is_calibrated = true;
+
+    printf("[BARO] Calibration complete!\r\n");
+    printf("[BARO]   Reference pressure: %.2f mbar\r\n", cal->reference_pressure_mbar);
+    printf("[BARO]   Temperature: %.1f C\r\n", cal->temperature_at_cal_c);
+    printf("[BARO]   Samples: %d\r\n", cal->samples_collected);
+
+    return true;
+}
+
+bool MS5607_ReadWithCalibration(MS5607_t *dev, BARO_t *output,
+                                 const baro_calibration_t *cal) {
+    // First get the raw reading
+    if (!MS5607_ReadTemperatureandPressure(dev, output)) {
+        return false;
+    }
+
+    // If calibrated, compute AGL altitude
+    if (cal && cal->is_calibrated) {
+        output->altitude_m = MS5607_PressureToAltitude(output->pressure_mbar,
+                                                        cal->reference_pressure_mbar);
+    }
+    // Otherwise altitude_m contains MSL altitude (from standard pressure)
+
+    return true;
+}
+
+float MS5607_PressureToAltitude(float pressure_mbar, float ref_pressure_mbar) {
+    // Hypsometric formula: h = 44330 * (1 - (P/P0)^(1/5.255))
+    // When ref_pressure is launch pad pressure, result is AGL altitude
+    if (ref_pressure_mbar <= 0.0f) {
+        ref_pressure_mbar = 1013.25f;  // Fallback to sea level
+    }
+
+    float pressure_ratio = pressure_mbar / ref_pressure_mbar;
+    return 44330.0f * (1.0f - powf(pressure_ratio, 1.0f / 5.255f));
 }
 
 // Private Functions

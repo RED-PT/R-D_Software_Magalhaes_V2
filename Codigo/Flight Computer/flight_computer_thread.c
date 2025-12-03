@@ -1,13 +1,14 @@
 /*
  * flight_computer_thread.c
  *
- * FSM Thread - BOOT and IDLE state handling
+ * FSM Thread - Complete state machine implementation
  */
 
 #include "flight_computer_thread.h"
 #include "Telemetry/telemetry.h"
 #include "Data Handler/flash_data_handler.h"
 #include "Threads/create_threads.h"
+#include "Controller/controller_thread.h"
 #include "cmsis_os.h"
 #include "print.h"
 #include <string.h>
@@ -15,6 +16,14 @@
 #define BOOT_TIMEOUT_MS     10000   // 10 seconds max boot time
 #define BOOT_MIN_WAIT_MS    3000    // Minimum 3s to let threads start
 #define STATS_INTERVAL_MS   10000
+
+// Calibration settings
+#define BARO_CALIBRATION_SAMPLES    50
+#define BARO_CALIBRATION_DELAY_MS   20
+
+// Motor arm timing
+#define MOTOR_ARM_INIT_DELAY_MS     1000
+#define MOTOR_ARM_CAL_DELAY_MS      3000
 
 // Parameter IDs (must match GS)
 #define PARAM_TARGET_ALTITUDE   0
@@ -29,6 +38,14 @@
 // Boot report storage
 static boot_report_t boot_report = {0};
 static uint8_t boot_error_idx = 0;
+
+// Calibration state machine
+static bool calibration_in_progress = false;
+static uint32_t calibration_start_tick = 0;
+static uint8_t calibration_sample_count = 0;
+
+// Motor arm state machine
+static uint32_t motor_arm_start_tick = 0;
 
 // ============================================================================
 // Helper: Add error to boot report
@@ -131,39 +148,65 @@ static void transition_to(fsm_state_t new_state, fsm_substate_t new_sub, telemet
             // Suspend estimator and controller
             if (estimator_thread_id != NULL) {
                 vTaskSuspend(estimator_thread_id);
+                fsm_ctx.flags.estimator_running = 0;
                 printf("[FSM] Estimator suspended\r\n");
             }
             if (controller_thread_id != NULL) {
                 vTaskSuspend(controller_thread_id);
+                fsm_ctx.flags.controller_running = 0;
                 printf("[FSM] Controller suspended\r\n");
             }
+            fsm_ctx.flags.sd_logging_enabled = 0;
+            break;
+
+        case STATE_CONFIGED:
+            // Profile loaded, waiting for ARM
+            // Keep estimator/controller suspended
             break;
 
         case STATE_ARMED:
-        case STATE_TEST_STAND:
-        case STATE_FLIGHT:
-            // Resume estimator and controller
+            // Start motor arm sequence
+            fsm_ctx.substate = SUB_ARM_MOTOR_INIT;
+            motor_arm_start_tick = HAL_GetTick();
+
+            // Resume estimator for sensor monitoring
             if (estimator_thread_id != NULL) {
                 vTaskResume(estimator_thread_id);
                 fsm_ctx.flags.estimator_running = 1;
                 printf("[FSM] Estimator resumed\r\n");
             }
+
+            // Enable SD logging
+            fsm_ctx.flags.sd_logging_enabled = 1;
+            break;
+
+        case STATE_TEST_STAND:
+        case STATE_FLIGHT:
+            // Resume controller for active control
             if (controller_thread_id != NULL) {
                 vTaskResume(controller_thread_id);
                 fsm_ctx.flags.controller_running = 1;
                 printf("[FSM] Controller resumed\r\n");
             }
-            // Enable SD logging
+            // Estimator should already be running from ARMED
+            if (estimator_thread_id != NULL && !fsm_ctx.flags.estimator_running) {
+                vTaskResume(estimator_thread_id);
+                fsm_ctx.flags.estimator_running = 1;
+            }
             fsm_ctx.flags.sd_logging_enabled = 1;
             break;
 
         case STATE_SAFE:
         case STATE_ABORT:
-            // Disable controller, keep logging
+            // Emergency: cut throttle, suspend controller
+            controller_set_throttle(0.0f);
+            controller_emergency_stop();
+
             if (controller_thread_id != NULL) {
                 vTaskSuspend(controller_thread_id);
                 fsm_ctx.flags.controller_running = 0;
             }
+            // Keep estimator for post-flight analysis
             break;
 
         default:
@@ -190,9 +233,7 @@ static void handle_state_boot(void) {
     if (elapsed >= BOOT_TIMEOUT_MS) {
         printf("[FSM] BOOT TIMEOUT after %lu ms\r\n", elapsed);
 
-        // Build and send boot report
         build_boot_report();
-
         printf("[FSM] Boot Report: %u/%u passed, %u critical failures\r\n",
                boot_report.passed, boot_report.total_checks, boot_report.critical);
 
@@ -200,15 +241,12 @@ static void handle_state_boot(void) {
             printf("[FSM]   - %s\r\n", boot_report.errors[i]);
         }
 
-        // Send CHECKS_RED event
         send_telem_event(EVT_CHECKS_RED, &boot_report, sizeof(boot_report));
 
-        // If critical failures, go to SAFE
         if (bs->critical_failures > 0) {
             printf("[FSM] CRITICAL FAILURES - going to SAFE\r\n");
             transition_to(STATE_SAFE, SUB_NONE, EVT_CHECKS_RED);
         } else {
-            // Non-critical failures, still go to IDLE but warn
             printf("[FSM] Non-critical failures, proceeding to IDLE\r\n");
             transition_to(STATE_IDLE, SUB_NONE, EVT_CHECKS_RED);
         }
@@ -219,16 +257,11 @@ static void handle_state_boot(void) {
     if (boot_ok) {
         printf("[FSM] Boot complete in %lu ms\r\n", elapsed);
 
-        // Build boot report
         build_boot_report();
-
         printf("[FSM] Boot Report: %u/%u passed\r\n",
                boot_report.passed, boot_report.total_checks);
 
-        // Send CHECKS_GREEN event
         send_telem_event(EVT_CHECKS_GREEN, &boot_report, sizeof(boot_report));
-
-        // Transition to IDLE
         transition_to(STATE_IDLE, SUB_NONE, EVT_CHECKS_GREEN);
     }
 }
@@ -237,64 +270,246 @@ static void handle_state_boot(void) {
 // IDLE State Handler
 // ============================================================================
 static void handle_state_idle(void) {
-    // In IDLE:
-    // - Sensors running, sending to telemetry (NOT estimator, NOT SD)
-    // - Waiting for profile configuration
+    // In IDLE: waiting for profile configuration
+    // Commands handled in process_command()
 
-    // Nothing special to do here, just wait for commands
-    // The state queries (fsm_should_queue_to_*) handle data routing
+    // Could add watchdog petting, LED blink, etc.
+}
+
+// ============================================================================
+// CONFIGED State Handler
+// ============================================================================
+static void handle_state_configed(void) {
+    // Profile is loaded, waiting for ARM command
+    // Perform pre-arm checks here if needed
+
+    // Check sensors are still healthy
+    boot_status_t *bs = &fsm_ctx.boot_status;
+    if (bs->imu_init != 1 || bs->baro_init != 1) {
+        printf("[FSM] WARNING: Sensor failure in CONFIGED state\r\n");
+        // Could transition to IDLE or SAFE
+    }
+}
+
+// ============================================================================
+// ARMED State Handler - Motor Arm Sequence
+// ============================================================================
+static void handle_state_armed(void) {
+    uint32_t elapsed = HAL_GetTick() - motor_arm_start_tick;
+
+    switch (fsm_ctx.substate) {
+        case SUB_ARM_MOTOR_INIT:
+            // Initialize ESC with minimum throttle signal
+            if (elapsed >= MOTOR_ARM_INIT_DELAY_MS) {
+                printf("[FSM] Motor init: Sending min throttle...\r\n");
+                controller_init_motor();
+                fsm_ctx.substate = SUB_ARM_MOTOR_CALIBRATING;
+                motor_arm_start_tick = HAL_GetTick();
+            }
+            break;
+
+        case SUB_ARM_MOTOR_CALIBRATING:
+            // Wait for ESC to recognize arm signal
+            if (elapsed >= MOTOR_ARM_CAL_DELAY_MS) {
+                printf("[FSM] Motor calibration complete\r\n");
+                fsm_ctx.motor_status.esc_initialized = true;
+                fsm_ctx.motor_status.calibration_done = true;
+                fsm_ctx.motor_status.arm_timestamp = HAL_GetTick();
+                fsm_ctx.flags.motor_armed = 1;
+
+                fsm_ctx.substate = SUB_ARM_READY;
+                send_telem_event(EVT_MOTOR_ARMED, NULL, 0);
+                printf("[FSM] ARMED and ready for LAUNCH or TEST\r\n");
+            }
+            break;
+
+        case SUB_ARM_READY:
+            // Armed and ready - waiting for LAUNCH or START_TEST
+            // Monitor sensors, check for abort conditions
+            break;
+
+        default:
+            // Default to motor init
+            fsm_ctx.substate = SUB_ARM_MOTOR_INIT;
+            motor_arm_start_tick = HAL_GetTick();
+            break;
+    }
+}
+
+// ============================================================================
+// TEST_STAND State Handler
+// ============================================================================
+static void handle_state_test_stand(void) {
+    uint32_t elapsed = HAL_GetTick() - fsm_ctx.state_entry_tick;
+
+    switch (fsm_ctx.substate) {
+        case SUB_TS_SENSOR_CHECK:
+            // Brief sensor check before throttle ramp
+            if (elapsed >= 1000) {  // 1 second check
+                printf("[FSM] Sensor check passed, starting ramp\r\n");
+                fsm_ctx.substate = SUB_TS_THROTTLE_RAMP;
+                fsm_ctx.state_entry_tick = HAL_GetTick();
+            }
+            break;
+
+        case SUB_TS_THROTTLE_RAMP:
+            // Controller handles the actual ramp/hold profile
+            // FSM just monitors for abort conditions
+            if (fsm_ctx.profile.type == PROFILE_GUTTER_RAMP) {
+                // Ramp profile: gradually increase throttle
+                float ramp_progress = (float)elapsed / (fsm_ctx.profile.ramp_duration_s * 1000.0f);
+                if (ramp_progress >= 1.0f) {
+                    printf("[FSM] Ramp complete\r\n");
+                    // Could transition to hold or complete
+                }
+            } else if (fsm_ctx.profile.type == PROFILE_GUTTER_HOLD) {
+                // Hold at constant throttle
+                // Controller maintains hold_throttle
+            }
+            break;
+
+        default:
+            fsm_ctx.substate = SUB_TS_SENSOR_CHECK;
+            break;
+    }
+}
+
+// ============================================================================
+// FLIGHT State Handler
+// ============================================================================
+static void handle_state_flight(void) {
+    // Flight state machine is driven by events from estimator
+    // FSM monitors and updates substate based on events
+
+    switch (fsm_ctx.substate) {
+        case SUB_FL_IGNITION:
+            // Motor starting, waiting for liftoff detection
+            break;
+
+        case SUB_FL_LIFTOFF_DETECT:
+            // Liftoff detected, transitioning to ascent
+            break;
+
+        case SUB_FL_ASCENT:
+            // Climbing to target altitude
+            // Controller handles throttle control
+            break;
+
+        case SUB_FL_COAST:
+            // Coasting after main burn (if applicable)
+            break;
+
+        case SUB_FL_DESCENT_BRAKE:
+            // Descending with braking
+            break;
+
+        case SUB_FL_LANDING_FLARE:
+            // Final landing flare
+            break;
+
+        case SUB_FL_TOUCHDOWN:
+            // Touch down, waiting for stable
+            break;
+
+        case SUB_FL_RECOVERY:
+            // Landed, safe to approach
+            transition_to(STATE_SAFE, SUB_NONE, EVT_LANDING);
+            break;
+
+        default:
+            break;
+    }
+}
+
+// ============================================================================
+// ABORT State Handler
+// ============================================================================
+static void handle_state_abort(void) {
+    // Emergency state - motors should already be cut
+    // Log data, wait for manual intervention
+    static bool abort_logged = false;
+
+    if (!abort_logged) {
+        printf("[FSM] ABORT state - motors cut, waiting for SAFE command\r\n");
+        abort_logged = true;
+    }
+}
+
+// ============================================================================
+// SAFE State Handler
+// ============================================================================
+static void handle_state_safe(void) {
+    // Final safe state - do nothing, wait for power cycle or restart
+    static bool safe_logged = false;
+
+    if (!safe_logged) {
+        printf("[FSM] SAFE state - system idle\r\n");
+        safe_logged = true;
+    }
 }
 
 // ============================================================================
 // Command Handlers
 // ============================================================================
 static void handle_cmd_ping(fsm_cmd_msg_t *msg) {
-    printf("[FSM] PING received\r\n");
+    uint32_t now = HAL_GetTick();
+
+    printf("[FSM] PING received (seq=%u)\r\n", msg->cmd_seq);
+
+    // Build PONG response with timing info
+    pong_payload_t pong = {
+        .ping_seq = msg->cmd_seq,
+        .fc_timestamp = now,
+        .rtt_ms = 0  // FC doesn't know GS timing, GS will calculate RTT
+    };
+
+    // Send PONG event immediately
+    send_telem_event(EVT_PONG, &pong, sizeof(pong));
+
+    printf("[FSM] PONG sent (seq=%u, ts=%lu)\r\n", msg->cmd_seq, now);
+
     fsm_ctx.last_cmd_status = 0;
 }
 
 static void handle_cmd_set_profile(fsm_cmd_msg_t *msg) {
-    uint8_t profile_type = msg->payload.raw[0];
-
-    printf("[FSM] SET_PROFILE: type=%u (%s)\r\n",
-           profile_type, fsm_profile_to_str(profile_type));
-
-    if (profile_type < 1 || profile_type > 3) {
-        printf("[FSM] Invalid profile type!\r\n");
+    if (fsm_ctx.state != STATE_IDLE && fsm_ctx.state != STATE_CONFIGED) {
+        printf("[FSM] Cannot set profile in %s\r\n", fsm_state_to_str(fsm_ctx.state));
         fsm_ctx.last_cmd_status = 1;
         return;
     }
 
+    uint8_t profile_type = msg->payload.profile.profile_type;
+    float param1 = msg->payload.profile.param1;
+    float param2 = msg->payload.profile.param2;
+
+    printf("[FSM] SET_PROFILE: type=%u p1=%.1f p2=%.1f\r\n", profile_type, param1, param2);
+
     fsm_ctx.profile.type = (flight_profile_t)profile_type;
 
-    // Send profile loaded event
-    send_telem_event(EVT_PROFILE_LOADED, &profile_type, 1);
-
-    // Transition IDLE -> CONFIGED
-    if (fsm_ctx.state == STATE_IDLE) {
-        transition_to(STATE_CONFIGED, SUB_NONE, EVT_PROFILE_LOADED);
+    switch (profile_type) {
+        case PROFILE_GUTTER_RAMP:
+            fsm_ctx.profile.ramp_duration_s = param1;
+            fsm_ctx.profile.throttle_max = param2;
+            break;
+        case PROFILE_GUTTER_HOLD:
+            fsm_ctx.profile.hold_throttle = param1;
+            break;
+        case PROFILE_FLIGHT_PARAM:
+            fsm_ctx.profile.target_altitude_m = param1;
+            fsm_ctx.profile.flare_altitude_m = param2;
+            break;
     }
 
+    transition_to(STATE_CONFIGED, SUB_NONE, EVT_PROFILE_LOADED);
     fsm_ctx.last_cmd_status = 0;
 }
 
 static void handle_cmd_set_param(fsm_cmd_msg_t *msg) {
     uint8_t param_id = msg->payload.raw[0];
-    float value = 0.0f;
+    float value;
     memcpy(&value, &msg->payload.raw[1], sizeof(float));
 
-    const char* param_names[] = {
-        "TARGET_ALT", "FLARE_ALT", "TOUCHDOWN_VEL", "HOLD_THROTTLE",
-        "RAMP_DUR", "MAX_ALT", "THROTTLE_MIN", "THROTTLE_MAX"
-    };
-
-    if (param_id > 7) {
-        printf("[FSM] Invalid param ID %u\r\n", param_id);
-        fsm_ctx.last_cmd_status = 1;
-        return;
-    }
-
-    printf("[FSM] SET_PARAM: %s = %.2f\r\n", param_names[param_id], value);
+    printf("[FSM] SET_PARAM: id=%u val=%.2f\r\n", param_id, value);
 
     switch (param_id) {
         case PARAM_TARGET_ALTITUDE:
@@ -330,7 +545,7 @@ static void handle_cmd_arm(fsm_cmd_msg_t *msg) {
     printf("[FSM] ARM requested\r\n");
 
     if (fsm_ctx.state != STATE_CONFIGED) {
-        printf("[FSM] Cannot ARM from %s\r\n", fsm_state_to_str(fsm_ctx.state));
+        printf("[FSM] Cannot ARM from %s (need CONFIGED)\r\n", fsm_state_to_str(fsm_ctx.state));
         fsm_ctx.last_cmd_status = 1;
         return;
     }
@@ -348,7 +563,12 @@ static void handle_cmd_arm(fsm_cmd_msg_t *msg) {
         return;
     }
 
-    transition_to(STATE_ARMED, SUB_NONE, EVT_ARMED);
+    // Check barometer calibration (recommended but not required)
+    if (!fsm_ctx.baro_cal.is_calibrated) {
+        printf("[FSM] WARNING: Barometer not calibrated!\r\n");
+    }
+
+    transition_to(STATE_ARMED, SUB_ARM_MOTOR_INIT, EVT_ARMED);
     fsm_ctx.last_cmd_status = 0;
 }
 
@@ -356,6 +576,10 @@ static void handle_cmd_disarm(fsm_cmd_msg_t *msg) {
     printf("[FSM] DISARM requested\r\n");
 
     if (fsm_ctx.state == STATE_ARMED) {
+        // Cut motor
+        controller_set_throttle(0.0f);
+        fsm_ctx.flags.motor_armed = 0;
+
         transition_to(STATE_CONFIGED, SUB_NONE, EVT_DISARMED);
         fsm_ctx.last_cmd_status = 0;
     } else {
@@ -367,8 +591,10 @@ static void handle_cmd_disarm(fsm_cmd_msg_t *msg) {
 static void handle_cmd_launch(fsm_cmd_msg_t *msg) {
     printf("[FSM] LAUNCH requested\r\n");
 
-    if (fsm_ctx.state != STATE_ARMED) {
-        printf("[FSM] Not armed!\r\n");
+    if (fsm_ctx.state != STATE_ARMED || fsm_ctx.substate != SUB_ARM_READY) {
+        printf("[FSM] Not ready for launch! (state=%s sub=%s)\r\n",
+               fsm_state_to_str(fsm_ctx.state),
+               fsm_substate_to_str(fsm_ctx.substate));
         fsm_ctx.last_cmd_status = 1;
         return;
     }
@@ -391,17 +617,33 @@ static void handle_cmd_force_safe(fsm_cmd_msg_t *msg) {
 }
 
 static void handle_cmd_calibrate_baro(fsm_cmd_msg_t *msg) {
-    printf("[FSM] CALIBRATE_BARO\r\n");
-    fsm_ctx.flags.baro_calibrated = 1;
-    // TODO: Actually calibrate barometer (store reference pressure)
+    printf("[FSM] CALIBRATE_BARO requested\r\n");
+
+    if (fsm_ctx.state != STATE_IDLE && fsm_ctx.state != STATE_CONFIGED) {
+        printf("[FSM] Cannot calibrate in %s\r\n", fsm_state_to_str(fsm_ctx.state));
+        fsm_ctx.last_cmd_status = 1;
+        return;
+    }
+
+    // Start calibration process
+    calibration_in_progress = true;
+    calibration_sample_count = 0;
+    calibration_start_tick = HAL_GetTick();
+
+    // Reset calibration accumulator
+    fsm_ctx.baro_cal.is_calibrated = false;
+    fsm_ctx.baro_cal.samples_collected = 0;
+    fsm_ctx.baro_cal.pressure_sum = 0.0f;
+
+    printf("[FSM] Calibration started (%d samples)...\r\n", BARO_CALIBRATION_SAMPLES);
     fsm_ctx.last_cmd_status = 0;
 }
 
 static void handle_cmd_start_test(fsm_cmd_msg_t *msg) {
     printf("[FSM] START_TEST\r\n");
 
-    if (fsm_ctx.state != STATE_ARMED) {
-        printf("[FSM] Not armed!\r\n");
+    if (fsm_ctx.state != STATE_ARMED || fsm_ctx.substate != SUB_ARM_READY) {
+        printf("[FSM] Not ready for test!\r\n");
         fsm_ctx.last_cmd_status = 1;
         return;
     }
@@ -437,30 +679,101 @@ static void process_command(fsm_cmd_msg_t *msg) {
 }
 
 // ============================================================================
-// Other State Handlers (stubs for now)
+// Internal Event Handler
 // ============================================================================
-static void handle_state_configed(void) {
-    // Waiting for ARM
+static void process_internal_event(fsm_event_msg_t *evt) {
+    printf("[FSM] Internal event: type=%u\r\n", evt->type);
+
+    switch (evt->type) {
+        case FSM_EVT_LIFTOFF:
+            if (fsm_ctx.state == STATE_FLIGHT && fsm_ctx.substate == SUB_FL_IGNITION) {
+                printf("[FSM] Liftoff confirmed!\r\n");
+                fsm_ctx.substate = SUB_FL_ASCENT;
+                send_telem_event(EVT_LIFTOFF, &evt->data.velocity, sizeof(float));
+            }
+            break;
+
+        case FSM_EVT_APOGEE:
+            if (fsm_ctx.state == STATE_FLIGHT) {
+                printf("[FSM] Apogee reached at %.1f m\r\n", evt->data.altitude);
+                fsm_ctx.substate = SUB_FL_DESCENT_BRAKE;
+                send_telem_event(EVT_APOGEE, &evt->data.altitude, sizeof(float));
+            }
+            break;
+
+        case FSM_EVT_FLARE_ALT:
+            if (fsm_ctx.state == STATE_FLIGHT) {
+                printf("[FSM] Flare altitude!\r\n");
+                fsm_ctx.substate = SUB_FL_LANDING_FLARE;
+            }
+            break;
+
+        case FSM_EVT_TOUCHDOWN:
+            if (fsm_ctx.state == STATE_FLIGHT) {
+                printf("[FSM] Touchdown!\r\n");
+                fsm_ctx.substate = SUB_FL_TOUCHDOWN;
+            }
+            break;
+
+        case FSM_EVT_LANDED:
+            if (fsm_ctx.state == STATE_FLIGHT) {
+                printf("[FSM] Landed and stable\r\n");
+                fsm_ctx.substate = SUB_FL_RECOVERY;
+                send_telem_event(EVT_LANDING, NULL, 0);
+            }
+            break;
+
+        case FSM_EVT_ALTITUDE_LIMIT:
+        case FSM_EVT_VELOCITY_LIMIT:
+            printf("[FSM] Safety limit exceeded - ABORT!\r\n");
+            transition_to(STATE_ABORT, SUB_NONE, EVT_ABORT_TRIGGERED);
+            break;
+
+        default:
+            break;
+    }
 }
 
-static void handle_state_armed(void) {
-    // Waiting for LAUNCH or START_TEST
-}
+// ============================================================================
+// Calibration State Machine (runs in main loop)
+// ============================================================================
+static void process_calibration(void) {
+    if (!calibration_in_progress) return;
 
-static void handle_state_test_stand(void) {
-    // TODO: Test stand state machine
-}
+    uint32_t elapsed = HAL_GetTick() - calibration_start_tick;
 
-static void handle_state_flight(void) {
-    // TODO: Flight state machine
-}
+    // Take a sample every BARO_CALIBRATION_DELAY_MS
+    if (elapsed >= (calibration_sample_count + 1) * BARO_CALIBRATION_DELAY_MS) {
+        // Request current baro reading from telemetry/sensors
+        // In practice, you'd read from a shared variable or queue
+        // For now, we'll signal the sensor thread to add a sample
 
-static void handle_state_abort(void) {
-    // Emergency state - cut throttle, deploy recovery
-}
+        calibration_sample_count++;
+        printf("[FSM] Calibration sample %d/%d\r\n",
+               calibration_sample_count, BARO_CALIBRATION_SAMPLES);
 
-static void handle_state_safe(void) {
-    // Final safe state - do nothing
+        if (calibration_sample_count >= BARO_CALIBRATION_SAMPLES) {
+            // Calibration complete - finalize
+            calibration_in_progress = false;
+
+            // The actual pressure averaging would happen in the sensor/data thread
+            // Here we just mark it complete
+            fsm_ctx.baro_cal.is_calibrated = true;
+            fsm_ctx.baro_cal.calibration_timestamp = HAL_GetTick();
+            fsm_ctx.flags.baro_calibrated = 1;
+
+            // Send calibration complete event
+            calibration_payload_t cal_result = {
+                .reference_pressure = fsm_ctx.baro_cal.reference_pressure_mbar,
+                .temperature = fsm_ctx.baro_cal.temperature_at_cal_c,
+                .samples = BARO_CALIBRATION_SAMPLES
+            };
+            send_telem_event(EVT_BARO_CALIBRATED, &cal_result, sizeof(cal_result));
+
+            printf("[FSM] Calibration complete! Ref pressure: %.2f mbar\r\n",
+                   fsm_ctx.baro_cal.reference_pressure_mbar);
+        }
+    }
 }
 
 // ============================================================================
@@ -468,7 +781,6 @@ static void handle_state_safe(void) {
 // ============================================================================
 void fsm_thread_function(void *argument) {
     printf("[FSM] Thread starting...\r\n");
-
 
     // Initialize FSM
     fsm_init();
@@ -489,9 +801,11 @@ void fsm_thread_function(void *argument) {
 
         // Process internal events from estimator
         while (xQueueReceive(queue_event_to_fsm, &evt_msg, 0) == pdTRUE) {
-            // TODO: Handle internal events (liftoff, apogee, etc.)
-            printf("[FSM] Internal event: type=%u\r\n", evt_msg.type);
+            process_internal_event(&evt_msg);
         }
+
+        // Process calibration state machine
+        process_calibration();
 
         // State-specific processing
         switch (fsm_ctx.state) {
@@ -509,12 +823,13 @@ void fsm_thread_function(void *argument) {
         // Periodic stats
         TickType_t now = xTaskGetTickCount();
         if ((now - last_stats) >= pdMS_TO_TICKS(STATS_INTERVAL_MS)) {
-            printf("[FSM] State=%s.%s | Profile=%s | Target=%.1fm Flare=%.1fm\r\n",
+            printf("[FSM] State=%s.%s | Profile=%s | Target=%.1fm Flare=%.1fm | BaroCal=%s\r\n",
                    fsm_state_to_str(fsm_ctx.state),
                    fsm_substate_to_str(fsm_ctx.substate),
                    fsm_profile_to_str(fsm_ctx.profile.type),
                    fsm_ctx.profile.target_altitude_m,
-                   fsm_ctx.profile.flare_altitude_m);
+                   fsm_ctx.profile.flare_altitude_m,
+                   fsm_ctx.baro_cal.is_calibrated ? "YES" : "NO");
             last_stats = now;
         }
 

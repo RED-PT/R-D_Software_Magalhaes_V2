@@ -13,6 +13,7 @@
 #include "queue.h"
 #include <stdbool.h>
 #include <stdint.h>
+#include "Sensors/MS5607/MS5607.h"
 
 // ============================================================================
 // FSM States
@@ -44,7 +45,11 @@ typedef enum {
     SUB_FL_DESCENT_BRAKE,
     SUB_FL_LANDING_FLARE,
     SUB_FL_TOUCHDOWN,
-    SUB_FL_RECOVERY
+    SUB_FL_RECOVERY,
+    // ARM substates
+    SUB_ARM_MOTOR_INIT,
+    SUB_ARM_MOTOR_CALIBRATING,
+    SUB_ARM_READY
 } fsm_substate_t;
 
 // ============================================================================
@@ -52,9 +57,9 @@ typedef enum {
 // ============================================================================
 typedef enum {
     PROFILE_NONE = 0,
-    PROFILE_GUTTER_RAMP = 1,
-    PROFILE_GUTTER_HOLD = 2,
-    PROFILE_FLIGHT_PARAM = 3
+    PROFILE_GUTTER_RAMP = 1,      // Test stand ramp profile
+    PROFILE_GUTTER_HOLD = 2,      // Test stand hold profile
+    PROFILE_FLIGHT_PARAM = 3      // Parametric flight (target altitude, auto-land)
 } flight_profile_t;
 
 // ============================================================================
@@ -69,7 +74,9 @@ typedef enum {
     FSM_EVT_TOUCHDOWN,
     FSM_EVT_LANDED,
     FSM_EVT_ALTITUDE_LIMIT,
-    FSM_EVT_VELOCITY_LIMIT
+    FSM_EVT_VELOCITY_LIMIT,
+    FSM_EVT_MOTOR_ARMED,
+    FSM_EVT_CALIBRATION_DONE
 } fsm_internal_event_t;
 
 // ============================================================================
@@ -94,6 +101,10 @@ typedef struct {
     // Safety limits
     float throttle_min;
     float throttle_max;
+
+    // Landing zone (for FLIGHT_PARAM profile)
+    float landing_lat;
+    float landing_lon;
 } profile_params_t;
 
 // ============================================================================
@@ -130,6 +141,28 @@ typedef struct {
 } boot_status_t;
 
 // ============================================================================
+// Motor Arm Status
+// ============================================================================
+typedef struct {
+    bool esc_initialized;
+    bool calibration_done;
+    float min_throttle;
+    float max_throttle;
+    uint32_t arm_timestamp;
+} motor_arm_status_t;
+
+// ============================================================================
+// Ping/Pong Tracking
+// ============================================================================
+typedef struct {
+    uint8_t pending_seq;              // Sequence number of pending ping
+    uint32_t send_timestamp;          // When ping was sent (FC side)
+    uint32_t gs_send_timestamp;       // When GS sent the ping
+    bool awaiting_pong;               // Are we waiting for response?
+    uint32_t last_rtt_ms;             // Last measured round-trip time
+} ping_tracker_t;
+
+// ============================================================================
 // Boot Report
 // ============================================================================
 #define BOOT_REPORT_MAX_ERRORS 8
@@ -156,7 +189,7 @@ typedef struct {
     uint8_t estimator_running : 1;
     uint8_t controller_running : 1;
     uint8_t abort_requested : 1;
-    uint8_t reserved : 1;
+    uint8_t motor_armed : 1;
 } fsm_flags_t;
 
 // ============================================================================
@@ -191,6 +224,15 @@ typedef struct {
 
     // Runtime flags
     fsm_flags_t flags;
+
+    // Calibration
+    baro_calibration_t baro_cal;
+
+    // Motor arm status
+    motor_arm_status_t motor_status;
+
+    // Ping tracking
+    ping_tracker_t ping;
 
 } fsm_ctx_t;
 
@@ -228,8 +270,29 @@ typedef enum {
     EVT_LIFTOFF,
     EVT_APOGEE,
     EVT_LANDING,
-    EVT_GENERIC_MSG
+    EVT_GENERIC_MSG,
+    EVT_PONG,              // Response to PING with RTT
+    EVT_BARO_CALIBRATED,   // Barometer calibration complete
+    EVT_MOTOR_ARMED        // Motor arm sequence complete
 } telemetry_event_type_t;
+
+// ============================================================================
+// Pong Payload (for EVT_PONG)
+// ============================================================================
+typedef struct __attribute__((packed)) {
+    uint8_t ping_seq;           // Echo back the ping sequence
+    uint32_t fc_timestamp;      // FC timestamp when received
+    uint32_t rtt_ms;            // Round-trip time (if measurable)
+} pong_payload_t;
+
+// ============================================================================
+// Calibration Complete Payload
+// ============================================================================
+typedef struct __attribute__((packed)) {
+    float reference_pressure;   // mbar
+    float temperature;          // C
+    uint8_t samples;            // Number of samples averaged
+} calibration_payload_t;
 
 // ============================================================================
 // Command Message (radio_thread → fsm_thread)
@@ -237,6 +300,7 @@ typedef enum {
 typedef struct {
     fsm_command_t cmd;
     uint8_t cmd_seq;
+    uint32_t gs_timestamp;      // GS timestamp when command was sent
     union {
         struct __attribute__((packed)) {
             uint8_t profile_type;
@@ -313,6 +377,10 @@ bool fsm_is_boot_complete(void);
 bool fsm_should_queue_to_estimator(void);
 bool fsm_should_queue_to_sd(void);
 bool fsm_is_logging_enabled(void);
+
+// Calibration queries
+bool fsm_is_baro_calibrated(void);
+const baro_calibration_t* fsm_get_baro_calibration(void);
 
 // Command/Event sending (for other threads)
 bool fsm_send_command(fsm_command_t cmd, uint8_t cmd_seq, const void *payload, uint16_t size);

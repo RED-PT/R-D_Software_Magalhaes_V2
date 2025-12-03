@@ -27,7 +27,8 @@ static const char* substate_strings[] = {
     "NONE",
     "TS_SENSOR_CHECK", "TS_THROTTLE_RAMP",
     "FL_IGNITION", "FL_LIFTOFF_DETECT", "FL_ASCENT", "FL_COAST",
-    "FL_DESCENT_BRAKE", "FL_LANDING_FLARE", "FL_TOUCHDOWN", "FL_RECOVERY"
+    "FL_DESCENT_BRAKE", "FL_LANDING_FLARE", "FL_TOUCHDOWN", "FL_RECOVERY",
+    "ARM_MOTOR_INIT", "ARM_MOTOR_CAL", "ARM_READY"
 };
 
 static const char* profile_strings[] = {
@@ -40,7 +41,7 @@ const char* fsm_state_to_str(fsm_state_t state) {
 }
 
 const char* fsm_substate_to_str(fsm_substate_t substate) {
-    if (substate <= SUB_FL_RECOVERY) return substate_strings[substate];
+    if (substate <= SUB_ARM_READY) return substate_strings[substate];
     return "UNKNOWN";
 }
 
@@ -97,6 +98,21 @@ void fsm_init(void) {
     fsm_ctx.profile.throttle_max = 1.0f;
     fsm_ctx.profile.max_altitude_m = 100.0f;
     fsm_ctx.profile.max_velocity_ms = 50.0f;
+    fsm_ctx.profile.flare_altitude_m = 5.0f;
+    fsm_ctx.profile.touchdown_velocity_ms = 1.0f;
+
+    // Initialize calibration state
+    fsm_ctx.baro_cal.is_calibrated = false;
+    fsm_ctx.baro_cal.samples_collected = 0;
+    fsm_ctx.baro_cal.pressure_sum = 0.0f;
+
+    // Initialize motor status
+    fsm_ctx.motor_status.esc_initialized = false;
+    fsm_ctx.motor_status.calibration_done = false;
+
+    // Initialize ping tracker
+    fsm_ctx.ping.awaiting_pong = false;
+    fsm_ctx.ping.last_rtt_ms = 0;
 
     // Timing
     fsm_ctx.boot_start_tick = HAL_GetTick();
@@ -232,6 +248,14 @@ bool fsm_is_boot_complete(void) {
     if (bs->baro_init != 1) return false;
 
     return true;
+}
+
+bool fsm_is_baro_calibrated(void) {
+    return fsm_ctx.baro_cal.is_calibrated;
+}
+
+const baro_calibration_t* fsm_get_baro_calibration(void) {
+    return &fsm_ctx.baro_cal;
 }
 
 // ============================================================================
