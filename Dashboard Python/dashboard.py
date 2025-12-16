@@ -1,26 +1,32 @@
 #!/usr/bin/env python3
 """
-Flight Computer Ground Station Dashboard
-==========================================
+Flight Computer Ground Station Dashboard v3
+============================================
 
-Connects to Arduino via serial and displays real-time telemetry.
-Uses PyQt5 for GUI and pyqtgraph for real-time plotting.
+Improvements:
+- HELP button with command documentation
+- Fullscreen mode for graphs and 3D view
+- Auto-range reset button for graphs
+- Fixed RTT measurement
+- Improved styling with rounded corners
+- Yaw display added
+- Fixed COM dropdown colors
 
 Requirements:
-    pip install pyserial pyqt5 pyqtgraph numpy
+    pip install pyserial pyqt5 pyqtgraph numpy pyopengl
 
 Usage:
-    python dashboard.py --port COM3  # Windows
-    python dashboard.py --port /dev/ttyUSB0  # Linux
+    python dashboard_v3.py --port COM3
 """
 
 import sys
 import argparse
 import struct
 import time
+import math
 from collections import deque
 from datetime import datetime
-import threading
+from queue import Queue, Empty
 
 import serial
 import serial.tools.list_ports
@@ -29,841 +35,1013 @@ import numpy as np
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QGridLayout, QLabel, QPushButton, QComboBox, QGroupBox,
-    QTextEdit, QTabWidget, QProgressBar, QFrame, QSplitter,
-    QLineEdit, QSpinBox, QDoubleSpinBox, QMessageBox
+    QTextEdit, QTabWidget, QFrame, QLineEdit,
+    QStyleFactory, QDialog, QTableWidget, QTableWidgetItem,
+    QHeaderView
 )
-from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QObject
-from PyQt5.QtGui import QFont, QColor, QPalette
+from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QThread
+from PyQt5.QtGui import QFont, QColor, QTextCursor
 
 import pyqtgraph as pg
+import pyqtgraph.opengl as gl
 
 # ============================================================================
-# Protocol Constants (must match FC/Arduino)
+# Protocol Constants
 # ============================================================================
 
-PACKET_TYPES = {
-    0x01: 'FAST',
-    0x02: 'SLOW',
-    0x03: 'EVENT',
-    0x04: 'COMMAND',
-    0x05: 'SYNC'
-}
+FRAME_SYNC_1 = 0xAA
+FRAME_SYNC_2 = 0x55
 
-STATE_NAMES = [
-    "BOOT", "IDLE", "CONFIGED", "ARMED",
-    "TEST_STAND", "FLIGHT", "ABORT", "SAFE"
-]
+MSG_TYPE_FC_FAST    = 0x01
+MSG_TYPE_FC_SLOW    = 0x02
+MSG_TYPE_FC_EVENT   = 0x03
+MSG_TYPE_GS_STATUS  = 0x10
+MSG_TYPE_GS_ACK     = 0x11
+MSG_TYPE_GS_PONG    = 0x12
+MSG_TYPE_GS_STATS   = 0x13
+MSG_TYPE_GS_LOG     = 0x20
 
+STATE_NAMES = ["BOOT", "IDLE", "CONFIGED", "ARMED", "TEST_STAND", "FLIGHT", "ABORT", "SAFE"]
 SUBSTATE_NAMES = [
-    "NONE",
-    "TS_SENSOR_CHECK", "TS_THROTTLE_RAMP",
+    "NONE", "TS_SENSOR_CHECK", "TS_THROTTLE_RAMP",
     "FL_IGNITION", "FL_LIFTOFF_DETECT", "FL_ASCENT", "FL_COAST",
     "FL_DESCENT_BRAKE", "FL_LANDING_FLARE", "FL_TOUCHDOWN", "FL_RECOVERY",
     "ARM_MOTOR_INIT", "ARM_MOTOR_CAL", "ARM_READY"
 ]
-
-PROFILE_NAMES = ["NONE", "GUTTER_RAMP", "GUTTER_HOLD", "FLIGHT_PARAM"]
-
 EVENT_NAMES = {
-    0: "STATE_CHANGE",
-    1: "FAULT",
-    2: "ABORT_TRIGGERED",
-    3: "PROFILE_LOADED",
-    4: "CHECKS_GREEN",
-    5: "CHECKS_RED",
-    6: "BOOT_REPORT",
-    7: "ARMED",
-    8: "DISARMED",
-    9: "LIFTOFF",
-    10: "APOGEE",
-    11: "LANDING",
-    12: "GENERIC_MSG",
-    13: "PONG",
-    14: "BARO_CALIBRATED",
-    15: "MOTOR_ARMED"
+    0: "STATE_CHANGE", 1: "FAULT", 2: "ABORT", 3: "PROFILE_LOADED",
+    4: "CHECKS_GREEN", 5: "CHECKS_RED", 6: "BOOT_REPORT", 7: "ARMED",
+    8: "DISARMED", 9: "LIFTOFF", 10: "APOGEE", 11: "LANDING",
+    12: "GENERIC", 13: "PONG", 14: "BARO_CAL", 15: "MOTOR_ARMED"
 }
 
-# Packet sizes
-FAST_PKT_SIZE = 38
-SLOW_PKT_SIZE = 32
-EVENT_PKT_SIZE = 38
+COMMANDS_DOC = [
+    ("P", "PING", "Send ping to FC, measures round-trip time"),
+    ("C", "CALIBRATE", "Calibrate barometer (set current altitude as zero)"),
+    ("1", "PROFILE 1", "Load profile 1: Gutter Ramp (5s ramp time)"),
+    ("2", "PROFILE 2", "Load profile 2: Gutter Hold (0.3 throttle)"),
+    ("3", "PROFILE 3", "Load profile 3: Flight Param (50m target)"),
+    ("A", "ARM", "Arm the flight computer and motors"),
+    ("D", "DISARM", "Disarm the flight computer"),
+    ("T", "TEST", "Start test stand sequence"),
+    ("L", "LAUNCH", "Initiate launch sequence"),
+    ("X", "ABORT", "Emergency abort - cut throttle immediately"),
+    ("S", "SAFE", "Force transition to SAFE state"),
+    ("R", "RESET STATS", "Reset communication statistics"),
+    ("?", "DEBUG", "Toggle debug output on Arduino"),
+]
 
 # ============================================================================
-# Packet Structures
+# Packet Parsing
 # ============================================================================
 
-def parse_fast_telemetry(data):
-    """Parse fast telemetry packet (38 bytes)"""
-    if len(data) < FAST_PKT_SIZE:
+def parse_fast_packet(data):
+    if len(data) < 35:
         return None
-    
-    fmt = '<BBBBBIBBBB6h4hH'
-    unpacked = struct.unpack(fmt, data[:FAST_PKT_SIZE])
-    
+    fmt = '<BBBBBIBBBB3h3h4hH'
+    u = struct.unpack(fmt, data[:35])
     return {
-        'packet_type': unpacked[0],
-        'frame_id': unpacked[1],
-        'slot_id': unpacked[2],
-        'seq': unpacked[3],
-        'flags': unpacked[4],
-        'time': unpacked[5],
-        'state': unpacked[6],
-        'substate': unpacked[7],
-        'last_cmd_seq': unpacked[8],
-        'last_cmd_status': unpacked[9],
-        'accel_x': unpacked[10] / 1000.0,  # g
-        'accel_y': unpacked[11] / 1000.0,
-        'accel_z': unpacked[12] / 1000.0,
-        'gyro_x': unpacked[13] / 100.0,    # dps
-        'gyro_y': unpacked[14] / 100.0,
-        'gyro_z': unpacked[15] / 100.0,
-        'altitude': unpacked[16] / 10.0,   # m
-        'vario': unpacked[17] / 100.0,     # m/s
-        'pitch': unpacked[18] / 10.0,      # deg
-        'roll': unpacked[19] / 10.0,
-        'crc': unpacked[20]
+        'type': 'fast',
+        'frame_id': u[1], 'slot_id': u[2], 'seq': u[3], 'flags': u[4],
+        'time_ms': u[5], 'state': u[6], 'substate': u[7],
+        'ack_seq': u[8], 'ack_status': u[9],
+        'accel_x': u[10] / 1000.0, 'accel_y': u[11] / 1000.0, 'accel_z': u[12] / 1000.0,
+        'gyro_x': u[13] / 100.0, 'gyro_y': u[14] / 100.0, 'gyro_z': u[15] / 100.0,
+        'altitude': u[16] / 10.0, 'vario': u[17] / 100.0,
+        'pitch': u[18] / 10.0, 'roll': u[19] / 10.0,
     }
 
-def parse_slow_telemetry(data):
-    """Parse slow telemetry packet (32 bytes)"""
-    if len(data) < SLOW_PKT_SIZE:
+def parse_slow_packet(data):
+    if len(data) < 30:
         return None
-    
     fmt = '<BBBBIiiHBBhhBBHH'
-    unpacked = struct.unpack(fmt, data[:SLOW_PKT_SIZE])
-    
+    u = struct.unpack(fmt, data[:30])
     return {
-        'packet_type': unpacked[0],
-        'frame_id': unpacked[1],
-        'slot_id': unpacked[2],
-        'seq': unpacked[3],
-        'time': unpacked[4],
-        'latitude': unpacked[5] / 1e7,
-        'longitude': unpacked[6] / 1e7,
-        'gps_altitude': unpacked[7] / 10.0,
-        'gps_lock': unpacked[8],
-        'satellites': unpacked[9],
-        'pressure': (unpacked[10] / 10.0) + 1000.0,  # mbar
-        'temp_baro': unpacked[11] / 10.0,            # C
-        'battery_pct': unpacked[12],
-        'sd_status': unpacked[13],
-        'free_heap': unpacked[14] * 10,              # bytes
-        'crc': unpacked[15]
+        'type': 'slow',
+        'frame_id': u[1], 'slot_id': u[2], 'seq': u[3], 'time_ms': u[4],
+        'latitude': u[5] / 1e7, 'longitude': u[6] / 1e7,
+        'gps_altitude': u[7] / 10.0, 'gps_lock': u[8], 'satellites': u[9],
+        'pressure': (u[10] / 10.0) + 1000.0, 'temperature': u[11] / 10.0,
+        'battery': u[12], 'sd_status': u[13], 'free_heap': u[14] * 10,
     }
 
-def parse_event(data):
-    """Parse event packet (38 bytes)"""
-    if len(data) < EVENT_PKT_SIZE:
+def parse_event_packet(data):
+    if len(data) < 37:
         return None
-    
     fmt = '<BBBBIBBB24sH'
-    unpacked = struct.unpack(fmt, data[:EVENT_PKT_SIZE])
-    
+    u = struct.unpack(fmt, data[:37])
     return {
-        'packet_type': unpacked[0],
-        'frame_id': unpacked[1],
-        'slot_id': unpacked[2],
-        'seq': unpacked[3],
-        'time': unpacked[4],
-        'event_type': unpacked[5],
-        'state': unpacked[6],
-        'substate': unpacked[7],
-        'payload': unpacked[8],
-        'crc': unpacked[9]
+        'type': 'event',
+        'frame_id': u[1], 'slot_id': u[2], 'seq': u[3], 'time_ms': u[4],
+        'event_type': u[5], 'state': u[6], 'substate': u[7],
+        'payload': u[8],
+    }
+
+def parse_gs_status(data):
+    if len(data) < 11:
+        return None
+    fmt = '<BBBBBBBI'
+    u = struct.unpack(fmt, data[:11])
+    return {
+        'type': 'gs_status',
+        'synced': u[0], 'frame_id': u[1], 'slot_id': u[2],
+        'cmd_pending': u[3], 'awaiting_ack': u[4],
+        'last_ack_seq': u[5], 'last_ack_status': u[6],
+        'uptime_ms': u[7],
+    }
+
+def parse_gs_pong(data):
+    if len(data) < 9:
+        return None
+    fmt = '<BII'
+    u = struct.unpack(fmt, data[:9])
+    return {
+        'type': 'pong',
+        'ping_seq': u[0], 'rtt_ms': u[1], 'fc_timestamp': u[2],
+    }
+
+def parse_gs_stats(data):
+    if len(data) < 32:
+        return None
+    fmt = '<8I'
+    u = struct.unpack(fmt, data[:32])
+    return {
+        'type': 'gs_stats',
+        'rx_fast': u[0], 'rx_slow': u[1], 'rx_event': u[2],
+        'tx_cmd': u[3], 'tx_sync': u[4], 'crc_errors': u[5],
+        'ack_ok': u[6], 'ack_timeout': u[7],
     }
 
 # ============================================================================
-# Serial Communication Thread
+# Serial Worker Thread
 # ============================================================================
 
-class SerialWorker(QObject):
-    """Worker thread for serial communication"""
-    
-    fast_received = pyqtSignal(dict)
-    slow_received = pyqtSignal(dict)
-    event_received = pyqtSignal(dict)
-    raw_received = pyqtSignal(str)
-    connected = pyqtSignal(bool)
-    error = pyqtSignal(str)
+class SerialWorker(QThread):
+    packet_received = pyqtSignal(dict)
+    log_received = pyqtSignal(str)
+    connection_changed = pyqtSignal(bool)
+    error_signal = pyqtSignal(str)
     
     def __init__(self):
         super().__init__()
         self.serial = None
         self.running = False
         self.rx_buffer = bytearray()
+        self.cmd_queue = Queue()
         
-    def connect(self, port, baudrate=115200):
+    def connect_port(self, port, baudrate=115200):
         try:
-            self.serial = serial.Serial(port, baudrate, timeout=0.1)
+            self.serial = serial.Serial(port, baudrate, timeout=0.05)
             self.running = True
-            self.connected.emit(True)
+            self.connection_changed.emit(True)
             return True
         except Exception as e:
-            self.error.emit(f"Connection failed: {e}")
+            self.error_signal.emit(f"Connection failed: {e}")
             return False
     
-    def disconnect(self):
+    def disconnect_port(self):
         self.running = False
         if self.serial:
             self.serial.close()
             self.serial = None
-        self.connected.emit(False)
+        self.connection_changed.emit(False)
     
-    def send_command(self, cmd_char):
-        """Send a single character command to Arduino"""
-        if self.serial and self.serial.is_open:
-            self.serial.write(cmd_char.encode())
+    def send_command(self, cmd):
+        self.cmd_queue.put(cmd)
     
     def run(self):
-        """Main receive loop"""
         while self.running:
             if not self.serial or not self.serial.is_open:
                 time.sleep(0.1)
                 continue
             
             try:
-                # Read available data
+                while not self.cmd_queue.empty():
+                    try:
+                        cmd = self.cmd_queue.get_nowait()
+                        self.serial.write(cmd.encode() if isinstance(cmd, str) else cmd)
+                    except Empty:
+                        break
+                
                 data = self.serial.read(256)
                 if data:
-                    # Forward raw data to console
-                    try:
-                        text = data.decode('utf-8', errors='replace')
-                        self.raw_received.emit(text)
-                    except:
-                        pass
-                    
-                    # Add to buffer for packet parsing
                     self.rx_buffer.extend(data)
                     self.process_buffer()
                     
             except Exception as e:
-                self.error.emit(f"Read error: {e}")
+                self.error_signal.emit(f"Serial error: {e}")
                 time.sleep(0.1)
     
     def process_buffer(self):
-        """Process received buffer for complete packets"""
-        # Look for packet markers in the Arduino's forwarded data
-        # The Arduino sends parsed text, so we mainly use raw_received
-        # For binary packets, we'd parse here
-        
-        # Limit buffer size
-        if len(self.rx_buffer) > 1024:
-            self.rx_buffer = self.rx_buffer[-512:]
+        while len(self.rx_buffer) >= 6:
+            try:
+                idx = 0
+                while idx < len(self.rx_buffer) - 1:
+                    if self.rx_buffer[idx] == FRAME_SYNC_1 and self.rx_buffer[idx+1] == FRAME_SYNC_2:
+                        break
+                    idx += 1
+                
+                if idx > 0:
+                    self.rx_buffer = self.rx_buffer[idx:]
+                
+                if len(self.rx_buffer) < 6:
+                    break
+                
+                length = (self.rx_buffer[2] << 8) | self.rx_buffer[3]
+                total_len = 4 + length + 2
+                
+                if length > 256:
+                    self.rx_buffer = self.rx_buffer[2:]
+                    continue
+                
+                if len(self.rx_buffer) < total_len:
+                    break
+                
+                frame = self.rx_buffer[:total_len]
+                self.rx_buffer = self.rx_buffer[total_len:]
+                
+                msg_type = frame[4]
+                payload = bytes(frame[5:-2])
+                
+                self.parse_message(msg_type, payload)
+                
+            except Exception:
+                self.rx_buffer = self.rx_buffer[1:]
+    
+    def parse_message(self, msg_type, payload):
+        try:
+            pkt = None
+            if msg_type == MSG_TYPE_FC_FAST:
+                pkt = parse_fast_packet(payload)
+            elif msg_type == MSG_TYPE_FC_SLOW:
+                pkt = parse_slow_packet(payload)
+            elif msg_type == MSG_TYPE_FC_EVENT:
+                pkt = parse_event_packet(payload)
+            elif msg_type == MSG_TYPE_GS_STATUS:
+                pkt = parse_gs_status(payload)
+            elif msg_type == MSG_TYPE_GS_PONG:
+                pkt = parse_gs_pong(payload)
+            elif msg_type == MSG_TYPE_GS_STATS:
+                pkt = parse_gs_stats(payload)
+            elif msg_type == MSG_TYPE_GS_LOG:
+                self.log_received.emit(payload.decode('utf-8', errors='replace'))
+                return
+            
+            if pkt:
+                self.packet_received.emit(pkt)
+        except Exception:
+            pass
 
 # ============================================================================
-# Real-time Plot Widget
+# Help Dialog
 # ============================================================================
+
+class HelpDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Command Reference")
+        self.setMinimumSize(650, 550)
+        self.setStyleSheet("""
+            QDialog { background-color: #1a1a2e; }
+            QLabel { color: #ddd; font-size: 12px; }
+            QTableWidget {
+                background-color: #0d0d1a;
+                color: #ddd;
+                border: 1px solid #3d3d5c;
+                border-radius: 8px;
+                gridline-color: #2d2d44;
+            }
+            QTableWidget::item { padding: 8px; }
+            QHeaderView::section {
+                background-color: #2d2d44;
+                color: #fff;
+                padding: 8px;
+                border: none;
+                font-weight: bold;
+            }
+            QPushButton {
+                background-color: #3498db;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                padding: 10px 30px;
+                font-weight: bold;
+            }
+            QPushButton:hover { background-color: #2980b9; }
+        """)
+        
+        layout = QVBoxLayout(self)
+        layout.setSpacing(15)
+        layout.setContentsMargins(20, 20, 20, 20)
+        
+        title = QLabel("📡 Flight Computer Commands")
+        title.setStyleSheet("font-size: 18px; font-weight: bold; color: #00ff88;")
+        layout.addWidget(title)
+        
+        table = QTableWidget()
+        table.setColumnCount(3)
+        table.setHorizontalHeaderLabels(["Key", "Command", "Description"])
+        table.setRowCount(len(COMMANDS_DOC))
+        table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeToContents)
+        table.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
+        table.verticalHeader().setVisible(False)
+        table.setEditTriggers(QTableWidget.NoEditTriggers)
+        table.setSelectionBehavior(QTableWidget.SelectRows)
+        
+        for row, (key, name, desc) in enumerate(COMMANDS_DOC):
+            key_item = QTableWidgetItem(key)
+            key_item.setTextAlignment(Qt.AlignCenter)
+            key_item.setFont(QFont("Consolas", 12, QFont.Bold))
+            key_item.setForeground(QColor("#ffe66d"))
+            table.setItem(row, 0, key_item)
+            
+            name_item = QTableWidgetItem(name)
+            name_item.setFont(QFont("Arial", 10, QFont.Bold))
+            name_item.setForeground(QColor("#00ff88"))
+            table.setItem(row, 1, name_item)
+            
+            table.setItem(row, 2, QTableWidgetItem(desc))
+        
+        layout.addWidget(table)
+        
+        states_label = QLabel("🚀 State Machine: BOOT → IDLE → CONFIGED → ARMED → TEST_STAND/FLIGHT → SAFE")
+        states_label.setStyleSheet("color: #888; font-size: 11px;")
+        layout.addWidget(states_label)
+        
+        close_btn = QPushButton("Close")
+        close_btn.clicked.connect(self.accept)
+        layout.addWidget(close_btn, alignment=Qt.AlignCenter)
+
+# ============================================================================
+# Fullscreen Windows
+# ============================================================================
+
+class FullscreenPlotWindow(QDialog):
+    def __init__(self, original_plot, title, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle(f"📊 {title}")
+        self.setMinimumSize(1000, 700)
+        self.setStyleSheet("background-color: #0d0d1a;")
+        self.original_plot = original_plot
+        
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(10, 10, 10, 10)
+        
+        self.plot = pg.PlotWidget()
+        self.plot.setTitle(title, color='w', size='14pt')
+        self.plot.showGrid(x=True, y=True, alpha=0.3)
+        self.plot.setBackground('#0d0d1a')
+        layout.addWidget(self.plot)
+        
+        btn_layout = QHBoxLayout()
+        auto_btn = QPushButton("🔄 Auto Range")
+        auto_btn.setStyleSheet("background-color: #3498db; color: white; border-radius: 8px; padding: 8px 15px;")
+        auto_btn.clicked.connect(lambda: self.plot.enableAutoRange())
+        btn_layout.addWidget(auto_btn)
+        btn_layout.addStretch()
+        close_btn = QPushButton("✕ Close")
+        close_btn.setStyleSheet("background-color: #e74c3c; color: white; border-radius: 8px; padding: 8px 15px;")
+        close_btn.clicked.connect(self.close)
+        btn_layout.addWidget(close_btn)
+        layout.addLayout(btn_layout)
+        
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.update_plot)
+        self.timer.start(50)
+    
+    def update_plot(self):
+        if hasattr(self.original_plot, 'data') and hasattr(self.original_plot, 'times'):
+            self.plot.clear()
+            colors = ['#00ff88', '#ff6b6b', '#4ecdc4', '#ffe66d', '#a855f7', '#06b6d4']
+            times = list(self.original_plot.times)
+            for i, data in enumerate(self.original_plot.data):
+                if len(data) > 0 and len(times) >= len(data):
+                    self.plot.plot(times[:len(data)], list(data), pen=pg.mkPen(colors[i % len(colors)], width=2))
+    
+    def closeEvent(self, event):
+        self.timer.stop()
+        event.accept()
+
+class Fullscreen3DWindow(QDialog):
+    def __init__(self, parent_view, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("🚀 3D Attitude View")
+        self.setMinimumSize(800, 800)
+        self.setStyleSheet("background-color: #0d0d1a;")
+        self.parent_view = parent_view
+        
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(10, 10, 10, 10)
+        
+        self.rocket_view = RocketView3D()
+        layout.addWidget(self.rocket_view)
+        
+        info_layout = QHBoxLayout()
+        self.pitch_label = QLabel("Pitch: 0.0°")
+        self.pitch_label.setStyleSheet("color: #a855f7; font-size: 14px; font-weight: bold;")
+        self.roll_label = QLabel("Roll: 0.0°")
+        self.roll_label.setStyleSheet("color: #06b6d4; font-size: 14px; font-weight: bold;")
+        self.yaw_label = QLabel("Yaw: 0.0°")
+        self.yaw_label.setStyleSheet("color: #ffe66d; font-size: 14px; font-weight: bold;")
+        info_layout.addWidget(self.pitch_label)
+        info_layout.addWidget(self.roll_label)
+        info_layout.addWidget(self.yaw_label)
+        info_layout.addStretch()
+        close_btn = QPushButton("✕ Close")
+        close_btn.setStyleSheet("background-color: #e74c3c; color: white; border-radius: 8px; padding: 8px 15px;")
+        close_btn.clicked.connect(self.close)
+        info_layout.addWidget(close_btn)
+        layout.addLayout(info_layout)
+        
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.update_view)
+        self.timer.start(50)
+    
+    def update_view(self):
+        if self.parent_view:
+            self.rocket_view.update_attitude(self.parent_view.pitch, self.parent_view.roll, self.parent_view.yaw)
+            self.pitch_label.setText(f"Pitch: {self.parent_view.pitch:.1f}°")
+            self.roll_label.setText(f"Roll: {self.parent_view.roll:.1f}°")
+            self.yaw_label.setText(f"Yaw: {self.parent_view.yaw:.1f}°")
+    
+    def closeEvent(self, event):
+        self.timer.stop()
+        event.accept()
+
+# ============================================================================
+# 3D Rocket Visualization
+# ============================================================================
+
+class RocketView3D(gl.GLViewWidget):
+    def __init__(self):
+        super().__init__()
+        self.setCameraPosition(distance=15, elevation=20, azimuth=45)
+        self.setBackgroundColor('#1a1a2e')
+        
+        grid = gl.GLGridItem()
+        grid.setSize(20, 20, 1)
+        grid.setSpacing(2, 2, 2)
+        grid.setColor((100, 100, 100, 100))
+        self.addItem(grid)
+        
+        self.rocket_mesh = self.create_rocket()
+        self.addItem(self.rocket_mesh)
+        self.add_axes()
+        
+        self.pitch = 0
+        self.roll = 0
+        self.yaw = 0
+    
+    def create_rocket(self):
+        n, r, h = 16, 0.3, 4.0
+        verts, faces, colors = [], [], []
+        
+        for i in range(n):
+            angle = 2 * math.pi * i / n
+            x, y = r * math.cos(angle), r * math.sin(angle)
+            verts.extend([[x, y, 0], [x, y, h * 0.7]])
+        
+        for i in range(n):
+            angle = 2 * math.pi * i / n
+            verts.append([r * 0.5 * math.cos(angle), r * 0.5 * math.sin(angle), h * 0.85])
+        verts.append([0, 0, h])
+        
+        for i in range(n):
+            i2 = (i + 1) % n
+            faces.extend([[i*2, i*2+1, i2*2+1], [i*2, i2*2+1, i2*2]])
+            colors.extend([[0.8, 0.2, 0.2, 1], [0.8, 0.2, 0.2, 1]])
+        
+        for i in range(n):
+            faces.append([i*2, (i+1)%n*2, n*2])
+            colors.append([0.3, 0.3, 0.3, 1])
+        verts.append([0, 0, 0])
+        
+        nose_start, tip_idx = n * 2, len(verts) - 2
+        for i in range(n):
+            i2 = (i + 1) % n
+            faces.extend([[i*2+1, i2*2+1, nose_start + i2], [i*2+1, nose_start + i2, nose_start + i], [nose_start + i, nose_start + i2, tip_idx]])
+            colors.extend([[0.9, 0.9, 0.9, 1], [0.9, 0.9, 0.9, 1], [0.9, 0.9, 0.9, 1]])
+        
+        for fin_angle in [0, 120, 240]:
+            rad = math.radians(fin_angle)
+            dx, dy = math.cos(rad), math.sin(rad)
+            idx = len(verts)
+            verts.extend([[r*dx, r*dy, 0], [r*dx, r*dy, 1.0], [(r+0.8)*dx, (r+0.8)*dy, 0]])
+            faces.append([idx, idx+1, idx+2])
+            colors.append([0.2, 0.2, 0.8, 1])
+        
+        return gl.GLMeshItem(vertexes=np.array(verts), faces=np.array(faces), faceColors=np.array(colors), smooth=False, drawEdges=True, edgeColor=(0.5, 0.5, 0.5, 0.5))
+    
+    def add_axes(self):
+        for pos, color in [([[0,0,0],[3,0,0]], (1,0,0,1)), ([[0,0,0],[0,3,0]], (0,1,0,1)), ([[0,0,0],[0,0,3]], (0,0,1,1))]:
+            self.addItem(gl.GLLinePlotItem(pos=np.array(pos), color=color, width=2))
+    
+    def update_attitude(self, pitch, roll, yaw=0):
+        self.pitch, self.roll, self.yaw = pitch, roll, yaw
+        self.rocket_mesh.resetTransform()
+        self.rocket_mesh.rotate(roll, 1, 0, 0)
+        self.rocket_mesh.rotate(pitch, 0, 1, 0)
+        self.rocket_mesh.rotate(yaw, 0, 0, 1)
+
+# ============================================================================
+# Custom Widgets
+# ============================================================================
+
+class ValueDisplay(QFrame):
+    def __init__(self, label, unit="", decimals=1):
+        super().__init__()
+        self.decimals, self.unit = decimals, unit
+        self.setStyleSheet("QFrame { background-color: #1e1e2e; border: 1px solid #3d3d5c; border-radius: 8px; padding: 5px; }")
+        
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(8, 4, 8, 4)
+        layout.setSpacing(2)
+        
+        self.label = QLabel(label)
+        self.label.setStyleSheet("color: #888; font-size: 10px;")
+        layout.addWidget(self.label)
+        
+        self.value = QLabel("---")
+        self.value.setStyleSheet("color: #00ff88; font-size: 16px; font-weight: bold;")
+        layout.addWidget(self.value)
+    
+    def set_value(self, val):
+        if val is None:
+            self.value.setText("---")
+        elif isinstance(val, float):
+            self.value.setText(f"{val:.{self.decimals}f} {self.unit}")
+        else:
+            self.value.setText(f"{val} {self.unit}")
+    
+    def set_color(self, color):
+        self.value.setStyleSheet(f"color: {color}; font-size: 16px; font-weight: bold;")
+
+class StateIndicator(QFrame):
+    def __init__(self, title):
+        super().__init__()
+        self.setMinimumHeight(60)
+        self.setStyleSheet("QFrame { background-color: #2d2d44; border: 2px solid #4d4d6d; border-radius: 10px; }")
+        
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(10, 5, 10, 5)
+        
+        self.title_label = QLabel(title)
+        self.title_label.setStyleSheet("color: #aaa; font-size: 11px;")
+        self.title_label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(self.title_label)
+        
+        self.state_label = QLabel("---")
+        self.state_label.setStyleSheet("color: white; font-size: 18px; font-weight: bold;")
+        self.state_label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(self.state_label)
+    
+    def set_state(self, state, color="#ffffff"):
+        self.state_label.setText(state)
+        self.setStyleSheet(f"QFrame {{ background-color: {color}; border: 2px solid {color}; border-radius: 10px; }}")
 
 class RealtimePlot(pg.PlotWidget):
-    """Real-time scrolling plot"""
-    
-    def __init__(self, title="", ylabel="", window_size=500):
+    def __init__(self, title="", ylabel="", num_lines=1, colors=None, window=300):
         super().__init__()
+        self.window, self.num_lines = window, num_lines
+        self.data = [deque(maxlen=window) for _ in range(num_lines)]
+        self.times = deque(maxlen=window)
+        self.start_time = time.time()
+        self.plot_title = title
         
-        self.window_size = window_size
-        self.data = deque(maxlen=window_size)
-        self.timestamps = deque(maxlen=window_size)
-        
-        self.setTitle(title)
-        self.setLabel('left', ylabel)
-        self.setLabel('bottom', 'Time', 's')
+        self.setTitle(title, color='w', size='10pt')
+        self.setLabel('left', ylabel, color='#888')
+        self.setLabel('bottom', 'Time (s)', color='#888')
         self.showGrid(x=True, y=True, alpha=0.3)
+        self.setBackground('#1a1a2e')
+        self.getAxis('left').setPen('#555')
+        self.getAxis('bottom').setPen('#555')
         
-        self.curve = self.plot(pen=pg.mkPen('c', width=2))
-        
-    def add_point(self, value, timestamp=None):
-        if timestamp is None:
-            timestamp = time.time()
-        
-        self.data.append(value)
-        self.timestamps.append(timestamp)
-        
-        if len(self.data) > 1:
-            t0 = self.timestamps[0]
-            times = [t - t0 for t in self.timestamps]
-            self.curve.setData(times, list(self.data))
-
-class MultiLinePlot(pg.PlotWidget):
-    """Plot with multiple lines"""
+        colors = colors or ['#00ff88', '#ff6b6b', '#4ecdc4', '#ffe66d', '#a855f7', '#06b6d4']
+        self.curves = [self.plot(pen=pg.mkPen(colors[i % len(colors)], width=2)) for i in range(num_lines)]
+        self.enableAutoRange()
     
-    def __init__(self, title="", ylabel="", lines=3, labels=None, window_size=500):
-        super().__init__()
-        
-        self.window_size = window_size
-        self.num_lines = lines
-        self.data = [deque(maxlen=window_size) for _ in range(lines)]
-        self.timestamps = deque(maxlen=window_size)
-        
-        self.setTitle(title)
-        self.setLabel('left', ylabel)
-        self.setLabel('bottom', 'Time', 's')
-        self.showGrid(x=True, y=True, alpha=0.3)
-        
-        colors = ['r', 'g', 'b', 'y', 'c', 'm']
-        self.curves = []
-        for i in range(lines):
-            label = labels[i] if labels else f'Line {i}'
-            pen = pg.mkPen(colors[i % len(colors)], width=2)
-            curve = self.plot(pen=pen, name=label)
-            self.curves.append(curve)
-        
-        self.addLegend()
-    
-    def add_points(self, values, timestamp=None):
-        if timestamp is None:
-            timestamp = time.time()
-        
-        self.timestamps.append(timestamp)
+    def add_data(self, *values):
+        self.times.append(time.time() - self.start_time)
         for i, v in enumerate(values):
             if i < self.num_lines:
                 self.data[i].append(v)
-        
-        if len(self.timestamps) > 1:
-            t0 = self.timestamps[0]
-            times = [t - t0 for t in self.timestamps]
-            for i, curve in enumerate(self.curves):
-                if len(self.data[i]) > 0:
-                    curve.setData(times, list(self.data[i]))
-
-# ============================================================================
-# Status Indicator Widget
-# ============================================================================
-
-class StatusIndicator(QFrame):
-    """Colored status indicator with label"""
+        self.update_plot()
     
-    def __init__(self, label="Status"):
+    def update_plot(self):
+        if len(self.times) < 2:
+            return
+        times = list(self.times)
+        for i, curve in enumerate(self.curves):
+            if len(self.data[i]) > 0:
+                curve.setData(times[:len(self.data[i])], list(self.data[i]))
+    
+    def reset_view(self):
+        self.enableAutoRange()
+
+# ============================================================================
+# Plot Container with Controls
+# ============================================================================
+
+class PlotContainer(QWidget):
+    def __init__(self, plot, title, parent_window=None):
         super().__init__()
-        self.setFrameStyle(QFrame.Box | QFrame.Raised)
-        self.setLineWidth(2)
+        self.plot, self.title, self.parent_window = plot, title, parent_window
         
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(5, 5, 5, 5)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
         
-        self.label = QLabel(label)
-        self.label.setAlignment(Qt.AlignCenter)
-        self.label.setFont(QFont('Arial', 10, QFont.Bold))
-        layout.addWidget(self.label)
+        ctrl_bar = QWidget()
+        ctrl_bar.setStyleSheet("background-color: #1e1e2e; border-radius: 5px;")
+        ctrl_layout = QHBoxLayout(ctrl_bar)
+        ctrl_layout.setContentsMargins(5, 2, 5, 2)
+        ctrl_layout.addStretch()
         
-        self.value_label = QLabel("---")
-        self.value_label.setAlignment(Qt.AlignCenter)
-        self.value_label.setFont(QFont('Arial', 12))
-        layout.addWidget(self.value_label)
+        for icon, tip, callback in [("⟲", "Reset to auto-range", self.reset_range), ("⛶", "Fullscreen", self.open_fullscreen)]:
+            btn = QPushButton(icon)
+            btn.setToolTip(tip)
+            btn.setFixedSize(28, 28)
+            btn.setStyleSheet("QPushButton { background-color: #3d3d5c; color: white; border: none; border-radius: 5px; font-size: 14px; } QPushButton:hover { background-color: #4d4d6d; }")
+            btn.clicked.connect(callback)
+            ctrl_layout.addWidget(btn)
         
-        self.set_status('unknown')
+        layout.addWidget(ctrl_bar)
+        layout.addWidget(plot)
     
-    def set_status(self, status):
-        colors = {
-            'ok': '#00AA00',
-            'warning': '#AAAA00',
-            'error': '#AA0000',
-            'armed': '#FF6600',
-            'flight': '#0066FF',
-            'unknown': '#666666'
-        }
-        color = colors.get(status, colors['unknown'])
-        self.setStyleSheet(f"background-color: {color}; border-radius: 5px;")
+    def reset_range(self):
+        self.plot.reset_view()
     
-    def set_value(self, value):
-        self.value_label.setText(str(value))
+    def open_fullscreen(self):
+        FullscreenPlotWindow(self.plot, self.title, self.parent_window).exec_()
+
+class View3DContainer(QWidget):
+    def __init__(self, view3d, parent_window=None):
+        super().__init__()
+        self.view3d, self.parent_window = view3d, parent_window
+        
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+        
+        ctrl_bar = QWidget()
+        ctrl_bar.setStyleSheet("background-color: #1e1e2e; border-radius: 5px;")
+        ctrl_layout = QHBoxLayout(ctrl_bar)
+        ctrl_layout.setContentsMargins(5, 2, 5, 2)
+        ctrl_layout.addStretch()
+        
+        btn = QPushButton("⛶")
+        btn.setToolTip("Fullscreen")
+        btn.setFixedSize(28, 28)
+        btn.setStyleSheet("QPushButton { background-color: #3d3d5c; color: white; border: none; border-radius: 5px; font-size: 14px; } QPushButton:hover { background-color: #4d4d6d; }")
+        btn.clicked.connect(self.open_fullscreen)
+        ctrl_layout.addWidget(btn)
+        
+        layout.addWidget(ctrl_bar)
+        layout.addWidget(view3d)
+    
+    def open_fullscreen(self):
+        Fullscreen3DWindow(self.view3d, self.parent_window).exec_()
 
 # ============================================================================
 # Main Dashboard Window
 # ============================================================================
 
 class DashboardWindow(QMainWindow):
-    """Main application window"""
-    
     def __init__(self, port=None):
         super().__init__()
+        self.setWindowTitle("Flight Computer Ground Station v3")
+        self.setGeometry(50, 50, 1800, 1000)
+        self.setStyleSheet("""
+            QMainWindow { background-color: #0d0d1a; }
+            QLabel { color: #ddd; }
+            QGroupBox { color: #aaa; border: 1px solid #3d3d5c; border-radius: 10px; margin-top: 10px; padding-top: 10px; }
+            QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 5px; }
+            QPushButton { background-color: #2d2d44; color: white; border: 1px solid #4d4d6d; border-radius: 8px; padding: 8px 15px; font-weight: bold; }
+            QPushButton:hover { background-color: #3d3d5c; }
+            QPushButton:pressed { background-color: #1d1d2e; }
+            QComboBox { background-color: #2d2d44; color: white; border: 1px solid #4d4d6d; border-radius: 6px; padding: 5px 10px; }
+            QComboBox:hover { background-color: #3d3d5c; }
+            QComboBox::drop-down { border: none; width: 25px; }
+            QComboBox::down-arrow { border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 6px solid #888; margin-right: 8px; }
+            QComboBox QAbstractItemView { background-color: #2d2d44; color: white; border: 1px solid #4d4d6d; border-radius: 6px; selection-background-color: #3498db; selection-color: white; outline: none; }
+            QComboBox QAbstractItemView::item { padding: 8px; min-height: 25px; }
+            QComboBox QAbstractItemView::item:hover { background-color: #3d3d5c; }
+            QLineEdit { background-color: #1e1e2e; color: #00ff88; border: 1px solid #4d4d6d; border-radius: 6px; padding: 8px; font-family: monospace; }
+            QTextEdit { background-color: #0d0d1a; color: #888; border: 1px solid #2d2d44; border-radius: 8px; font-family: monospace; font-size: 11px; }
+            QTabWidget::pane { border: 1px solid #3d3d5c; border-radius: 8px; background-color: #0d0d1a; }
+            QTabBar::tab { background-color: #1e1e2e; color: #888; padding: 8px 20px; border: 1px solid #3d3d5c; border-radius: 5px 5px 0 0; margin-right: 2px; }
+            QTabBar::tab:selected { background-color: #2d2d44; color: white; }
+            QScrollBar:vertical { background-color: #1a1a2e; width: 12px; border-radius: 6px; }
+            QScrollBar::handle:vertical { background-color: #3d3d5c; border-radius: 6px; min-height: 30px; }
+            QScrollBar::handle:vertical:hover { background-color: #4d4d6d; }
+        """)
         
-        self.setWindowTitle("Flight Computer Ground Station")
-        self.setGeometry(100, 100, 1600, 900)
+        self.fast_data, self.slow_data, self.gs_status, self.gs_stats = {}, {}, {}, {}
+        self.rtt_ms, self.yaw = 0, 0
         
-        # Serial worker
         self.serial_worker = SerialWorker()
-        self.serial_thread = None
+        self.serial_worker.packet_received.connect(self.on_packet)
+        self.serial_worker.log_received.connect(self.on_log)
+        self.serial_worker.connection_changed.connect(self.on_connection)
+        self.serial_worker.error_signal.connect(self.on_error)
         
-        # Data storage
-        self.last_fast = {}
-        self.last_slow = {}
-        self.rtt_history = deque(maxlen=100)
-        
-        # Create UI
         self.init_ui()
         
-        # Connect signals
-        self.serial_worker.raw_received.connect(self.on_raw_received)
-        self.serial_worker.connected.connect(self.on_connection_changed)
-        self.serial_worker.error.connect(self.on_error)
-        
-        # Update timer
         self.update_timer = QTimer()
         self.update_timer.timeout.connect(self.update_display)
-        self.update_timer.start(100)  # 10 Hz update
+        self.update_timer.start(50)
         
-        # Auto-connect if port specified
         if port:
             self.port_combo.setCurrentText(port)
-            self.connect_serial()
+            self.connect_clicked()
     
     def init_ui(self):
-        """Initialize the user interface"""
         central = QWidget()
         self.setCentralWidget(central)
         main_layout = QHBoxLayout(central)
+        main_layout.setSpacing(10)
+        main_layout.setContentsMargins(10, 10, 10, 10)
         
-        # Left panel - Controls and Status
+        # LEFT PANEL
         left_panel = QWidget()
+        left_panel.setMaximumWidth(320)
         left_layout = QVBoxLayout(left_panel)
-        left_panel.setMaximumWidth(350)
+        left_layout.setSpacing(10)
         
-        # Connection group
+        # Connection
         conn_group = QGroupBox("Connection")
         conn_layout = QGridLayout(conn_group)
-        
         self.port_combo = QComboBox()
         self.refresh_ports()
-        conn_layout.addWidget(QLabel("Port:"), 0, 0)
-        conn_layout.addWidget(self.port_combo, 0, 1)
-        
-        refresh_btn = QPushButton("🔄")
+        conn_layout.addWidget(self.port_combo, 0, 0, 1, 2)
+        refresh_btn = QPushButton("⟳")
+        refresh_btn.setMaximumWidth(40)
         refresh_btn.clicked.connect(self.refresh_ports)
         conn_layout.addWidget(refresh_btn, 0, 2)
-        
         self.connect_btn = QPushButton("Connect")
-        self.connect_btn.clicked.connect(self.connect_serial)
+        self.connect_btn.clicked.connect(self.connect_clicked)
         conn_layout.addWidget(self.connect_btn, 1, 0, 1, 3)
-        
-        self.status_label = QLabel("Disconnected")
-        self.status_label.setAlignment(Qt.AlignCenter)
-        conn_layout.addWidget(self.status_label, 2, 0, 1, 3)
-        
+        self.conn_status = QLabel("● Disconnected")
+        self.conn_status.setStyleSheet("color: #ff6b6b;")
+        conn_layout.addWidget(self.conn_status, 2, 0, 1, 3)
         left_layout.addWidget(conn_group)
         
-        # State indicator
+        # State
         state_group = QGroupBox("Flight State")
-        state_layout = QGridLayout(state_group)
-        
-        self.state_indicator = StatusIndicator("State")
-        state_layout.addWidget(self.state_indicator, 0, 0)
-        
-        self.substate_indicator = StatusIndicator("Substate")
-        state_layout.addWidget(self.substate_indicator, 0, 1)
-        
+        state_layout = QVBoxLayout(state_group)
+        self.state_indicator = StateIndicator("STATE")
+        self.substate_indicator = StateIndicator("SUBSTATE")
+        state_layout.addWidget(self.state_indicator)
+        state_layout.addWidget(self.substate_indicator)
         left_layout.addWidget(state_group)
         
-        # Commands group
+        # Commands
         cmd_group = QGroupBox("Commands")
         cmd_layout = QGridLayout(cmd_group)
-        
-        buttons = [
-            ("PING", 'P', 0, 0),
-            ("Calibrate", 'C', 0, 1),
-            ("Profile 1", '1', 1, 0),
-            ("Profile 2", '2', 1, 1),
-            ("Profile 3", '3', 2, 0),
-            ("ARM", 'A', 2, 1),
-            ("DISARM", 'D', 3, 0),
-            ("TEST", 'T', 3, 1),
-            ("LAUNCH", 'L', 4, 0),
-            ("ABORT", 'X', 4, 1),
-            ("SAFE", 'S', 5, 0),
-            ("Reset", 'R', 5, 1),
+        cmd_buttons = [
+            ("PING", 'P', "#3498db"), ("Calibrate", 'C', "#9b59b6"), ("Profile 1", '1', "#2ecc71"),
+            ("Profile 2", '2', "#2ecc71"), ("Profile 3", '3', "#2ecc71"), ("ARM", 'A', "#e67e22"),
+            ("DISARM", 'D', "#95a5a6"), ("TEST", 'T', "#1abc9c"), ("LAUNCH", 'L', "#e74c3c"),
+            ("ABORT", 'X', "#c0392b"), ("SAFE", 'S', "#7f8c8d"), ("HELP", 'H', "#8e44ad"),
         ]
-        
-        for label, cmd, row, col in buttons:
+        for i, (label, cmd, color) in enumerate(cmd_buttons):
             btn = QPushButton(label)
-            btn.clicked.connect(lambda checked, c=cmd: self.send_command(c))
-            
-            # Color dangerous buttons
-            if label in ['LAUNCH', 'ABORT']:
-                btn.setStyleSheet("background-color: #AA0000; color: white;")
-            elif label == 'ARM':
-                btn.setStyleSheet("background-color: #FF6600; color: white;")
-            
-            cmd_layout.addWidget(btn, row, col)
-        
+            btn.setStyleSheet(f"background-color: {color}; border-radius: 8px;")
+            btn.clicked.connect(self.show_help if cmd == 'H' else lambda _, c=cmd: self.send_command(c))
+            cmd_layout.addWidget(btn, i // 3, i % 3)
         left_layout.addWidget(cmd_group)
         
-        # RTT display
-        rtt_group = QGroupBox("Communication")
-        rtt_layout = QVBoxLayout(rtt_group)
+        # Command Line
+        cmdline_group = QGroupBox("Command Line")
+        cmdline_layout = QVBoxLayout(cmdline_group)
+        self.cmd_input = QLineEdit()
+        self.cmd_input.setPlaceholderText("Enter command...")
+        self.cmd_input.returnPressed.connect(self.send_cmdline)
+        cmdline_layout.addWidget(self.cmd_input)
+        left_layout.addWidget(cmdline_group)
         
-        self.rtt_label = QLabel("RTT: --- ms")
-        self.rtt_label.setFont(QFont('Arial', 14, QFont.Bold))
-        rtt_layout.addWidget(self.rtt_label)
-        
-        self.rx_label = QLabel("RX: 0 pkts")
-        rtt_layout.addWidget(self.rx_label)
-        
-        left_layout.addWidget(rtt_group)
-        
-        # Sensor status
-        sensor_group = QGroupBox("Sensors")
-        sensor_layout = QGridLayout(sensor_group)
-        
-        self.altitude_label = QLabel("Alt: --- m")
-        self.altitude_label.setFont(QFont('Courier', 11))
-        sensor_layout.addWidget(self.altitude_label, 0, 0)
-        
-        self.vario_label = QLabel("Vario: --- m/s")
-        self.vario_label.setFont(QFont('Courier', 11))
-        sensor_layout.addWidget(self.vario_label, 0, 1)
-        
-        self.accel_label = QLabel("Accel: ---g")
-        self.accel_label.setFont(QFont('Courier', 11))
-        sensor_layout.addWidget(self.accel_label, 1, 0)
-
-        self.temp_label = QLabel("Temp: --- °C")
-        self.temp_label.setFont(QFont('Courier', 11))
-        sensor_layout.addWidget(self.temp_label, 1, 0)
-
-        self.press_label = QLabel("Press: --- mbar")
-        self.press_label.setFont(QFont('Courier', 11))
-        sensor_layout.addWidget(self.press_label, 1, 1)
-        
-        self.gyro_label = QLabel("Gyro: ---°/s")
-        self.gyro_label.setFont(QFont('Courier', 11))
-        sensor_layout.addWidget(self.gyro_label, 1, 1)
-        
-        self.pitch_label = QLabel("Pitch: ---°")
-        self.pitch_label.setFont(QFont('Courier', 11))
-        sensor_layout.addWidget(self.pitch_label, 2, 0)
-        
-        self.roll_label = QLabel("Roll: ---°")
-        self.roll_label.setFont(QFont('Courier', 11))
-        sensor_layout.addWidget(self.roll_label, 2, 1)
-        
-        left_layout.addWidget(sensor_group)
-        
+        # Communication Stats
+        comm_group = QGroupBox("Communication")
+        comm_layout = QGridLayout(comm_group)
+        self.rtt_display = ValueDisplay("RTT", "ms", 0)
+        self.rx_display = ValueDisplay("RX Packets", "", 0)
+        self.sync_display = ValueDisplay("TDMA", "", 0)
+        self.crc_display = ValueDisplay("CRC Errors", "", 0)
+        comm_layout.addWidget(self.rtt_display, 0, 0)
+        comm_layout.addWidget(self.rx_display, 0, 1)
+        comm_layout.addWidget(self.sync_display, 1, 0)
+        comm_layout.addWidget(self.crc_display, 1, 1)
+        left_layout.addWidget(comm_group)
         left_layout.addStretch()
         main_layout.addWidget(left_panel)
         
-        # Right panel - Plots and Console
-        right_panel = QSplitter(Qt.Vertical)
+        # CENTER PANEL
+        center_panel = QWidget()
+        center_layout = QVBoxLayout(center_panel)
+        center_layout.setSpacing(10)
         
-        # Plots tab widget
-        plot_tabs = QTabWidget()
+        # Telemetry Values
+        telem_widget = QWidget()
+        telem_layout = QHBoxLayout(telem_widget)
+        telem_layout.setSpacing(5)
+        self.alt_display = ValueDisplay("Altitude", "m", 1)
+        self.vario_display = ValueDisplay("Vario", "m/s", 2)
+        self.accel_display = ValueDisplay("Accel", "g", 2)
+        self.pitch_display = ValueDisplay("Pitch", "°", 1)
+        self.roll_display = ValueDisplay("Roll", "°", 1)
+        self.yaw_display = ValueDisplay("Yaw", "°", 1)
+        self.temp_display = ValueDisplay("Temp", "°C", 1)
+        self.press_display = ValueDisplay("Pressure", "mbar", 1)
+        self.batt_display = ValueDisplay("Battery", "%", 0)
+        for w in [self.alt_display, self.vario_display, self.accel_display, self.pitch_display, self.roll_display, self.yaw_display, self.temp_display, self.press_display, self.batt_display]:
+            telem_layout.addWidget(w)
+        center_layout.addWidget(telem_widget)
         
-        # Altitude tab
-        alt_widget = QWidget()
-        alt_layout = QVBoxLayout(alt_widget)
-        self.altitude_plot = RealtimePlot("Altitude", "m")
-        alt_layout.addWidget(self.altitude_plot)
-        plot_tabs.addTab(alt_widget, "Altitude")
+        # Plots
+        plots_tabs = QTabWidget()
+        self.alt_plot = RealtimePlot("Altitude", "m", 1)
+        plots_tabs.addTab(PlotContainer(self.alt_plot, "Altitude", self), "Altitude")
         
-        # Accelerometer tab
-        accel_widget = QWidget()
-        accel_layout = QVBoxLayout(accel_widget)
-        self.accel_plot = MultiLinePlot("Acceleration", "g", 3, ['X', 'Y', 'Z'])
-        accel_layout.addWidget(self.accel_plot)
-        plot_tabs.addTab(accel_widget, "Accel")
+        imu_widget = QWidget()
+        imu_layout = QVBoxLayout(imu_widget)
+        self.accel_plot = RealtimePlot("Acceleration", "g", 3, ['#ff6b6b', '#4ecdc4', '#ffe66d'])
+        self.gyro_plot = RealtimePlot("Gyroscope", "°/s", 3, ['#ff6b6b', '#4ecdc4', '#ffe66d'])
+        imu_layout.addWidget(PlotContainer(self.accel_plot, "Acceleration", self))
+        imu_layout.addWidget(PlotContainer(self.gyro_plot, "Gyroscope", self))
+        plots_tabs.addTab(imu_widget, "IMU")
         
-        # Gyroscope tab
-        gyro_widget = QWidget()
-        gyro_layout = QVBoxLayout(gyro_widget)
-        self.gyro_plot = MultiLinePlot("Angular Rate", "°/s", 3, ['X', 'Y', 'Z'])
-        gyro_layout.addWidget(self.gyro_plot)
-        plot_tabs.addTab(gyro_widget, "Gyro")
-
-        # Temperature tab
-        temp_widget = QWidget()
-        temp_layout = QVBoxLayout(temp_widget)
-        self.temp_plot = RealtimePlot("Temperature", "°C")
-        temp_layout.addWidget(self.temp_plot)
-        plot_tabs.addTab(temp_widget, "Temp")
-
-        # Pressure tab
-        press_widget = QWidget()
-        press_layout = QVBoxLayout(press_widget)
-        self.press_plot = RealtimePlot("Pressure", "mbar")
-        press_layout.addWidget(self.press_plot)
-        plot_tabs.addTab(press_widget, "Pressure")
+        self.orient_plot = RealtimePlot("Orientation", "°", 3, ['#a855f7', '#06b6d4', '#ffe66d'])
+        plots_tabs.addTab(PlotContainer(self.orient_plot, "Orientation", self), "Orientation")
         
-        # Orientation tab
-        orient_widget = QWidget()
-        orient_layout = QVBoxLayout(orient_widget)
-        self.orient_plot = MultiLinePlot("Orientation", "°", 2, ['Pitch', 'Roll'])
-        orient_layout.addWidget(self.orient_plot)
-        plot_tabs.addTab(orient_widget, "Orientation")
+        env_widget = QWidget()
+        env_layout = QVBoxLayout(env_widget)
+        self.temp_plot = RealtimePlot("Temperature", "°C", 1, ['#ff6b6b'])
+        self.press_plot = RealtimePlot("Pressure", "mbar", 1, ['#4ecdc4'])
+        env_layout.addWidget(PlotContainer(self.temp_plot, "Temperature", self))
+        env_layout.addWidget(PlotContainer(self.press_plot, "Pressure", self))
+        plots_tabs.addTab(env_widget, "Environment")
         
-        right_panel.addWidget(plot_tabs)
+        center_layout.addWidget(plots_tabs, stretch=1)
+        main_layout.addWidget(center_panel, stretch=1)
         
-        # Console
+        # RIGHT PANEL
+        right_panel = QWidget()
+        right_panel.setMaximumWidth(400)
+        right_layout = QVBoxLayout(right_panel)
+        right_layout.setSpacing(10)
+        
+        view3d_group = QGroupBox("3D Attitude")
+        view3d_layout = QVBoxLayout(view3d_group)
+        self.rocket_view = RocketView3D()
+        self.rocket_view.setMinimumHeight(300)
+        view3d_layout.addWidget(View3DContainer(self.rocket_view, self))
+        right_layout.addWidget(view3d_group)
+        
+        gps_group = QGroupBox("GPS")
+        gps_layout = QGridLayout(gps_group)
+        self.lat_display = ValueDisplay("Latitude", "°", 6)
+        self.lon_display = ValueDisplay("Longitude", "°", 6)
+        self.gps_alt_display = ValueDisplay("GPS Alt", "m", 1)
+        self.sats_display = ValueDisplay("Satellites", "", 0)
+        gps_layout.addWidget(self.lat_display, 0, 0)
+        gps_layout.addWidget(self.lon_display, 0, 1)
+        gps_layout.addWidget(self.gps_alt_display, 1, 0)
+        gps_layout.addWidget(self.sats_display, 1, 1)
+        right_layout.addWidget(gps_group)
+        
         console_group = QGroupBox("Console")
         console_layout = QVBoxLayout(console_group)
-        
         self.console = QTextEdit()
         self.console.setReadOnly(True)
-        self.console.setFont(QFont('Courier', 9))
-        self.console.setMaximumHeight(250)
+        self.console.setMaximumHeight(200)
         console_layout.addWidget(self.console)
+        right_layout.addWidget(console_group)
         
-        right_panel.addWidget(console_group)
-        
-        main_layout.addWidget(right_panel, stretch=1)
+        main_layout.addWidget(right_panel)
+    
+    def show_help(self):
+        HelpDialog(self).exec_()
     
     def refresh_ports(self):
-        """Refresh available serial ports"""
         self.port_combo.clear()
-        ports = serial.tools.list_ports.comports()
-        for port in ports:
+        for port in serial.tools.list_ports.comports():
             self.port_combo.addItem(port.device)
     
-    def connect_serial(self):
-        """Connect/disconnect serial"""
-        if self.serial_worker.serial and self.serial_worker.serial.is_open:
-            self.serial_worker.disconnect()
+    def connect_clicked(self):
+        if self.serial_worker.isRunning():
+            self.serial_worker.disconnect_port()
+            self.serial_worker.wait()
             self.connect_btn.setText("Connect")
         else:
             port = self.port_combo.currentText()
-            if port:
-                if self.serial_worker.connect(port):
-                    self.connect_btn.setText("Disconnect")
-                    
-                    # Start worker thread
-                    self.serial_thread = threading.Thread(target=self.serial_worker.run)
-                    self.serial_thread.daemon = True
-                    self.serial_thread.start()
+            if port and self.serial_worker.connect_port(port):
+                self.serial_worker.start()
+                self.connect_btn.setText("Disconnect")
     
     def send_command(self, cmd):
-        if cmd == 'P':  # assuming 'P' = ping
-            self.last_ping_time = time.time()
-        """Send command character to Arduino"""
         self.serial_worker.send_command(cmd)
-        self.log(f"[TX] Command: {cmd}")
+        self.log(f"[TX] {cmd}")
     
-    def on_raw_received(self, text):
-        """Handle raw serial data"""
-        self.console.moveCursor(self.console.textCursor().End)
-        self.console.insertPlainText(text)
-        
-        # Auto-scroll
-        scrollbar = self.console.verticalScrollBar()
-        scrollbar.setValue(scrollbar.maximum())
-        
-        # Parse telemetry values from text
-        self.parse_arduino_output(text)
+    def send_cmdline(self):
+        cmd = self.cmd_input.text().strip()
+        if cmd:
+            self.serial_worker.send_command(cmd)
+            self.log(f"[CMD] {cmd}")
+            self.cmd_input.clear()
     
-    def parse_arduino_output(self, text):
-        """Parse Arduino's text output to extract telemetry values"""
-        lines = text.split('\n')
-        for line in lines:
-            try:
-                # Parse RTT
-                if 'RTT:' in line:
-                    parts = line.split('RTT:')
-                    if len(parts) > 1:
-                        rtt_str = parts[1].split()[0].replace('ms', '')
-                        rtt = int(rtt_str)
-                        self.rtt_history.append(rtt)
-                
-                # Parse altitude
-                if 'Alt:' in line and 'm' in line:
-                    parts = line.split('Alt:')
-                    if len(parts) > 1:
-                        alt_str = parts[1].split('m')[0].strip()
-                        try:
-                            alt = float(alt_str)
-                            self.last_fast['altitude'] = alt
-                            self.altitude_plot.add_point(alt)
-                        except:
-                            pass
-                
-                # Parse acceleration
-                if 'Accel:' in line:
-                    # Format: "Accel: X=0.01g Y=0.02g Z=1.00g"
-                    try:
-                        x = float(line.split('X=')[1].split('g')[0])
-                        y = float(line.split('Y=')[1].split('g')[0])
-                        z = float(line.split('Z=')[1].split('g')[0])
-                        self.last_fast['accel_x'] = x
-                        self.last_fast['accel_y'] = y
-                        self.last_fast['accel_z'] = z
-                        self.accel_plot.add_points([x, y, z])
-                    except:
-                        pass
-                
-                # Parse gyro
-                if 'Gyro:' in line:
-                    try:
-                        x = float(line.split('X=')[1].split()[0])
-                        y = float(line.split('Y=')[1].split()[0])
-                        z = float(line.split('Z=')[1].split()[0])
-                        self.last_fast['gyro_x'] = x
-                        self.last_fast['gyro_y'] = y
-                        self.last_fast['gyro_z'] = z
-                        self.gyro_plot.add_points([x, y, z])
-                    except:
-                        pass
-                
-                # Parse orientation
-                if 'Pitch:' in line and 'Roll:' in line:
-                    try:
-                        pitch = float(line.split('Pitch:')[1].split('|')[0].strip().replace('°', ''))
-                        roll = float(line.split('Roll:')[1].strip().replace('°', ''))
-                        self.last_fast['pitch'] = pitch
-                        self.last_fast['roll'] = roll
-                        self.orient_plot.add_points([pitch, roll])
-                    except:
-                        pass
-                
-                # Parse state
-                if 'State:' in line and '.' in line:
-                    try:
-                        state_part = line.split('State:')[1].split('|')[0].strip()
-                        if '.' in state_part:
-                            state, substate = state_part.split('.')
-                            self.last_fast['state_name'] = state.strip()
-                            self.last_fast['substate_name'] = substate.strip()
-                    except:
-                        pass
-
-                # Parse baro temp & pressure
-                if 'Temp:' in line and 'Pressure:' in line:
-                    try:
-                        temp = float(line.split('Temp:')[1].split('C')[0].strip())
-                        pressure = float(line.split('Pressure:')[1].split('mbar')[0].strip())
-                        self.last_slow['temp_baro'] = temp
-                        self.last_slow['pressure'] = pressure
-                        self.temp_plot.add_point(temp)
-                        self.press_plot.add_point(pressure)
-                    except:
-                        pass
-                
-                # Parse vario
-                if 'Vario:' in line:
-                    try:
-                        vario_str = line.split('Vario:')[1].split('m/s')[0].strip()
-                        vario = float(vario_str)
-                        self.last_fast['vario'] = vario
-                    except:
-                        pass
-                if 'PONG' in line and self.last_ping_time is not None:
-                    rtt_ms = int((time.time() - self.last_ping_time) * 1000)
-                    self.rtt_history.append(rtt_ms)
-                    self.last_ping_time = None
-                
-            except Exception as e:
-                pass  # Ignore parse errors
+    def on_packet(self, pkt):
+        pkt_type = pkt.get('type', '')
+        if pkt_type == 'fast':
+            self.fast_data = pkt
+            self.alt_plot.add_data(pkt['altitude'])
+            self.accel_plot.add_data(pkt['accel_x'], pkt['accel_y'], pkt['accel_z'])
+            self.gyro_plot.add_data(pkt['gyro_x'], pkt['gyro_y'], pkt['gyro_z'])
+            self.yaw += pkt['gyro_z'] * 0.1
+            self.yaw = self.yaw % 360
+            self.orient_plot.add_data(pkt['pitch'], pkt['roll'], self.yaw)
+            self.rocket_view.update_attitude(pkt['pitch'], pkt['roll'], self.yaw)
+        elif pkt_type == 'slow':
+            self.slow_data = pkt
+            self.temp_plot.add_data(pkt['temperature'])
+            self.press_plot.add_data(pkt['pressure'])
+        elif pkt_type == 'event':
+            event_name = EVENT_NAMES.get(pkt['event_type'], f'EVT_{pkt["event_type"]}')
+            self.log(f"[EVENT] {event_name}")
+        elif pkt_type == 'pong':
+            self.rtt_ms = pkt['rtt_ms']
+            self.log(f"[PONG] RTT={self.rtt_ms}ms")
+        elif pkt_type == 'gs_status':
+            self.gs_status = pkt
+        elif pkt_type == 'gs_stats':
+            self.gs_stats = pkt
     
-    def on_connection_changed(self, connected):
-        """Handle connection state change"""
-        if connected:
-            self.status_label.setText("Connected")
-            self.status_label.setStyleSheet("color: green;")
-        else:
-            self.status_label.setText("Disconnected")
-            self.status_label.setStyleSheet("color: red;")
+    def on_log(self, msg):
+        self.log(f"[GS] {msg}")
     
-    def on_error(self, error):
-        """Handle serial error"""
-        self.log(f"[ERROR] {error}")
+    def on_connection(self, connected):
+        self.conn_status.setText("● Connected" if connected else "● Disconnected")
+        self.conn_status.setStyleSheet(f"color: {'#00ff88' if connected else '#ff6b6b'};")
     
-    def log(self, message):
-        """Add message to console"""
-        timestamp = datetime.now().strftime("%H:%M:%S.%f")[:-3]
-        self.console.append(f"[{timestamp}] {message}")
+    def on_error(self, msg):
+        self.log(f"[ERROR] {msg}")
+    
+    def log(self, msg):
+        self.console.append(f"[{datetime.now().strftime('%H:%M:%S')}] {msg}")
+        self.console.moveCursor(QTextCursor.End)
     
     def update_display(self):
-        """Update display with latest values"""
-        # Update RTT
-        if self.rtt_history:
-            avg_rtt = sum(self.rtt_history) / len(self.rtt_history)
-            self.rtt_label.setText(f"RTT: {self.rtt_history[-1]} ms (avg: {avg_rtt:.0f} ms)")
+        if self.fast_data:
+            self.alt_display.set_value(self.fast_data.get('altitude'))
+            self.vario_display.set_value(self.fast_data.get('vario'))
+            ax, ay, az = self.fast_data.get('accel_x', 0), self.fast_data.get('accel_y', 0), self.fast_data.get('accel_z', 0)
+            self.accel_display.set_value(math.sqrt(ax*ax + ay*ay + az*az))
+            self.pitch_display.set_value(self.fast_data.get('pitch'))
+            self.roll_display.set_value(self.fast_data.get('roll'))
+            self.yaw_display.set_value(self.yaw)
+            state_idx, substate_idx = self.fast_data.get('state', 0), self.fast_data.get('substate', 0)
+            state_name = STATE_NAMES[state_idx] if state_idx < len(STATE_NAMES) else f"S{state_idx}"
+            substate_name = SUBSTATE_NAMES[substate_idx] if substate_idx < len(SUBSTATE_NAMES) else f"SS{substate_idx}"
+            state_colors = {0: "#666666", 1: "#3498db", 2: "#9b59b6", 3: "#e67e22", 4: "#1abc9c", 5: "#2ecc71", 6: "#e74c3c", 7: "#7f8c8d"}
+            self.state_indicator.set_state(state_name, state_colors.get(state_idx, "#666"))
+            self.substate_indicator.set_state(substate_name, "#2d2d44")
         
-        # Update sensor values
-        if 'altitude' in self.last_fast:
-            self.altitude_label.setText(f"Alt: {self.last_fast['altitude']:.1f} m")
+        if self.slow_data:
+            self.temp_display.set_value(self.slow_data.get('temperature'))
+            self.press_display.set_value(self.slow_data.get('pressure'))
+            self.batt_display.set_value(self.slow_data.get('battery'))
+            self.lat_display.set_value(self.slow_data.get('latitude'))
+            self.lon_display.set_value(self.slow_data.get('longitude'))
+            self.gps_alt_display.set_value(self.slow_data.get('gps_altitude'))
+            self.sats_display.set_value(self.slow_data.get('satellites'))
         
-        if 'vario' in self.last_fast:
-            self.vario_label.setText(f"Vario: {self.last_fast['vario']:.2f} m/s")
+        self.rtt_display.set_value(self.rtt_ms if self.rtt_ms > 0 else None)
+        if self.rtt_ms > 0:
+            self.rtt_display.set_color("#00ff88" if self.rtt_ms < 200 else "#ffe66d" if self.rtt_ms < 500 else "#ff6b6b")
         
-        if 'accel_x' in self.last_fast:
-            ax = self.last_fast['accel_x']
-            ay = self.last_fast['accel_y']
-            az = self.last_fast['accel_z']
-            total = (ax**2 + ay**2 + az**2)**0.5
-            self.accel_label.setText(f"Accel: {total:.2f}g")
+        if self.gs_stats:
+            self.rx_display.set_value(self.gs_stats.get('rx_fast', 0) + self.gs_stats.get('rx_slow', 0))
+            self.crc_display.set_value(self.gs_stats.get('crc_errors', 0))
         
-        if 'gyro_x' in self.last_fast:
-            gx = self.last_fast['gyro_x']
-            gy = self.last_fast['gyro_y']
-            gz = self.last_fast['gyro_z']
-            total = (gx**2 + gy**2 + gz**2)**0.5
-            self.gyro_label.setText(f"Gyro: {total:.1f}°/s")
-        
-        if 'pitch' in self.last_fast:
-            self.pitch_label.setText(f"Pitch: {self.last_fast['pitch']:.1f}°")
-        
-        if 'roll' in self.last_fast:
-            self.roll_label.setText(f"Roll: {self.last_fast['roll']:.1f}°")
-        
-        if 'temp_baro' in self.last_slow:
-            self.temp_label.setText(f"Temp: {self.last_slow['temp_baro']:.1f} °C")
-            
-        if 'pressure' in self.last_slow:
-            self.press_label.setText(f"Press: {self.last_slow['pressure']:.1f} mbar")
-        
-        # Update state indicators
-        if 'state_name' in self.last_fast:
-            state = self.last_fast['state_name']
-            self.state_indicator.set_value(state)
-            
-            if state == 'FLIGHT':
-                self.state_indicator.set_status('flight')
-            elif state == 'ARMED':
-                self.state_indicator.set_status('armed')
-            elif state in ['ABORT', 'SAFE']:
-                self.state_indicator.set_status('error')
-            elif state == 'IDLE':
-                self.state_indicator.set_status('ok')
-            else:
-                self.state_indicator.set_status('warning')
-        
-        if 'substate_name' in self.last_fast:
-            self.substate_indicator.set_value(self.last_fast['substate_name'])
+        if self.gs_status:
+            synced = self.gs_status.get('synced')
+            self.sync_display.set_value("SYNC" if synced else "UNSYNC")
+            self.sync_display.set_color("#00ff88" if synced else "#ff6b6b")
     
     def closeEvent(self, event):
-        """Clean up on close"""
         self.serial_worker.running = False
-        if self.serial_worker.serial:
-            self.serial_worker.serial.close()
+        if self.serial_worker.isRunning():
+            self.serial_worker.wait()
         event.accept()
 
-# ============================================================================
-# Main Entry Point
-# ============================================================================
-
 def main():
-    parser = argparse.ArgumentParser(description='Flight Computer Ground Station Dashboard')
-    parser.add_argument('--port', '-p', type=str, help='Serial port (e.g., COM3 or /dev/ttyUSB0)')
+    parser = argparse.ArgumentParser(description='Flight Computer Dashboard v3')
+    parser.add_argument('--port', '-p', type=str, help='Serial port')
     args = parser.parse_args()
     
     app = QApplication(sys.argv)
-    
-    # Set dark theme
-    app.setStyle('Fusion')
-    palette = QPalette()
-    palette.setColor(QPalette.Window, QColor(53, 53, 53))
-    palette.setColor(QPalette.WindowText, Qt.white)
-    palette.setColor(QPalette.Base, QColor(25, 25, 25))
-    palette.setColor(QPalette.AlternateBase, QColor(53, 53, 53))
-    palette.setColor(QPalette.ToolTipBase, Qt.white)
-    palette.setColor(QPalette.ToolTipText, Qt.white)
-    palette.setColor(QPalette.Text, Qt.white)
-    palette.setColor(QPalette.Button, QColor(53, 53, 53))
-    palette.setColor(QPalette.ButtonText, Qt.white)
-    palette.setColor(QPalette.BrightText, Qt.red)
-    palette.setColor(QPalette.Link, QColor(42, 130, 218))
-    palette.setColor(QPalette.Highlight, QColor(42, 130, 218))
-    palette.setColor(QPalette.HighlightedText, Qt.black)
-    app.setPalette(palette)
-    
-    window = DashboardWindow(args.port)
-    window.show()
-    
+    app.setStyle(QStyleFactory.create('Fusion'))
+    DashboardWindow(args.port).show()
     sys.exit(app.exec_())
 
 if __name__ == '__main__':
