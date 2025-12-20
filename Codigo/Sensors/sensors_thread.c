@@ -120,11 +120,20 @@ void sensors_thread_init(void) {
     if (!gps_ok) {
         printf("ERROR: GPS init failed!\r\n");
     } else {
-        HAL_Delay(500);
+        // Wait for GPS to boot
+        HAL_Delay(1000);
+
+        // Configure minimal output - NEO-7M won't save this!
         UBLOX_GPS_ConfigureMinimal(&gps_device);
         HAL_Delay(200);
+
+        #if UBLOX_GPS_HAS_FLASH
         UBLOX_GPS_SaveConfig(&gps_device);
+        printf("GPS config saved to flash\r\n");
         HAL_Delay(500);
+        #else
+        printf("GPS config NOT saved (ROM-only module)\r\n");
+        #endif
 
         bool gps_dma = UBLOX_GPS_StartDMA(&gps_device);
         fsm_report_init_status("GPS_CONFIG", gps_dma);
@@ -151,6 +160,10 @@ void sensors_thread_function(void *argument) {
 
     xTimerStart(xBaroTimer, 0);
     xTimerStart(xBnoTimer, 0);
+
+    static uint32_t gps_update_calls = 0;
+    static uint32_t gps_sentences_found = 0;
+    static uint32_t gps_last_sat_count = 0;
 
     TickType_t last_stats_time = xTaskGetTickCount();
 
@@ -201,7 +214,8 @@ void sensors_thread_function(void *argument) {
 
         if (ulNotificationValue & SENSOR_NOTIFY_GPS_DATA) {
             if (UBLOX_GPS_Update(&gps_device)) {
-                ulNotificationValue |= SENSOR_NOTIFY_GPS_DR;
+            	gps_sentences_found++;
+            	ulNotificationValue |= SENSOR_NOTIFY_GPS_DR;
             }
         }
 
@@ -242,6 +256,7 @@ void sensors_thread_function(void *argument) {
             GPS_t gps_data;
             if (UBLOX_GPS_ProcessData(&gps_device, &gps_data)) {
                 sensor_stats.gps_samples++;
+                gps_last_sat_count = gps_data.satellites;
                 data_handler_store_gps(&gps_data);
             } else {
                 sensor_stats.gps_errors++;
@@ -266,6 +281,9 @@ void sensors_thread_function(void *argument) {
             printf("BNO:  %lu samples, %lu errors\r\n", sensor_stats.bno_samples, sensor_stats.bno_errors);
             printf("GPS:  %lu samples, %lu errors\r\n", sensor_stats.gps_samples, sensor_stats.gps_errors);
             printf("DMA errors: %lu\r\n", sensor_stats.dma_errors);
+            printf("GPS:  %lu samples, %lu errors, %lu sats, updates=%lu, sentences=%lu\r\n",
+                   sensor_stats.gps_samples, sensor_stats.gps_errors,
+                   gps_last_sat_count, gps_update_calls, gps_sentences_found);
             last_stats_time = xTaskGetTickCount();
         }
     }

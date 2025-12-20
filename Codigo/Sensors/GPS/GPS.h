@@ -14,6 +14,8 @@
 #include "defs.h"
 #include "dma_msg.h"
 
+#define UBLOX_GPS_HAS_FLASH    0  // NEO-7M is ROM-only, set to 1 for NEO-M8/M9
+
 // UART configuration
 #define UBLOX_GPS_BAUD_RATE          9600   // Default NEO-7M baud rate
 #define UBLOX_GPS_UART_BUFFER_SIZE   256    // Size for continuous circular buffer

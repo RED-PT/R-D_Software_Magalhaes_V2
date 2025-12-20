@@ -161,6 +161,7 @@ def parse_gs_pong(data):
     }
 
 def parse_gs_stats(data):
+    """Parse GS statistics - 8 uint32_t fields (32 bytes)"""
     if len(data) < 32:
         return None
     fmt = '<8I'
@@ -966,8 +967,9 @@ class DashboardWindow(QMainWindow):
             self.temp_plot.add_data(pkt['temperature'])
             self.press_plot.add_data(pkt['pressure'])
         elif pkt_type == 'event':
-            event_name = EVENT_NAMES.get(pkt['event_type'], f'EVT_{pkt["event_type"]}')
-            self.log(f"[EVENT] {event_name}")
+            evt_type = pkt['event_type']
+            evt_name = EVENT_NAMES.get(evt_type, f"EVT_{evt_type}")
+            self.log(f"[EVENT] {evt_name}")
         elif pkt_type == 'pong':
             self.rtt_ms = pkt['rtt_ms']
             self.log(f"[PONG] RTT={self.rtt_ms}ms")
