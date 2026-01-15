@@ -24,7 +24,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include <stdio.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -72,5 +72,26 @@ return 0;
 /* Private application code --------------------------------------------------*/
 /* USER CODE BEGIN Application */
 
+/* Stack overflow hook - called when a task overflows its stack */
+void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName)
+{
+    printf("\r\n\r\n!!! STACK OVERFLOW in task: %s !!!\r\n", pcTaskName);
+    printf("System halted. Increase stack size for this task.\r\n");
+
+    /* Halt the system - infinite loop with interrupts disabled */
+    taskDISABLE_INTERRUPTS();
+    for(;;);
+}
+
+/* Malloc failed hook - called when heap allocation fails */
+void vApplicationMallocFailedHook(void)
+{
+    printf("\r\n\r\n!!! HEAP EXHAUSTED - malloc failed !!!\r\n");
+    printf("System halted. Reduce memory usage or increase heap.\r\n");
+
+    /* Halt the system */
+    taskDISABLE_INTERRUPTS();
+    for(;;);
+}
 /* USER CODE END Application */
 

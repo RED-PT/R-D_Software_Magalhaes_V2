@@ -251,6 +251,8 @@ typedef enum {
     CMD_ABORT,
     CMD_FORCE_SAFE,
     CMD_CALIBRATE_BARO,
+    CMD_CALIBRATE_MOTOR,    // ESC min/max throttle calibration
+    CMD_STATIC_TEST,        // Static thrust test (payload: max_throttle_percent)
     CMD_RESYNC
 } fsm_command_t;
 
@@ -273,7 +275,14 @@ typedef enum {
     EVT_GENERIC_MSG,
     EVT_PONG,              // Response to PING with RTT
     EVT_BARO_CALIBRATED,   // Barometer calibration complete
-    EVT_MOTOR_ARMED        // Motor arm sequence complete
+    EVT_MOTOR_ARMED,       // Motor arm sequence complete
+    EVT_MOTOR_CAL_STARTED, // ESC calibration started (sending MAX)
+    EVT_MOTOR_CAL_PHASE2,  // ESC calibration phase 2 (sending MIN)
+    EVT_MOTOR_CALIBRATED,  // ESC calibration complete
+    EVT_STATIC_TEST_STARTED,   // Static thrust test started
+    EVT_STATIC_TEST_PROGRESS,  // Static test progress update
+    EVT_STATIC_TEST_COMPLETE,  // Static test completed successfully
+    EVT_STATIC_TEST_FAILED     // Static test failed
 } telemetry_event_type_t;
 
 // ============================================================================

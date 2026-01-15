@@ -156,9 +156,12 @@ bool MS5607_ReadTemperatureandPressure(MS5607_t *dev, BARO_t *output) {
     int64_t dT = (int64_t)D2 - ((int64_t)C[5] << 8);
     int32_t TEMP = 2000 + (int32_t)((dT * (int64_t)C[6]) >> 23);
 
-    // Calculate pressure offset and sensitivity (CORRECTED bit shifts)
-    int64_t OFF = ((int64_t)C[2] << 17) + (((int64_t)dT * (int64_t)C[4]) >> 7);
-    int64_t SENS = ((int64_t)C[1] << 16) + (((int64_t)dT * (int64_t)C[3]) >> 8);
+    // Calculate pressure offset and sensitivity
+    // MS5607 formulas (different from MS5611!):
+    //   OFF  = C2 * 2^17 + (C4 * dT) / 2^6
+    //   SENS = C1 * 2^16 + (C3 * dT) / 2^7
+    int64_t OFF = ((int64_t)C[2] << 17) + (((int64_t)dT * (int64_t)C[4]) >> 6);
+    int64_t SENS = ((int64_t)C[1] << 16) + (((int64_t)dT * (int64_t)C[3]) >> 7);
 
     // Calculate final pressure
     int32_t P = (int32_t)(((((int64_t)D1 * SENS) >> 21) - OFF) >> 15);

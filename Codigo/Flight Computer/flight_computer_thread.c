@@ -9,9 +9,16 @@
 #include "Data Handler/flash_data_handler.h"
 #include "Threads/create_threads.h"
 #include "Controller/controller_thread.h"
+#include "Sensors/MS5607/MS5607.h"
+#include "Atuadores/ESC/PWM_FUNCTIONS.h"
+#include "Tests/static_thrust_test.h"
+#include "Storage/sd_card_thread.h"
 #include "cmsis_os.h"
 #include "print.h"
 #include <string.h>
+
+// External reference to barometer device (defined in sensors_thread.c)
+extern MS5607_t baro_device;
 
 #define BOOT_TIMEOUT_MS     10000   // 10 seconds max boot time
 #define BOOT_MIN_WAIT_MS    3000    // Minimum 3s to let threads start
@@ -46,6 +53,14 @@ static uint8_t calibration_sample_count = 0;
 
 // Motor arm state machine
 static uint32_t motor_arm_start_tick = 0;
+
+// Motor calibration state machine
+static bool motor_cal_in_progress = false;
+static esc_calibration_state_t last_cal_state = ESC_CAL_IDLE;
+
+// Static thrust test state machine
+static bool static_test_in_progress = false;
+static static_test_state_t last_static_test_state = STATIC_TEST_IDLE;
 
 // ============================================================================
 // Helper: Add error to boot report
@@ -109,7 +124,13 @@ static void send_telem_event(telemetry_event_type_t type, const void *payload, u
 
     evt.crc16 = crc16_calculate((uint8_t*)&evt, sizeof(telemetry_event_t) - 2);
 
-    data_handler_store_event(&evt);
+    // Queue event directly to radio for immediate transmission
+    // (queue_fsm_events holds the full struct, not a pointer)
+    if (queue_fsm_events != NULL) {
+        if (xQueueSend(queue_fsm_events, &evt, pdMS_TO_TICKS(10)) != pdTRUE) {
+            printf("[FSM] WARNING: Event queue full!\r\n");
+        }
+    }
 }
 
 // ============================================================================
@@ -281,14 +302,8 @@ static void handle_state_idle(void) {
 // ============================================================================
 static void handle_state_configed(void) {
     // Profile is loaded, waiting for ARM command
-    // Perform pre-arm checks here if needed
-
-    // Check sensors are still healthy
-    boot_status_t *bs = &fsm_ctx.boot_status;
-    if (bs->imu_init != 1 || bs->baro_init != 1) {
-        printf("[FSM] WARNING: Sensor failure in CONFIGED state\r\n");
-        // Could transition to IDLE or SAFE
-    }
+    // Sensors are already validated on entry to this state
+    // Nothing to do here - just wait for ARM command
 }
 
 // ============================================================================
@@ -478,6 +493,33 @@ static void handle_cmd_set_profile(fsm_cmd_msg_t *msg) {
         return;
     }
 
+    // Check critical sensors before allowing profile load
+    boot_status_t *bs = &fsm_ctx.boot_status;
+    bool sensors_ok = true;
+
+    if (bs->imu_init != 1) {
+        printf("[FSM] WARNING: IMU not initialized!\r\n");
+        sensors_ok = false;
+    }
+    if (bs->baro_init != 1) {
+        printf("[FSM] WARNING: Barometer not initialized!\r\n");
+        sensors_ok = false;
+    }
+    if (bs->mag_init != 1) {
+        printf("[FSM] WARNING: Magnetometer not initialized!\r\n");
+        // Mag is optional for some profiles, continue
+    }
+    if (bs->bno_init != 1) {
+        printf("[FSM] WARNING: BNO055 not initialized!\r\n");
+        // BNO is optional, continue
+    }
+
+    if (!sensors_ok) {
+        printf("[FSM] ERROR: Critical sensors (IMU/BARO) not ready - cannot load profile!\r\n");
+        fsm_ctx.last_cmd_status = 1;
+        return;
+    }
+
     uint8_t profile_type = msg->payload.profile.profile_type;
     float param1 = msg->payload.profile.param1;
     float param2 = msg->payload.profile.param2;
@@ -625,15 +667,17 @@ static void handle_cmd_calibrate_baro(fsm_cmd_msg_t *msg) {
         return;
     }
 
-    // Start calibration process
+    // Start calibration process using the MS5607 calibration API
+    // This will fail if sensor isn't responding (no static boot flag check)
+    if (!MS5607_StartCalibration(&baro_device, &fsm_ctx.baro_cal)) {
+        printf("[FSM] ERROR: Failed to start calibration (sensor not responding)!\r\n");
+        fsm_ctx.last_cmd_status = 1;
+        return;
+    }
+
     calibration_in_progress = true;
     calibration_sample_count = 0;
     calibration_start_tick = HAL_GetTick();
-
-    // Reset calibration accumulator
-    fsm_ctx.baro_cal.is_calibrated = false;
-    fsm_ctx.baro_cal.samples_collected = 0;
-    fsm_ctx.baro_cal.pressure_sum = 0.0f;
 
     printf("[FSM] Calibration started (%d samples)...\r\n", BARO_CALIBRATION_SAMPLES);
     fsm_ctx.last_cmd_status = 0;
@@ -649,6 +693,105 @@ static void handle_cmd_start_test(fsm_cmd_msg_t *msg) {
     }
 
     transition_to(STATE_TEST_STAND, SUB_TS_SENSOR_CHECK, EVT_STATE_CHANGE);
+    fsm_ctx.last_cmd_status = 0;
+}
+
+static void handle_cmd_calibrate_motor(fsm_cmd_msg_t *msg) {
+    printf("[FSM] CALIBRATE_MOTOR requested\r\n");
+
+    // Only allow in IDLE or CONFIGED states (not armed, not flying)
+    if (fsm_ctx.state != STATE_IDLE && fsm_ctx.state != STATE_CONFIGED) {
+        printf("[FSM] Cannot calibrate motor in %s\r\n", fsm_state_to_str(fsm_ctx.state));
+        fsm_ctx.last_cmd_status = 1;
+        return;
+    }
+
+    // Check if motor calibration already in progress
+    if (motor_cal_in_progress) {
+        printf("[FSM] Motor calibration already in progress!\r\n");
+        fsm_ctx.last_cmd_status = 1;
+        return;
+    }
+
+    // Start ESC calibration (10 seconds for phase 1 by default)
+    // User can optionally provide duration in payload
+    uint32_t phase1_ms = 0;  // 0 = use default
+    if (msg->payload.raw[0] != 0) {
+        // First byte can specify seconds for phase 1 (0 = default)
+        phase1_ms = msg->payload.raw[0] * 1000;
+    }
+
+    if (!PWM_ESC_StartCalibration(phase1_ms)) {
+        printf("[FSM] ERROR: Failed to start motor calibration!\r\n");
+        fsm_ctx.last_cmd_status = 1;
+        return;
+    }
+
+    motor_cal_in_progress = true;
+    last_cal_state = ESC_CAL_PHASE1_MAX;
+
+    // Pause SD card to avoid EMI interference during motor calibration
+    sd_card_pause();
+
+    // Send event to GS
+    send_telem_event(EVT_MOTOR_CAL_STARTED, NULL, 0);
+
+    printf("[FSM] Motor calibration started\r\n");
+    printf("[FSM] >>> POWER CYCLE THE ESC WITHIN 10 SECONDS! <<<\r\n");
+    fsm_ctx.last_cmd_status = 0;
+}
+
+static void handle_cmd_static_test(fsm_cmd_msg_t *msg) {
+    printf("[FSM] STATIC_TEST requested\r\n");
+
+    // Only allow in IDLE or CONFIGED states
+    if (fsm_ctx.state != STATE_IDLE && fsm_ctx.state != STATE_CONFIGED) {
+        printf("[FSM] Cannot run static test in %s\r\n", fsm_state_to_str(fsm_ctx.state));
+        fsm_ctx.last_cmd_status = 1;
+        return;
+    }
+
+    // Check if motor calibration is done (REQUIRED for any motor test)
+    if (!fsm_ctx.motor_status.calibration_done) {
+        printf("[FSM] ERROR: Motor calibration required before testing!\r\n");
+        printf("[FSM] Send 'M' command to calibrate ESC first.\r\n");
+        fsm_ctx.last_cmd_status = 1;
+        return;
+    }
+
+    // Check if static test already in progress
+    if (static_test_in_progress) {
+        printf("[FSM] Static test already in progress!\r\n");
+        fsm_ctx.last_cmd_status = 1;
+        return;
+    }
+
+    // Get max throttle percentage from payload (first byte)
+    uint8_t max_throttle = msg->payload.raw[0];
+    if (max_throttle == 0) {
+        max_throttle = 20;  // Default to 20% if not specified
+    }
+    if (max_throttle > 100) {
+        max_throttle = 100;
+    }
+
+    // Initialize static test module
+    StaticTest_Init();
+
+    // Start the test
+    if (!StaticTest_Start(max_throttle)) {
+        printf("[FSM] ERROR: Failed to start static test!\r\n");
+        fsm_ctx.last_cmd_status = 1;
+        return;
+    }
+
+    static_test_in_progress = true;
+    last_static_test_state = STATIC_TEST_INIT;
+
+    // Send event to GS
+    send_telem_event(EVT_STATIC_TEST_STARTED, &max_throttle, 1);
+
+    printf("[FSM] Static thrust test started: max=%d%%\r\n", max_throttle);
     fsm_ctx.last_cmd_status = 0;
 }
 
@@ -670,6 +813,8 @@ static void process_command(fsm_cmd_msg_t *msg) {
         case CMD_ABORT:          handle_cmd_abort(msg); break;
         case CMD_FORCE_SAFE:     handle_cmd_force_safe(msg); break;
         case CMD_CALIBRATE_BARO: handle_cmd_calibrate_baro(msg); break;
+        case CMD_CALIBRATE_MOTOR: handle_cmd_calibrate_motor(msg); break;
+        case CMD_STATIC_TEST:    handle_cmd_static_test(msg); break;
         case CMD_START_TEST:     handle_cmd_start_test(msg); break;
         default:
             printf("[FSM] Unknown CMD %u\r\n", msg->cmd);
@@ -744,35 +889,171 @@ static void process_calibration(void) {
 
     // Take a sample every BARO_CALIBRATION_DELAY_MS
     if (elapsed >= (calibration_sample_count + 1) * BARO_CALIBRATION_DELAY_MS) {
-        // Request current baro reading from telemetry/sensors
-        // In practice, you'd read from a shared variable or queue
-        // For now, we'll signal the sensor thread to add a sample
-
-        calibration_sample_count++;
-        printf("[FSM] Calibration sample %d/%d\r\n",
-               calibration_sample_count, BARO_CALIBRATION_SAMPLES);
+        // Actually read from the barometer sensor
+        if (MS5607_AddCalibrationSample(&baro_device, &fsm_ctx.baro_cal)) {
+            calibration_sample_count++;
+            printf("[FSM] Calibration sample %d/%d (P=%.2f mbar)\r\n",
+                   calibration_sample_count, BARO_CALIBRATION_SAMPLES,
+                   fsm_ctx.baro_cal.pressure_sum / (float)calibration_sample_count);
+        } else {
+            printf("[FSM] WARNING: Failed to read calibration sample!\r\n");
+        }
 
         if (calibration_sample_count >= BARO_CALIBRATION_SAMPLES) {
-            // Calibration complete - finalize
+            // Calibration complete - finalize with actual averaging
             calibration_in_progress = false;
 
-            // The actual pressure averaging would happen in the sensor/data thread
-            // Here we just mark it complete
-            fsm_ctx.baro_cal.is_calibrated = true;
-            fsm_ctx.baro_cal.calibration_timestamp = HAL_GetTick();
-            fsm_ctx.flags.baro_calibrated = 1;
+            if (MS5607_FinishCalibration(&fsm_ctx.baro_cal)) {
+                fsm_ctx.flags.baro_calibrated = 1;
 
-            // Send calibration complete event
-            calibration_payload_t cal_result = {
-                .reference_pressure = fsm_ctx.baro_cal.reference_pressure_mbar,
-                .temperature = fsm_ctx.baro_cal.temperature_at_cal_c,
-                .samples = BARO_CALIBRATION_SAMPLES
-            };
-            send_telem_event(EVT_BARO_CALIBRATED, &cal_result, sizeof(cal_result));
+                // Send calibration complete event
+                calibration_payload_t cal_result = {
+                    .reference_pressure = fsm_ctx.baro_cal.reference_pressure_mbar,
+                    .temperature = fsm_ctx.baro_cal.temperature_at_cal_c,
+                    .samples = BARO_CALIBRATION_SAMPLES
+                };
+                send_telem_event(EVT_BARO_CALIBRATED, &cal_result, sizeof(cal_result));
 
-            printf("[FSM] Calibration complete! Ref pressure: %.2f mbar\r\n",
-                   fsm_ctx.baro_cal.reference_pressure_mbar);
+                printf("[FSM] Calibration complete! Ref pressure: %.2f mbar\r\n",
+                       fsm_ctx.baro_cal.reference_pressure_mbar);
+            } else {
+                printf("[FSM] ERROR: Calibration finalization failed!\r\n");
+                fsm_ctx.last_cmd_status = 1;
+            }
         }
+    }
+}
+
+// ============================================================================
+// Motor Calibration State Machine (runs in main loop)
+// ============================================================================
+static void process_motor_calibration(void) {
+    if (!motor_cal_in_progress) return;
+
+    esc_calibration_state_t current_state = PWM_ESC_CalibrationUpdate();
+
+    // Debug: print every 2 seconds during calibration
+    static uint32_t last_debug_tick = 0;
+    if (HAL_GetTick() - last_debug_tick > 2000) {
+        const esc_calibration_ctx_t *ctx = PWM_ESC_GetCalibrationContext();
+        printf("[DBG] Motor cal: state=%d, elapsed=%lu ms\r\n",
+               current_state, HAL_GetTick() - ctx->phase_start_tick);
+        last_debug_tick = HAL_GetTick();
+    }
+
+    // Check for state transitions
+    if (current_state != last_cal_state) {
+        switch (current_state) {
+            case ESC_CAL_PHASE2_MIN:
+                printf("[FSM] Motor cal: Phase 2 - sending MIN throttle\r\n");
+                send_telem_event(EVT_MOTOR_CAL_PHASE2, NULL, 0);
+                break;
+
+            case ESC_CAL_COMPLETE:
+                printf("[FSM] Motor calibration COMPLETE!\r\n");
+                motor_cal_in_progress = false;
+                fsm_ctx.motor_status.calibration_done = true;
+                send_telem_event(EVT_MOTOR_CALIBRATED, NULL, 0);
+                sd_card_resume();  // Resume SD after calibration
+                break;
+
+            case ESC_CAL_FAILED:
+                printf("[FSM] Motor calibration FAILED!\r\n");
+                motor_cal_in_progress = false;
+                sd_card_resume();  // Resume SD after calibration
+                break;
+
+            default:
+                break;
+        }
+        last_cal_state = current_state;
+    }
+}
+
+// ============================================================================
+// Static Thrust Test State Machine (runs in main loop)
+// ============================================================================
+static uint32_t last_progress_tick = 0;
+#define PROGRESS_UPDATE_INTERVAL_MS  200  // Send PWM updates every 200ms
+
+static void process_static_test(void) {
+    if (!static_test_in_progress) return;
+
+    static_test_state_t current_state = StaticTest_Update();
+    const static_test_ctx_t *ctx = StaticTest_GetContext();
+
+    // Send progress updates periodically during ramp phases
+    if (current_state == STATIC_TEST_RAMP_UP ||
+        current_state == STATIC_TEST_HOLD ||
+        current_state == STATIC_TEST_RAMP_DOWN) {
+
+        uint32_t now = HAL_GetTick();
+        if ((now - last_progress_tick) >= PROGRESS_UPDATE_INTERVAL_MS) {
+            last_progress_tick = now;
+
+            // Send progress event with PWM and thrust data
+            struct __attribute__((packed)) {
+                uint8_t pwm_percent;
+                float thrust_n;
+            } progress = {
+                .pwm_percent = (uint8_t)ctx->current_throttle,
+                .thrust_n = ctx->current_thrust
+            };
+            send_telem_event(EVT_STATIC_TEST_PROGRESS, &progress, sizeof(progress));
+        }
+    }
+
+    // Check for state transitions
+    if (current_state != last_static_test_state) {
+
+        switch (current_state) {
+            case STATIC_TEST_RAMP_UP:
+                printf("[FSM] Static test: Ramping up...\r\n");
+                break;
+
+            case STATIC_TEST_HOLD:
+                printf("[FSM] Static test: Holding at max throttle\r\n");
+                break;
+
+            case STATIC_TEST_RAMP_DOWN:
+                printf("[FSM] Static test: Ramping down...\r\n");
+                break;
+
+            case STATIC_TEST_SAVING:
+                printf("[FSM] Static test: Saving data...\r\n");
+                break;
+
+            case STATIC_TEST_COMPLETE: {
+                printf("[FSM] Static test COMPLETE!\r\n");
+                printf("[FSM] Max thrust: %.2f N at %.1f%% PWM\r\n",
+                       ctx->max_thrust_n, ctx->max_thrust_pwm);
+                static_test_in_progress = false;
+
+                // Send completion event with results
+                struct __attribute__((packed)) {
+                    float max_thrust_n;
+                    float max_thrust_pwm;
+                    uint16_t sample_count;
+                } result = {
+                    .max_thrust_n = ctx->max_thrust_n,
+                    .max_thrust_pwm = ctx->max_thrust_pwm,
+                    .sample_count = ctx->data_count
+                };
+                send_telem_event(EVT_STATIC_TEST_COMPLETE, &result, sizeof(result));
+                break;
+            }
+
+            case STATIC_TEST_FAILED:
+                printf("[FSM] Static test FAILED: %s\r\n",
+                       ctx->error_msg ? ctx->error_msg : "unknown error");
+                static_test_in_progress = false;
+                send_telem_event(EVT_STATIC_TEST_FAILED, NULL, 0);
+                break;
+
+            default:
+                break;
+        }
+        last_static_test_state = current_state;
     }
 }
 
@@ -804,8 +1085,10 @@ void fsm_thread_function(void *argument) {
             process_internal_event(&evt_msg);
         }
 
-        // Process calibration state machine
+        // Process calibration and test state machines
         process_calibration();
+        process_motor_calibration();
+        process_static_test();
 
         // State-specific processing
         switch (fsm_ctx.state) {

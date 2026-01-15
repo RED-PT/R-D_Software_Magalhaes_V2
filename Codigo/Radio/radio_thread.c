@@ -15,6 +15,7 @@
 #include "FreeRTOS.h"
 #include "semphr.h"
 #include <string.h>
+#include "Threads/create_threads.h"
 
 // TDMA timing
 #define SLOT_DURATION_MS        TDMA_SLOT_MS
@@ -180,6 +181,33 @@ static void tx_slow_telemetry(uint8_t slot) {
 }
 
 // ============================================================================
+// Event Transmission (PONG, state changes, etc.)
+// ============================================================================
+static void tx_pending_events(void) {
+    if (!can_transmit()) return;
+    if (queue_fsm_events == NULL) return;
+
+    telemetry_event_t evt;
+
+    // Check for pending events (non-blocking)
+    if (xQueueReceive(queue_fsm_events, &evt, 0) == pdTRUE) {
+        // Update frame/slot info
+        evt.frame_id = tdma_ctx.frame_id;
+        evt.slot_id = tdma_ctx.slot_index;
+        evt.seq = tdma_ctx.event_seq++;
+
+        // Recalculate CRC after updating header
+        evt.crc16 = crc16_calculate((uint8_t*)&evt, sizeof(telemetry_event_t) - 2);
+
+        if (E22_Transmit((uint8_t*)&evt, sizeof(evt)) == E22_OK) {
+            radio_stats.tx_event++;
+            last_tx_tick = HAL_GetTick();
+            printf("[RADIO] Event TX: type=%u\r\n", evt.event_type);
+        }
+    }
+}
+
+// ============================================================================
 // RX Functions
 // ============================================================================
 static uint16_t get_packet_size(uint8_t type) {
@@ -319,6 +347,9 @@ static void handle_synced_mode(void) {
         // Slots 0-7: Fast telemetry
         // TX window: 5ms to 70ms into slot
         if (time_in_slot >= TX_START_OFFSET_MS && time_in_slot < TX_END_OFFSET_MS) {
+            // First check for pending events (high priority - PONG, etc.)
+            tx_pending_events();
+            // Then send regular fast telemetry if we can still transmit
             tx_fast_telemetry(slot);
         }
         // RX in second half of slot (after TX done)
@@ -330,6 +361,8 @@ static void handle_synced_mode(void) {
         // Slot 8: Slow telemetry
         // TX early, but stop before slot 9 to avoid collision with GS
         if (time_in_slot >= TX_START_OFFSET_MS && time_in_slot < (SLOT_DURATION_MS - RX_SLOT_GUARD_MS)) {
+            // First check for pending events
+            tx_pending_events();
             tx_slow_telemetry(slot);
         }
         // RX after TX
@@ -347,6 +380,9 @@ static void handle_unsynced_mode(void) {
     uint32_t now = HAL_GetTick();
 
     // In UNSYNCED mode: mostly listen, occasionally beacon
+
+    // Always try to send pending events (like PONG) even when unsynced
+    tx_pending_events();
 
     // Send a beacon every UNSYNC_BEACON_INTERVAL_MS so GS knows we're alive
     if ((now - last_unsync_beacon_tick) >= UNSYNC_BEACON_INTERVAL_MS) {

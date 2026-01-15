@@ -66,9 +66,10 @@ typedef struct __attribute__((packed)) {
     // Orientation
     int16_t pitch;              // [0.1 deg]
     int16_t roll;               // [0.1 deg]
+    int16_t yaw;                // [0.1 deg] heading from BNO055
 
     uint16_t crc16;
-} telemetry_fast_t;  // 38 bytes
+} telemetry_fast_t;  // 37 bytes
 
 // ============================================================================
 // Slow Telemetry Packet (slot 8)
@@ -95,7 +96,7 @@ typedef struct __attribute__((packed)) {
     uint16_t free_heap;
 
     uint16_t crc16;
-} telemetry_slow_t;  // 32 bytes
+} telemetry_slow_t;  // 30 bytes (4+4+8+2+2+4+2+4)
 
 // ============================================================================
 // Event Packet (sent in any TX slot when event occurs)
@@ -113,7 +114,7 @@ typedef struct __attribute__((packed)) {
     uint8_t payload[24];
 
     uint16_t crc16;
-} telemetry_event_t;  // 38 bytes
+} telemetry_event_t;  // 37 bytes (4+4+3+24+2)
 
 // ============================================================================
 // Command Packet (GS → FC, slot 9)

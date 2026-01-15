@@ -59,6 +59,7 @@ uint16_t telemetry_build_fast(telemetry_fast_t *pkt, uint8_t frame_id, uint8_t s
     if (bno) {
         pkt->pitch = (int16_t)(bno->pitch_deg * 10.0f);
         pkt->roll = (int16_t)(bno->roll_deg * 10.0f);
+        pkt->yaw = (int16_t)(bno->heading_deg * 10.0f);
     }
 
     // CRC

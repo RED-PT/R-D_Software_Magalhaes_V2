@@ -6,6 +6,7 @@
  */
 
 #include "sensors_thread.h"
+#include "Flight Computer/flight_computer.h"  // For fsm_get_baro_calibration()
 
 // Sensor Instances
 ASM330LHHX_t imu_device;
@@ -32,7 +33,30 @@ static struct {
     uint32_t bno_errors;
     uint32_t gps_errors;
     uint32_t dma_errors;
+    uint32_t i2c_timeouts;
+    uint32_t i2c_recoveries;
 } sensor_stats = {0};
+
+// DMA timeout tracking
+#define DMA_TIMEOUT_MS 100  // 100ms timeout for DMA operations
+static uint32_t i2c1_dma_start_tick = 0;
+
+// I2C bus recovery function
+static void I2C_BusRecovery(I2C_HandleTypeDef *hi2c) {
+    printf("[SENSORS] I2C bus recovery initiated\r\n");
+
+    // Abort any pending DMA
+    //HAL_I2C_Abort_IT(hi2c);
+    HAL_Delay(1);
+
+    // De-init and re-init I2C
+    HAL_I2C_DeInit(hi2c);
+    HAL_Delay(11);
+    HAL_I2C_Init(hi2c);
+
+    sensor_stats.i2c_recoveries++;
+    printf("[SENSORS] I2C bus recovery complete\r\n");
+}
 
 // Timer Callbacks
 void vBaroTimerCallback(TimerHandle_t xTimer) {
@@ -194,7 +218,8 @@ void sensors_thread_function(void *argument) {
 
         if (ulNotificationValue & SENSOR_NOTIFY_BARO_TIMER) {
             BARO_t baro_data;
-            if (MS5607_ReadTemperatureandPressure(&baro_device, &baro_data)) {
+            // Use calibrated reading to get AGL altitude (0 at launch pad)
+            if (MS5607_ReadWithCalibration(&baro_device, &baro_data, fsm_get_baro_calibration())) {
                 sensor_stats.baro_samples++;
                 data_handler_store_baro(&baro_data);
             } else {
@@ -205,10 +230,28 @@ void sensors_thread_function(void *argument) {
         if (ulNotificationValue & SENSOR_NOTIFY_BNO_TIMER) {
             if (i2c1_active_sensor == ACTIVE_SENSOR_NONE) {
                 i2c1_active_sensor = ACTIVE_SENSOR_BNO;
+                i2c1_dma_start_tick = HAL_GetTick();  // Track DMA start time
                 if (!BNO055_StartReadDMA(&bno_device)) {
                     i2c1_active_sensor = ACTIVE_SENSOR_NONE;
                     sensor_stats.bno_errors++;
                 }
+            }
+        }
+
+        // Check for I2C DMA timeout (BNO055)
+        if (i2c1_active_sensor != ACTIVE_SENSOR_NONE) {
+            uint32_t elapsed = HAL_GetTick() - i2c1_dma_start_tick;
+            if (elapsed > DMA_TIMEOUT_MS) {
+                printf("[SENSORS] I2C1 DMA timeout! sensor=%d, elapsed=%lu ms\r\n",
+                       i2c1_active_sensor, elapsed);
+                sensor_stats.i2c_timeouts++;
+                sensor_stats.bno_errors++;
+
+                // Recover the I2C bus
+                I2C_BusRecovery(bno_device.hi2c);
+
+                // Reset active sensor flag
+                i2c1_active_sensor = ACTIVE_SENSOR_NONE;
             }
         }
 
@@ -279,11 +322,11 @@ void sensors_thread_function(void *argument) {
             printf("MAG:  %lu samples, %lu errors\r\n", sensor_stats.mag_samples, sensor_stats.mag_errors);
             printf("BARO: %lu samples, %lu errors\r\n", sensor_stats.baro_samples, sensor_stats.baro_errors);
             printf("BNO:  %lu samples, %lu errors\r\n", sensor_stats.bno_samples, sensor_stats.bno_errors);
-            printf("GPS:  %lu samples, %lu errors\r\n", sensor_stats.gps_samples, sensor_stats.gps_errors);
-            printf("DMA errors: %lu\r\n", sensor_stats.dma_errors);
             printf("GPS:  %lu samples, %lu errors, %lu sats, updates=%lu, sentences=%lu\r\n",
                    sensor_stats.gps_samples, sensor_stats.gps_errors,
                    gps_last_sat_count, gps_update_calls, gps_sentences_found);
+            printf("DMA errors: %lu, I2C timeouts: %lu, I2C recoveries: %lu\r\n",
+                   sensor_stats.dma_errors, sensor_stats.i2c_timeouts, sensor_stats.i2c_recoveries);
             last_stats_time = xTaskGetTickCount();
         }
     }

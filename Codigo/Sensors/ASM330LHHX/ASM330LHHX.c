@@ -35,9 +35,15 @@ bool ASM330LHHX_Init(ASM330LHHX_t *dev, SPI_HandleTypeDef *hspi) {
 
     HAL_Delay(BOOT_TIME);
 
-    // Check device ID
-    if (asm330lhhx_device_id_get(&dev_ctx, &whoami) != 0) {return false;}
+    // Check device ID - initialize to invalid value first
+    whoami = 0x00;
+    if (asm330lhhx_device_id_get(&dev_ctx, &whoami) != 0) {
+        printf("[IMU] Failed to read device ID\r\n");
+        return false;
+    }
+    printf("[IMU] WHO_AM_I = 0x%02X (expected 0x%02X)\r\n", whoami, ASM330LHHX_ID);
     if (whoami != ASM330LHHX_ID) {
+        printf("[IMU] Device ID mismatch!\r\n");
         return false;
     }
 

@@ -174,11 +174,114 @@ void PWM_ArmESC(uint32_t duration_ms) {
 
 void PWM_EmergencyStop(void) {
     printf("[PWM] EMERGENCY STOP!\r\n");
-    
+
     // Cancel any ramp
     ramp_active = false;
-    
+
     // Immediately set to minimum
     currentThrottle = 0.0f;
     DC_to_Period(0.0f);
+}
+
+// ============================================================================
+// ESC Calibration
+// ============================================================================
+
+static esc_calibration_ctx_t esc_cal_ctx = {0};
+
+bool PWM_ESC_StartCalibration(uint32_t phase1_ms) {
+    // Cannot start calibration if already in progress
+    if (esc_cal_ctx.state == ESC_CAL_PHASE1_MAX ||
+        esc_cal_ctx.state == ESC_CAL_PHASE2_MIN) {
+        printf("[PWM] ESC calibration already in progress!\r\n");
+        return false;
+    }
+
+    // Initialize calibration context
+    esc_cal_ctx.state = ESC_CAL_PHASE1_MAX;
+    esc_cal_ctx.phase_start_tick = HAL_GetTick();
+    esc_cal_ctx.phase1_duration_ms = (phase1_ms > 0) ? phase1_ms : ESC_CAL_PHASE1_DEFAULT_MS;
+    esc_cal_ctx.phase2_duration_ms = ESC_CAL_PHASE2_DEFAULT_MS;
+    esc_cal_ctx.user_acknowledged = false;
+
+    // Cancel any ongoing ramp
+    ramp_active = false;
+
+    // Set throttle to MAXIMUM
+    printf("[PWM] ESC CALIBRATION STARTED\r\n");
+    printf("[PWM] PHASE 1: Sending MAX throttle (100%%)\r\n");
+    printf("[PWM] >>> POWER CYCLE the ESC NOW! <<<\r\n");
+    printf("[PWM] Waiting %lu ms for ESC to beep twice...\r\n", esc_cal_ctx.phase1_duration_ms);
+
+    PWM_SetThrottle(100.0f);
+
+    return true;
+}
+
+esc_calibration_state_t PWM_ESC_CalibrationUpdate(void) {
+    if (esc_cal_ctx.state == ESC_CAL_IDLE ||
+        esc_cal_ctx.state == ESC_CAL_COMPLETE ||
+        esc_cal_ctx.state == ESC_CAL_FAILED) {
+        return esc_cal_ctx.state;
+    }
+
+    uint32_t elapsed = HAL_GetTick() - esc_cal_ctx.phase_start_tick;
+
+    switch (esc_cal_ctx.state) {
+        case ESC_CAL_PHASE1_MAX:
+            // Check if user acknowledged or timeout elapsed
+            if (esc_cal_ctx.user_acknowledged || elapsed >= esc_cal_ctx.phase1_duration_ms) {
+                // Transition to Phase 2: MIN throttle
+                printf("[PWM] PHASE 2: Sending MIN throttle (0%%)\r\n");
+                printf("[PWM] ESC should beep cell count then long beep...\r\n");
+
+                PWM_SetThrottle(0.0f);
+
+                esc_cal_ctx.state = ESC_CAL_PHASE2_MIN;
+                esc_cal_ctx.phase_start_tick = HAL_GetTick();
+            }
+            break;
+
+        case ESC_CAL_PHASE2_MIN:
+            // Wait for phase 2 duration to complete
+            if (elapsed >= esc_cal_ctx.phase2_duration_ms) {
+                printf("[PWM] ESC CALIBRATION COMPLETE!\r\n");
+                printf("[PWM] ESC should now be calibrated for 0-100%% throttle range.\r\n");
+
+                esc_cal_ctx.state = ESC_CAL_COMPLETE;
+            }
+            break;
+
+        default:
+            break;
+    }
+
+    return esc_cal_ctx.state;
+}
+
+esc_calibration_state_t PWM_ESC_GetCalibrationState(void) {
+    return esc_cal_ctx.state;
+}
+
+void PWM_ESC_CancelCalibration(void) {
+    if (esc_cal_ctx.state == ESC_CAL_PHASE1_MAX ||
+        esc_cal_ctx.state == ESC_CAL_PHASE2_MIN) {
+        printf("[PWM] ESC calibration CANCELLED\r\n");
+
+        // Set throttle to minimum for safety
+        PWM_SetThrottle(0.0f);
+
+        esc_cal_ctx.state = ESC_CAL_FAILED;
+    }
+}
+
+void PWM_ESC_AcknowledgeBeep(void) {
+    if (esc_cal_ctx.state == ESC_CAL_PHASE1_MAX) {
+        printf("[PWM] User acknowledged ESC beep - advancing to Phase 2\r\n");
+        esc_cal_ctx.user_acknowledged = true;
+    }
+}
+
+const esc_calibration_ctx_t* PWM_ESC_GetCalibrationContext(void) {
+    return &esc_cal_ctx;
 }

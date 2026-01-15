@@ -114,4 +114,72 @@ void PWM_ArmESC(uint32_t duration_ms);
  */
 void PWM_EmergencyStop(void);
 
+// ============================================================================
+// ESC Calibration (min/max throttle range calibration)
+// ============================================================================
+
+/**
+ * ESC Calibration State Machine
+ *
+ * Calibration procedure (per HOBBYWING FlyFun ESC manual):
+ * 1. PHASE 1: Send MAX throttle (100%) - ESC waits for power cycle
+ *    - User should power cycle ESC while receiving max signal
+ *    - ESC will beep "123" then 2 short beeps (max accepted)
+ * 2. PHASE 2: Send MIN throttle (0%) within 5 seconds
+ *    - ESC will accept min, beep cell count, then long beep = done
+ */
+typedef enum {
+    ESC_CAL_IDLE = 0,           // Not calibrating
+    ESC_CAL_PHASE1_MAX,         // Sending MAX throttle, waiting for ESC power cycle
+    ESC_CAL_PHASE2_MIN,         // Sending MIN throttle to complete calibration
+    ESC_CAL_COMPLETE,           // Calibration successful
+    ESC_CAL_FAILED              // Calibration failed/cancelled
+} esc_calibration_state_t;
+
+typedef struct {
+    esc_calibration_state_t state;
+    uint32_t phase_start_tick;      // When current phase started
+    uint32_t phase1_duration_ms;    // How long to hold MAX (user configurable)
+    uint32_t phase2_duration_ms;    // How long to hold MIN before declaring complete
+    bool user_acknowledged;          // User confirmed ESC beeped (optional)
+} esc_calibration_ctx_t;
+
+// Default timing (can be adjusted)
+#define ESC_CAL_PHASE1_DEFAULT_MS   10000   // 10 seconds at MAX (user powers ESC during this)
+#define ESC_CAL_PHASE2_DEFAULT_MS   3000    // 3 seconds at MIN
+
+/**
+ * Start ESC calibration process
+ * @param phase1_ms Duration for MAX throttle phase (ms), 0 = use default
+ * @return true if calibration started successfully
+ */
+bool PWM_ESC_StartCalibration(uint32_t phase1_ms);
+
+/**
+ * Update ESC calibration state machine
+ * Call periodically (e.g., every 50ms) during calibration
+ * @return Current calibration state
+ */
+esc_calibration_state_t PWM_ESC_CalibrationUpdate(void);
+
+/**
+ * Get current calibration state
+ */
+esc_calibration_state_t PWM_ESC_GetCalibrationState(void);
+
+/**
+ * Cancel ongoing ESC calibration
+ */
+void PWM_ESC_CancelCalibration(void);
+
+/**
+ * User acknowledgment that ESC beeped (optional - can skip to phase 2 early)
+ */
+void PWM_ESC_AcknowledgeBeep(void);
+
+/**
+ * Get calibration context for status reporting
+ */
+const esc_calibration_ctx_t* PWM_ESC_GetCalibrationContext(void);
+
 #endif // PWM_FUNCTIONS_H

@@ -22,5 +22,10 @@ void sd_card_thread_function(void *argument);
 // Cleanup function - call before shutdown
 void sd_card_close(void);
 
+// Pause/resume SD operations during motor tests
+void sd_card_pause(void);
+void sd_card_resume(void);
+bool sd_card_is_paused(void);
+
 
 #endif /* STORAGE_SD_CARD_THREAD_H_ */

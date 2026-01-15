@@ -1,0 +1,547 @@
+﻿:root {
+  --bg: #0b1117;
+  --panel: #151a22;
+  --panel-soft: #1a2230;
+  --panel-border: #273241;
+  --text: #e5e7eb;
+  --muted: #9ca3af;
+  --accent: #22c55e;
+  --accent-2: #38bdf8;
+  --accent-3: #a855f7;
+  --danger: #ef4444;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.app {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.topbar {
+  display: flex;
+  flex-direction:row;
+  width: fill-content;
+  gap: 10px;
+  padding: 10px 10px;
+  background: #141924;
+}
+
+.topcard {
+  background: transparent;
+  border: none;
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+}
+
+.topcard .label {
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.topcard .value {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.topicon svg {
+  width: 30px;
+  height: 30px;
+  fill: currentColor;
+  color: var(--muted);
+}
+
+.topicon svg path {
+  fill: currentColor;
+}
+
+.topcard .status {
+  color: var(--danger);
+}
+
+.signal-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-top: 4px;
+  background: #334155;
+}
+
+.body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.sidebar {
+  width: 220px;
+  background: #0f141c;
+  border-right: 1px solid var(--panel-border);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: width 0.2s ease;
+}
+
+.sidebar.collapsed {
+  width: 70px;
+}
+
+.icon-button {
+  background: var(--panel-soft);
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  padding: 8px;
+  cursor: pointer;
+}
+
+.icon-button svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+  color: var(--muted);
+}
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.nav-item {
+  background: var(--panel-soft);
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.nav-item svg {
+  width: 22px;
+  height: 22px;
+  fill: currentColor;
+  color: var(--muted);
+}
+
+.nav-item.active {
+  background: var(--accent);
+  color: #0b1117;
+  border-color: var(--accent);
+}
+
+.nav-item.active svg {
+  color: #0b1117;
+}
+
+.sidebar.collapsed .nav-item span {
+  display: none;
+}
+
+.sidebar.collapsed .nav-item {
+  justify-content: center;
+  padding: 10px;
+}
+
+.main {
+  flex: 1;
+  padding: 12px;
+  overflow-y: auto;
+}
+
+.page {
+  display: none;
+}
+
+.page.active {
+  display: block;
+  height: 100%;
+}
+
+.telemetry {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.metric {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  padding: 10px;
+}
+
+.metric .label {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.metric .value {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  padding: 10px;
+}
+
+.card.large {
+  min-height: calc(100vh - 180px);
+}
+
+.card-title {
+  color: var(--muted);
+  font-size: 12px;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+.help-list {
+  display: grid;
+  gap: 8px;
+}
+
+.help-item {
+  display: grid;
+  grid-template-columns: 80px 140px 1fr;
+  gap: 10px;
+  padding: 8px;
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  background: var(--panel-soft);
+}
+
+.help-item .cmd {
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.help-item .name {
+  font-weight: 600;
+}
+
+.card.wide {
+  grid-column: span 2;
+}
+
+.footer {
+  display: flex;
+  justify-content: space-around;
+  padding-top: 6px;
+}
+
+.footer span {
+  display: block;
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.footer strong {
+  display: block;
+  font-size: 12px;
+  color: var(--accent);
+}
+
+.footer .x {
+  color: var(--accent-2);
+}
+
+.footer .y {
+  color: var(--accent);
+}
+
+.footer .z {
+  color: var(--accent-3);
+}
+
+#threeContainer {
+  height: 100%;
+  min-height: 520px;
+  background: radial-gradient(circle at top, #1b2433 0%, #0b1117 60%);
+}
+
+.flight-card {
+  position: relative;
+  padding: 0;
+  overflow: hidden;
+  height: 100%;
+}
+
+.flight-overlay {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 2;
+  background: rgba(12, 16, 22, 0.6);
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  padding: 8px 12px;
+}
+
+.flight-overlay .title {
+  font-size: 12px;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.flight-overlay .values {
+  display: flex;
+  gap: 12px;
+  font-size: 12px;
+}
+
+.split {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 10px;
+  min-height: 500px;
+}
+
+#map {
+  min-height: 480px;
+  border-radius: 10px;
+}
+
+.console {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 10px;
+  height: 100%;
+}
+
+.console-log {
+  min-height: 100%;
+}
+
+.console-log pre {
+  margin: 0;
+  height: calc(100% - 28px);
+  max-height: none;
+  overflow-y: auto;
+  color: #cbd5f5;
+}
+
+.console-left {
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  max-height: 100%;
+  gap: 10px;
+}
+
+#page-console {
+  overflow: hidden;
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.row input,
+.row select {
+  flex: 1;
+  background: #0f141c;
+  border: 1px solid var(--panel-border);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 6px 8px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.row button,
+.cmd-grid button,
+.console button {
+  background: var(--panel-soft);
+  border: 1px solid var(--panel-border);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 6px 8px;
+  cursor: pointer;
+}
+
+.cmd-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.status {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 8px;
+}
+
+/* Boot Status Widget */
+.boot-status {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.sensor-status {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  padding: 8px 6px;
+  text-align: center;
+}
+
+.sensor-status .name {
+  font-size: 10px;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.sensor-status .indicator {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.sensor-status.ok .indicator {
+  color: var(--accent);
+}
+
+.sensor-status.fail .indicator {
+  color: var(--danger);
+}
+
+.sensor-status.unknown .indicator {
+  color: var(--muted);
+}
+
+/* PWM Gauge Widget */
+.pwm-gauge {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  padding: 12px;
+  text-align: center;
+}
+
+.pwm-gauge .card-title {
+  color: var(--muted);
+  font-size: 12px;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+.gauge-container {
+  position: relative;
+  width: 120px;
+  height: 70px;
+  margin: 0 auto;
+}
+
+.gauge-bg {
+  stroke: var(--panel-border);
+  fill: none;
+  stroke-width: 12;
+  stroke-linecap: round;
+}
+
+.gauge-fill {
+  fill: none;
+  stroke-width: 12;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.3s ease, stroke 0.3s ease;
+}
+
+.gauge-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.gauge-label {
+  font-size: 10px;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+/* Fullscreen toggle button */
+.fullscreen-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(12, 16, 22, 0.7);
+  border: 1px solid var(--panel-border);
+  color: var(--muted);
+  padding: 5px 5px 1px 5px;
+  border-radius: 6px;
+  cursor: pointer;
+  z-index: 5;
+}
+
+.fullscreen-btn:hover {
+  color: var(--text);
+  background: rgba(12, 16, 22, 0.9);
+}
+
+.fullscreen-btn svg {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+}
+
+.card {
+  position: relative;
+  height: 100%;
+}
+
+@media (max-width: 1200px) {
+  .topbar {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .grid {
+    grid-template-columns: 1fr;
+  }
+  .card.wide {
+    grid-column: span 1;
+  }
+  .telemetry {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .console {
+    grid-template-columns: 1fr;
+  }
+  .split {
+    grid-template-columns: 1fr;
+  }
+}

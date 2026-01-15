@@ -22,6 +22,7 @@ static FATFS fs;
 static FIL file;
 static bool sd_initialized = false;
 static bool sd_file_open = false;
+static volatile bool sd_paused = false;  // Pause flag for motor tests (volatile for cross-task visibility)
 
 #define SD_WRITE_BUFFER_SIZE    4096
 static char write_buffer[SD_WRITE_BUFFER_SIZE];
@@ -86,7 +87,7 @@ static void sd_card_configure(void) {
 }
 
 static void flush_write_buffer(void) {
-    if (buffer_pos == 0 || !sd_file_open) {
+    if (buffer_pos == 0 || !sd_file_open || sd_paused) {
         return;
     }
 
@@ -112,8 +113,8 @@ static void flush_write_buffer(void) {
 }
 
 static void log_data_packet(const data_packet_t *packet) {
-    if (!sd_file_open) {
-        return;
+    if (!sd_file_open || sd_paused) {
+        return;  // Skip logging when paused (motor test) to prevent buffer overflow
     }
 
     int line_len = 0;
@@ -273,6 +274,27 @@ void sd_card_thread_function(void *argument) {
             last_stats = now;
         }
     }
+}
+
+void sd_card_pause(void) {
+    // Flush any pending data before pausing (while motor is still off)
+    if (buffer_pos > 0 && sd_file_open) {
+        UINT bw;
+        f_write(&file, write_buffer, buffer_pos, &bw);
+        f_sync(&file);
+        buffer_pos = 0;
+    }
+    sd_paused = true;
+    printf("[SD] Paused for motor test\r\n");
+}
+
+void sd_card_resume(void) {
+    sd_paused = false;
+    printf("[SD] Resumed\r\n");
+}
+
+bool sd_card_is_paused(void) {
+    return sd_paused;
 }
 
 void sd_card_close(void) {

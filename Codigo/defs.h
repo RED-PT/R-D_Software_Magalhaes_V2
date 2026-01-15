@@ -101,5 +101,15 @@ typedef struct {
     uint32_t timestamp_ms; // System timestamp (milliseconds)
 } GPS_t;
 
+// Load Cell: FX29 (for static test stand)
+typedef struct {
+    float force_n;
+    float force_raw_n;
+    uint16_t raw_counts;
+    uint16_t pwm_value;
+    uint8_t status;
+    uint32_t timestamp_ms;
+} LOADCELL_t;
+
 
 #endif /* INC_DEFS_H_ */

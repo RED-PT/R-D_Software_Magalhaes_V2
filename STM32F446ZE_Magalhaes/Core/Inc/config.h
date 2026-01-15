@@ -13,6 +13,7 @@
 
 //extern handles
 extern I2C_HandleTypeDef hi2c1;
+extern I2C_HandleTypeDef hi2c2;
 
 extern SPI_HandleTypeDef hspi1;
 extern SPI_HandleTypeDef hspi2;
@@ -47,6 +48,7 @@ extern DMA_HandleTypeDef hdma_usart6_tx;
 
 //I2C
 #define I2C_BNO &hi2c1
+#define I2C_LOADCELL &hi2c2
 
 //UART
 #define UART_DEBUG &huart3

@@ -28,11 +28,14 @@ bool MMC5983MA_Init(MMC5983MA_t *dev, SPI_HandleTypeDef *hspi) {
     HAL_Delay(10);
 
     // Read and verify Product ID
+    product_id = 0x00;
     if (!MMC5983MA_ReadRegister(dev, MMC5983MA_REG_PRODUCT_ID, &product_id)) {
+        printf("[MAG] Failed to read product ID\r\n");
         return false;
     }
-
+    printf("[MAG] Product ID = 0x%02X (expected 0x30)\r\n", product_id);
     if (product_id != 0x30) {  // Product ID should be 0x30
+        printf("[MAG] Product ID mismatch!\r\n");
         return false;
     }
 

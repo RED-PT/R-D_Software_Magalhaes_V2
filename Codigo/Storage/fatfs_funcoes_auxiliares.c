@@ -95,10 +95,10 @@ FRESULT Scan_SD(char *pat) {
 
 	DIR dir;
 	UINT i;
-	char buf[50];
-	char fname[30];
-	char path[20];
-	sprintf(path, "%s", pat);
+	char buf[128];
+	char fname[32];
+	char path[64];
+	snprintf(path, sizeof(path), "%s", pat);
 
 	fresult = f_opendir(&dir, path); /* Open the directory */
 	if (fresult == FR_OK) {
@@ -110,18 +110,18 @@ FRESULT Scan_SD(char *pat) {
 			{
 				if (!(strcmp("SYSTEM~1", fno.fname)))
 					continue;
-				strncpy(fname, fno.fname, 30);
-				sprintf(buf, "Dir: %s\r\r\n", fname);
+				strncpy(fname, fno.fname, sizeof(fname) - 1);
+				snprintf(buf, sizeof(buf), "Dir: %s\r\n", fname);
 				Send_Uart(buf);
 				i = strlen(path);
-				sprintf(&path[i], "/%s", fno.fname);
+				snprintf(&path[i], sizeof(path) - i, "/%s", fno.fname);
 				fresult = Scan_SD(path); /* Enter the directory */
 				if (fresult != FR_OK)
 					break;
 				path[i] = 0;
 			} else { /* It is a file. */
-				strncpy(fname, fno.fname, 30);
-				sprintf(buf, "File: %s/%s\r\n", path, fname);
+				strncpy(fname, fno.fname, sizeof(fname) - 1);
+				snprintf(buf, sizeof(buf), "File: %s/%s\r\n", path, fname);
 				Send_Uart(buf);
 			}
 		}

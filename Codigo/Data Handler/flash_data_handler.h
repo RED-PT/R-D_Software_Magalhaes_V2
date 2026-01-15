@@ -16,11 +16,12 @@
 #include "Telemetry/telemetry.h"
 
 // Optimized buffer sizes for STM32F446ZE (128KB RAM)
-#define RAM_IMU_BUFFER_SIZE     512   // ~76ms @ 6667Hz
-#define RAM_BARO_BUFFER_SIZE    128
-#define RAM_MAG_BUFFER_SIZE     128
-#define RAM_BNO_BUFFER_SIZE     128
-#define RAM_GPS_BUFFER_SIZE     32
+// REDUCED to avoid heap exhaustion during boot
+#define RAM_IMU_BUFFER_SIZE     256   // ~38ms @ 6667Hz (saves 8KB)
+#define RAM_BARO_BUFFER_SIZE    64    // saves 1KB
+#define RAM_MAG_BUFFER_SIZE     64    // saves 1.3KB
+#define RAM_BNO_BUFFER_SIZE     64    // saves 4KB
+#define RAM_GPS_BUFFER_SIZE     16    // saves 0.7KB
 
 #define BUFFER_FULL_THRESHOLD_PCT   50  // Notify at 50% full
 
@@ -58,10 +59,10 @@ extern ram_circular_buffer_t cb_mag;
 extern ram_circular_buffer_t cb_bno;
 extern ram_circular_buffer_t cb_gps;
 
-// Queue sizes balanced for STM32F446ZE
+// Queue sizes reduced to save heap memory
 #define QUEUE_LENGTH_ESTIMATOR  4
-#define QUEUE_LENGTH_TELEMETRY  30
-#define QUEUE_LENGTH_SD         80  // Increased but reasonable for F446ZE
+#define QUEUE_LENGTH_TELEMETRY  16
+#define QUEUE_LENGTH_SD         40  // Reduced to save ~1KB heap
 
 extern QueueHandle_t queue_to_estimator;
 extern QueueHandle_t queue_to_telemetry;
