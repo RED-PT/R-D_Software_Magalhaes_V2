@@ -1,9 +1,35 @@
-/*
- * data_handler_thread.c
+/**
+ * @file data_handler_thread.c
+ * @brief Data Handler Thread Implementation
+ * @author Tomás Teixeira
+ * @date October 10, 2025
+ * @version 2.0
  *
+ * @details
+ * Implements the data routing logic for the Magalhães Flight Computer.
+ * This thread manages the flow of sensor data from circular buffers to
+ * processing queues, preventing data loss while maintaining system responsiveness.
  *
- *  Created on: Oct 10, 2025
- *      Author: Tomas Teixeira
+ * ## Algorithm
+ * The thread uses a multi-trigger flush strategy:
+ * 1. **Threshold Flush**: When notified that a buffer is >50% full
+ * 2. **Safety Flush**: Every 1 second regardless of fill level
+ * 3. **Opportunistic Flush**: When SD queue has space available
+ *
+ * ## Data Packet Structure
+ * Each packet includes a pointer to data in the circular buffer along with
+ * a mutex for thread-safe access. The destination thread must:
+ * 1. Call data_packet_lock() before reading
+ * 2. Copy data to local storage
+ * 3. Call data_packet_unlock() to release
+ *
+ * ## Performance Considerations
+ * - SD queue has priority (5ms blocking timeout)
+ * - Telemetry queue is non-blocking (data can be dropped)
+ * - Buffer overflow tracking helps identify throughput issues
+ *
+ * @see data_handler_thread.h for interface documentation
+ * @ingroup Data_Handler
  */
 
 #include "data_handler_thread.h"

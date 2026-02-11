@@ -1,8 +1,27 @@
-/*
- * flight_computer.h
+/**
+ * @file flight_computer.h
+ * @brief Flight Computer Finite State Machine (FSM) definitions
+ * @author Tomas Teixeira
+ * @date October 2025
  *
- *  Created on: Oct 7, 2025
- *      Author: Tomas Teixeira
+ * This file defines the core flight computer state machine, including:
+ * - FSM states and substates
+ * - Flight profiles and parameters
+ * - Command and event structures for inter-thread communication
+ * - Boot status tracking
+ *
+ * @section fsm_overview FSM Overview
+ * The flight computer operates as a state machine with the following main states:
+ * - BOOT: System initialization
+ * - IDLE: Waiting for configuration
+ * - CONFIGED: Profile loaded, ready to arm
+ * - ARMED: Ready for launch/test
+ * - TEST_STAND: Static test mode
+ * - FLIGHT: Active flight mode
+ * - ABORT: Emergency abort sequence
+ * - SAFE: Safe/recovery mode
+ *
+ * @see flight_computer_thread.c for implementation
  */
 
 #ifndef FLIGHT_COMPUTER_FLIGHT_COMPUTER_H_
@@ -15,389 +34,563 @@
 #include <stdint.h>
 #include "Sensors/MS5607/MS5607.h"
 
-// ============================================================================
-// FSM States
-// ============================================================================
+/**
+ * @defgroup FSM Flight Computer State Machine
+ * @brief Core state machine definitions and functions
+ * @{
+ */
+
+/**
+ * @brief Main FSM states
+ *
+ * The flight computer progresses through these states during operation.
+ * Transitions are triggered by commands, events, or internal conditions.
+ */
 typedef enum {
-    STATE_BOOT = 0,
-    STATE_IDLE,
-    STATE_CONFIGED,
-    STATE_ARMED,
-    STATE_TEST_STAND,
-    STATE_FLIGHT,
-    STATE_ABORT,
-    STATE_SAFE
+    STATE_BOOT = 0,     /**< System booting, initializing sensors and threads */
+    STATE_IDLE,         /**< Idle state, waiting for profile configuration */
+    STATE_CONFIGED,     /**< Profile configured, ready to arm */
+    STATE_ARMED,        /**< Armed and ready for launch or test */
+    STATE_TEST_STAND,   /**< Test stand mode for static testing */
+    STATE_FLIGHT,       /**< Active flight mode with guidance */
+    STATE_ABORT,        /**< Emergency abort sequence active */
+    STATE_SAFE          /**< Safe/recovery mode, motors disabled */
 } fsm_state_t;
 
-// ============================================================================
-// FSM Sub-states
-// ============================================================================
+/**
+ * @brief FSM sub-states for detailed state tracking
+ *
+ * Sub-states provide finer granularity within main states,
+ * particularly for TEST_STAND and FLIGHT sequences.
+ */
 typedef enum {
-    SUB_NONE = 0,
-    // TEST_STAND
-    SUB_TS_SENSOR_CHECK,
-    SUB_TS_THROTTLE_RAMP,
-    // FLIGHT
-    SUB_FL_IGNITION,
-    SUB_FL_LIFTOFF_DETECT,
-    SUB_FL_ASCENT,
-    SUB_FL_COAST,
-    SUB_FL_DESCENT_BRAKE,
-    SUB_FL_LANDING_FLARE,
-    SUB_FL_TOUCHDOWN,
-    SUB_FL_RECOVERY,
-    // ARM substates
-    SUB_ARM_MOTOR_INIT,
-    SUB_ARM_MOTOR_CALIBRATING,
-    SUB_ARM_READY
+    SUB_NONE = 0,               /**< No sub-state (default) */
+    /* TEST_STAND sub-states */
+    SUB_TS_SENSOR_CHECK,        /**< Checking sensors before test */
+    SUB_TS_THROTTLE_RAMP,       /**< Throttle ramp in progress */
+    /* FLIGHT sub-states */
+    SUB_FL_IGNITION,            /**< Motor ignition sequence */
+    SUB_FL_LIFTOFF_DETECT,      /**< Waiting for liftoff detection */
+    SUB_FL_ASCENT,              /**< Powered ascent phase */
+    SUB_FL_COAST,               /**< Unpowered coast phase */
+    SUB_FL_DESCENT_BRAKE,       /**< Descent with braking */
+    SUB_FL_LANDING_FLARE,       /**< Final landing flare */
+    SUB_FL_TOUCHDOWN,           /**< Touchdown detected */
+    SUB_FL_RECOVERY,            /**< Post-landing recovery */
+    /* ARM sub-states */
+    SUB_ARM_MOTOR_INIT,         /**< Initializing motor/ESC */
+    SUB_ARM_MOTOR_CALIBRATING,  /**< ESC calibration in progress */
+    SUB_ARM_READY               /**< Armed and ready */
 } fsm_substate_t;
 
-// ============================================================================
-// Flight Profiles
-// ============================================================================
+/**
+ * @brief Flight profile types
+ *
+ * Profiles define the operational mode and parameters for a mission.
+ */
 typedef enum {
-    PROFILE_NONE = 0,
-    PROFILE_GUTTER_RAMP = 1,      // Test stand ramp profile
-    PROFILE_GUTTER_HOLD = 2,      // Test stand hold profile
-    PROFILE_FLIGHT_PARAM = 3      // Parametric flight (target altitude, auto-land)
+    PROFILE_NONE = 0,           /**< No profile selected */
+    PROFILE_GUTTER_RAMP = 1,    /**< Test stand: throttle ramp profile */
+    PROFILE_GUTTER_HOLD = 2,    /**< Test stand: constant throttle hold */
+    PROFILE_FLIGHT_PARAM = 3    /**< Flight mode: parametric (target altitude, auto-land) */
 } flight_profile_t;
 
-// ============================================================================
-// Internal FSM Events (from estimator to FSM)
-// ============================================================================
+/**
+ * @brief Internal FSM events (estimator → FSM)
+ *
+ * These events are generated by the estimator thread based on
+ * flight conditions and sent to the FSM for state transitions.
+ */
 typedef enum {
-    FSM_EVT_NONE = 0,
-    FSM_EVT_LIFTOFF,
-    FSM_EVT_APOGEE,
-    FSM_EVT_DESCENT_START,
-    FSM_EVT_FLARE_ALT,
-    FSM_EVT_TOUCHDOWN,
-    FSM_EVT_LANDED,
-    FSM_EVT_ALTITUDE_LIMIT,
-    FSM_EVT_VELOCITY_LIMIT,
-    FSM_EVT_MOTOR_ARMED,
-    FSM_EVT_CALIBRATION_DONE
+    FSM_EVT_NONE = 0,           /**< No event */
+    FSM_EVT_LIFTOFF,            /**< Liftoff detected (accel > threshold) */
+    FSM_EVT_APOGEE,             /**< Apogee reached (velocity ≈ 0) */
+    FSM_EVT_DESCENT_START,      /**< Descent phase started */
+    FSM_EVT_FLARE_ALT,          /**< Flare altitude reached */
+    FSM_EVT_TOUCHDOWN,          /**< Touchdown detected */
+    FSM_EVT_LANDED,             /**< Stable landing confirmed */
+    FSM_EVT_ALTITUDE_LIMIT,     /**< Max altitude limit reached */
+    FSM_EVT_VELOCITY_LIMIT,     /**< Max velocity limit reached */
+    FSM_EVT_MOTOR_ARMED,        /**< Motor arm sequence complete */
+    FSM_EVT_CALIBRATION_DONE    /**< Sensor calibration complete */
 } fsm_internal_event_t;
 
-// ============================================================================
-// Profile Parameters
-// ============================================================================
+/**
+ * @brief Flight profile parameters
+ *
+ * Contains all configurable parameters for a flight or test profile.
+ * Parameters vary depending on profile type.
+ */
 typedef struct {
-    flight_profile_t type;
+    flight_profile_t type;      /**< Profile type */
 
-    // Common parameters
-    float target_altitude_m;
-    float flare_altitude_m;
-    float touchdown_velocity_ms;
-    float max_altitude_m;
-    float max_velocity_ms;      // Safety limit
+    /* Common parameters */
+    float target_altitude_m;    /**< Target altitude for flight profiles (meters) */
+    float flare_altitude_m;     /**< Altitude to begin landing flare (meters) */
+    float touchdown_velocity_ms;/**< Target touchdown velocity (m/s) */
+    float max_altitude_m;       /**< Maximum allowed altitude (safety limit) */
+    float max_velocity_ms;      /**< Maximum allowed velocity (safety limit) */
 
-    // Gutter Hold specific
-    float hold_throttle;
+    /* Gutter Hold specific */
+    float hold_throttle;        /**< Constant throttle value (0.0-1.0) */
 
-    // Gutter Ramp specific
-    float ramp_duration_s;
+    /* Gutter Ramp specific */
+    float ramp_duration_s;      /**< Duration of throttle ramp (seconds) */
 
-    // Safety limits
-    float throttle_min;
-    float throttle_max;
+    /* Safety limits */
+    float throttle_min;         /**< Minimum throttle (typically 0.0) */
+    float throttle_max;         /**< Maximum throttle (typically 1.0) */
 
-    // Landing zone (for FLIGHT_PARAM profile)
-    float landing_lat;
-    float landing_lon;
+    /* Landing zone (FLIGHT_PARAM profile) */
+    float landing_lat;          /**< Landing zone latitude (degrees) */
+    float landing_lon;          /**< Landing zone longitude (degrees) */
 } profile_params_t;
 
-// ============================================================================
-// Boot Status
-// ============================================================================
+/**
+ * @brief Boot status tracking structure
+ *
+ * Tracks initialization status of all system components during boot.
+ * Values: -1=not checked, 0=failed, 1=success
+ */
 typedef struct {
-    int8_t imu_init;
-    int8_t baro_init;
-    int8_t mag_init;
-    int8_t bno_init;
-    int8_t gps_init;
-    int8_t sd_card_init;
-    int8_t radio_init;
-    int8_t data_handler_init;
+    /* Sensor initialization status */
+    int8_t imu_init;            /**< IMU (ASM330LHHX) init status */
+    int8_t baro_init;           /**< Barometer (MS5607) init status */
+    int8_t mag_init;            /**< Magnetometer (MMC5983MA) init status */
+    int8_t bno_init;            /**< 9-DOF IMU (BNO055) init status */
+    int8_t gps_init;            /**< GPS (U-Blox) init status */
+    int8_t sd_card_init;        /**< SD card init status */
+    int8_t radio_init;          /**< Radio (E22 LoRa) init status */
+    int8_t data_handler_init;   /**< Data handler init status */
 
-    int8_t imu_config;
-    int8_t baro_config;
-    int8_t mag_config;
-    int8_t bno_config;
-    int8_t gps_config;
+    /* Sensor configuration status */
+    int8_t imu_config;          /**< IMU configuration status */
+    int8_t baro_config;         /**< Barometer configuration status */
+    int8_t mag_config;          /**< Magnetometer configuration status */
+    int8_t bno_config;          /**< BNO055 configuration status */
+    int8_t gps_config;          /**< GPS configuration status */
 
-    int8_t sensors_thread_started;
-    int8_t data_handler_thread_started;
-    int8_t telemetry_thread_started;
-    int8_t radio_thread_started;
-    int8_t sd_card_thread_started;
-    int8_t estimator_thread_started;
-    int8_t controller_thread_started;
+    /* Thread startup status */
+    int8_t sensors_thread_started;      /**< Sensors thread started */
+    int8_t data_handler_thread_started; /**< Data handler thread started */
+    int8_t telemetry_thread_started;    /**< Telemetry thread started */
+    int8_t radio_thread_started;        /**< Radio thread started */
+    int8_t sd_card_thread_started;      /**< SD card thread started */
+    int8_t estimator_thread_started;    /**< Estimator thread started */
+    int8_t controller_thread_started;   /**< Controller thread started */
 
-    uint8_t total_checks;
-    uint8_t passed_checks;
-    uint8_t failed_checks;
-    uint8_t critical_failures;
+    /* Summary counters */
+    uint8_t total_checks;       /**< Total number of checks performed */
+    uint8_t passed_checks;      /**< Number of passed checks */
+    uint8_t failed_checks;      /**< Number of failed checks */
+    uint8_t critical_failures;  /**< Number of critical failures (blocks operation) */
 } boot_status_t;
 
-// ============================================================================
-// Motor Arm Status
-// ============================================================================
+/**
+ * @brief Motor/ESC arm status
+ *
+ * Tracks ESC initialization and calibration state.
+ */
 typedef struct {
-    bool esc_initialized;
-    bool calibration_done;
-    float min_throttle;
-    float max_throttle;
-    uint32_t arm_timestamp;
+    bool esc_initialized;       /**< ESC has been initialized */
+    bool calibration_done;      /**< ESC min/max calibration complete */
+    float min_throttle;         /**< Calibrated minimum throttle */
+    float max_throttle;         /**< Calibrated maximum throttle */
+    uint32_t arm_timestamp;     /**< Timestamp when motor was armed */
 } motor_arm_status_t;
 
-// ============================================================================
-// Ping/Pong Tracking
-// ============================================================================
+/**
+ * @brief Ping/Pong tracking for latency measurement
+ *
+ * Tracks ping requests and calculates round-trip time (RTT).
+ */
 typedef struct {
-    uint8_t pending_seq;              // Sequence number of pending ping
-    uint32_t send_timestamp;          // When ping was sent (FC side)
-    uint32_t gs_send_timestamp;       // When GS sent the ping
-    bool awaiting_pong;               // Are we waiting for response?
-    uint32_t last_rtt_ms;             // Last measured round-trip time
+    uint8_t pending_seq;        /**< Sequence number of pending ping */
+    uint32_t send_timestamp;    /**< FC timestamp when ping was sent */
+    uint32_t gs_send_timestamp; /**< GS timestamp from ping command */
+    bool awaiting_pong;         /**< Waiting for pong response */
+    uint32_t last_rtt_ms;       /**< Last measured round-trip time (ms) */
 } ping_tracker_t;
 
-// ============================================================================
-// Boot Report
-// ============================================================================
+/** @brief Maximum number of boot errors to track */
 #define BOOT_REPORT_MAX_ERRORS 8
+/** @brief Maximum length of boot error message */
 #define BOOT_ERROR_MSG_LEN     16
 
+/**
+ * @brief Boot report structure (sent to GS via telemetry)
+ *
+ * Packed structure sent as event payload to report boot status.
+ */
 typedef struct __attribute__((packed)) {
-    uint8_t total_checks;
-    uint8_t passed;
-    uint8_t failed;
-    uint8_t critical;
-    uint32_t boot_time_ms;
-    char errors[BOOT_REPORT_MAX_ERRORS][BOOT_ERROR_MSG_LEN];
-    uint8_t error_count;
+    uint8_t total_checks;       /**< Total boot checks performed */
+    uint8_t passed;             /**< Checks that passed */
+    uint8_t failed;             /**< Checks that failed */
+    uint8_t critical;           /**< Critical failures */
+    uint32_t boot_time_ms;      /**< Time to complete boot (ms) */
+    char errors[BOOT_REPORT_MAX_ERRORS][BOOT_ERROR_MSG_LEN]; /**< Error messages */
+    uint8_t error_count;        /**< Number of errors recorded */
 } boot_report_t;
 
-// ============================================================================
-// FSM Flags
-// ============================================================================
+/**
+ * @brief FSM runtime flags (bitfield)
+ *
+ * Compact storage for boolean runtime status flags.
+ */
 typedef struct {
-    uint8_t baro_calibrated : 1;
-    uint8_t gps_locked : 1;
-    uint8_t sensors_healthy : 1;
-    uint8_t sd_logging_enabled : 1;
-    uint8_t estimator_running : 1;
-    uint8_t controller_running : 1;
-    uint8_t abort_requested : 1;
-    uint8_t motor_armed : 1;
+    uint8_t baro_calibrated : 1;    /**< Barometer has been calibrated */
+    uint8_t gps_locked : 1;         /**< GPS has a valid fix */
+    uint8_t sensors_healthy : 1;    /**< All sensors reporting normally */
+    uint8_t sd_logging_enabled : 1; /**< SD card logging is active */
+    uint8_t estimator_running : 1;  /**< Estimator thread is running */
+    uint8_t controller_running : 1; /**< Controller thread is running */
+    uint8_t abort_requested : 1;    /**< Abort has been requested */
+    uint8_t motor_armed : 1;        /**< Motor is armed */
 } fsm_flags_t;
 
-// ============================================================================
-// FSM Context
-// ============================================================================
+/**
+ * @brief FSM Context - main flight computer state structure
+ *
+ * This is the central data structure for the flight computer,
+ * containing all state, configuration, and runtime data.
+ *
+ * @note This structure is global (fsm_ctx) and accessed by multiple threads.
+ *       Use fsm_get_state() and fsm_set_state() for thread-safe access.
+ */
 typedef struct {
-    // State
-    fsm_state_t state;
-    fsm_substate_t substate;
-    fsm_state_t prev_state;
-    fsm_substate_t prev_substate;
+    /* Current state */
+    fsm_state_t state;              /**< Current FSM state */
+    fsm_substate_t substate;        /**< Current sub-state */
+    fsm_state_t prev_state;         /**< Previous state (for transitions) */
+    fsm_substate_t prev_substate;   /**< Previous sub-state */
 
-    // Profile
-    profile_params_t profile;
+    /* Profile configuration */
+    profile_params_t profile;       /**< Active flight profile parameters */
 
-    // Real-time navigation data (updated by estimator)
-    float altitude_agl_m;
-    float velocity_vertical_ms;
-    float max_altitude_reached_m;
+    /* Real-time navigation data (updated by estimator) */
+    float altitude_agl_m;           /**< Current altitude above ground (meters) */
+    float velocity_vertical_ms;     /**< Vertical velocity (m/s, positive=up) */
+    float max_altitude_reached_m;   /**< Maximum altitude reached in flight */
 
-    // Timing
-    uint32_t state_entry_tick;
-    uint32_t flight_start_tick;
-    uint32_t boot_start_tick;
+    /* Timing */
+    uint32_t state_entry_tick;      /**< Tick when current state was entered */
+    uint32_t flight_start_tick;     /**< Tick when flight/test started */
+    uint32_t boot_start_tick;       /**< Tick when boot started */
 
-    // Command tracking
-    uint8_t last_cmd_seq;
-    uint8_t last_cmd_status;
+    /* Command tracking */
+    uint8_t last_cmd_seq;           /**< Sequence number of last command */
+    uint8_t last_cmd_status;        /**< Status of last command (0=OK) */
 
-    // Boot status
-    boot_status_t boot_status;
+    /* Boot status */
+    boot_status_t boot_status;      /**< Detailed boot status */
 
-    // Runtime flags
-    fsm_flags_t flags;
+    /* Runtime flags */
+    fsm_flags_t flags;              /**< Boolean runtime flags */
 
-    // Calibration
-    baro_calibration_t baro_cal;
+    /* Calibration data */
+    baro_calibration_t baro_cal;    /**< Barometer calibration data */
 
-    // Motor arm status
-    motor_arm_status_t motor_status;
+    /* Motor status */
+    motor_arm_status_t motor_status;/**< Motor/ESC arm status */
 
-    // Ping tracking
-    ping_tracker_t ping;
+    /* Ping tracking */
+    ping_tracker_t ping;            /**< Ping/pong latency tracking */
 
 } fsm_ctx_t;
 
-// ============================================================================
-// Commands (GS → FC)
-// ============================================================================
+/**
+ * @defgroup Commands Ground Station Commands
+ * @brief Commands sent from Ground Station to Flight Computer
+ * @{
+ */
+
+/**
+ * @brief Command types (GS → FC)
+ *
+ * Commands are sent from the ground station and queued for
+ * processing by the FSM thread.
+ */
 typedef enum {
-    CMD_NONE = 0,
-    CMD_PING,
-    CMD_SET_PROFILE,
-    CMD_SET_PARAM,
-    CMD_ARM,
-    CMD_DISARM,
-    CMD_START_TEST,
-    CMD_LAUNCH,
-    CMD_ABORT,
-    CMD_FORCE_SAFE,
-    CMD_CALIBRATE_BARO,
-    CMD_CALIBRATE_MOTOR,    // ESC min/max throttle calibration
-    CMD_STATIC_TEST,        // Static thrust test (payload: max_throttle_percent)
-    CMD_RESYNC
+    CMD_NONE = 0,           /**< No command / invalid */
+    CMD_PING,               /**< Ping request for latency measurement */
+    CMD_SET_PROFILE,        /**< Set flight profile (payload: profile type + params) */
+    CMD_SET_PARAM,          /**< Set individual parameter */
+    CMD_ARM,                /**< Arm the flight computer */
+    CMD_DISARM,             /**< Disarm the flight computer */
+    CMD_START_TEST,         /**< Start test sequence */
+    CMD_LAUNCH,             /**< Initiate launch sequence */
+    CMD_ABORT,              /**< Abort current operation */
+    CMD_FORCE_SAFE,         /**< Force transition to SAFE state */
+    CMD_CALIBRATE_BARO,     /**< Calibrate barometer (set ground reference) */
+    CMD_CALIBRATE_MOTOR,    /**< ESC min/max throttle calibration */
+    CMD_STATIC_TEST,        /**< Static thrust test (payload: max_throttle_percent) */
+    CMD_RESYNC              /**< Force TDMA resynchronization */
 } fsm_command_t;
 
-// ============================================================================
-// Telemetry Events (FC → GS)
-// ============================================================================
+/** @} */ /* End of Commands group */
+
+/**
+ * @defgroup Events Telemetry Events
+ * @brief Events sent from Flight Computer to Ground Station
+ * @{
+ */
+
+/**
+ * @brief Telemetry event types (FC → GS)
+ *
+ * Events are sent as telemetry packets to notify the ground station
+ * of state changes, faults, and other significant occurrences.
+ */
 typedef enum {
-    EVT_STATE_CHANGE = 0,
-    EVT_FAULT,
-    EVT_ABORT_TRIGGERED,
-    EVT_PROFILE_LOADED,
-    EVT_CHECKS_GREEN,
-    EVT_CHECKS_RED,
-    EVT_BOOT_REPORT,
-    EVT_ARMED,
-    EVT_DISARMED,
-    EVT_LIFTOFF,
-    EVT_APOGEE,
-    EVT_LANDING,
-    EVT_GENERIC_MSG,
-    EVT_PONG,              // Response to PING with RTT
-    EVT_BARO_CALIBRATED,   // Barometer calibration complete
-    EVT_MOTOR_ARMED,       // Motor arm sequence complete
-    EVT_MOTOR_CAL_STARTED, // ESC calibration started (sending MAX)
-    EVT_MOTOR_CAL_PHASE2,  // ESC calibration phase 2 (sending MIN)
-    EVT_MOTOR_CALIBRATED,  // ESC calibration complete
-    EVT_STATIC_TEST_STARTED,   // Static thrust test started
-    EVT_STATIC_TEST_PROGRESS,  // Static test progress update
-    EVT_STATIC_TEST_COMPLETE,  // Static test completed successfully
-    EVT_STATIC_TEST_FAILED     // Static test failed
+    EVT_STATE_CHANGE = 0,       /**< FSM state changed */
+    EVT_FAULT,                  /**< Fault detected */
+    EVT_ABORT_TRIGGERED,        /**< Abort sequence initiated */
+    EVT_PROFILE_LOADED,         /**< Flight profile loaded */
+    EVT_CHECKS_GREEN,           /**< All pre-flight checks passed */
+    EVT_CHECKS_RED,             /**< Pre-flight checks failed */
+    EVT_BOOT_REPORT,            /**< Boot sequence report */
+    EVT_ARMED,                  /**< System armed */
+    EVT_DISARMED,               /**< System disarmed */
+    EVT_LIFTOFF,                /**< Liftoff detected */
+    EVT_APOGEE,                 /**< Apogee reached */
+    EVT_LANDING,                /**< Landing detected */
+    EVT_GENERIC_MSG,            /**< Generic text message */
+    EVT_PONG,                   /**< Response to PING with RTT */
+    EVT_BARO_CALIBRATED,        /**< Barometer calibration complete */
+    EVT_MOTOR_ARMED,            /**< Motor arm sequence complete */
+    EVT_MOTOR_CAL_STARTED,      /**< ESC calibration started (sending MAX) */
+    EVT_MOTOR_CAL_PHASE2,       /**< ESC calibration phase 2 (sending MIN) */
+    EVT_MOTOR_CALIBRATED,       /**< ESC calibration complete */
+    EVT_STATIC_TEST_STARTED,    /**< Static thrust test started */
+    EVT_STATIC_TEST_PROGRESS,   /**< Static test progress update */
+    EVT_STATIC_TEST_COMPLETE,   /**< Static test completed successfully */
+    EVT_STATIC_TEST_FAILED      /**< Static test failed */
 } telemetry_event_type_t;
 
-// ============================================================================
-// Pong Payload (for EVT_PONG)
-// ============================================================================
+/** @} */ /* End of Events group */
+
+/**
+ * @brief Pong payload (for EVT_PONG event)
+ */
 typedef struct __attribute__((packed)) {
-    uint8_t ping_seq;           // Echo back the ping sequence
-    uint32_t fc_timestamp;      // FC timestamp when received
-    uint32_t rtt_ms;            // Round-trip time (if measurable)
+    uint8_t ping_seq;           /**< Echo of ping sequence number */
+    uint32_t fc_timestamp;      /**< FC timestamp when ping was received */
+    uint32_t rtt_ms;            /**< Round-trip time in milliseconds */
 } pong_payload_t;
 
-// ============================================================================
-// Calibration Complete Payload
-// ============================================================================
+/**
+ * @brief Calibration complete payload (for EVT_BARO_CALIBRATED)
+ */
 typedef struct __attribute__((packed)) {
-    float reference_pressure;   // mbar
-    float temperature;          // C
-    uint8_t samples;            // Number of samples averaged
+    float reference_pressure;   /**< Reference pressure (mbar) */
+    float temperature;          /**< Temperature at calibration (Celsius) */
+    uint8_t samples;            /**< Number of samples averaged */
 } calibration_payload_t;
 
-// ============================================================================
-// Command Message (radio_thread → fsm_thread)
-// ============================================================================
+/**
+ * @brief Command message structure (radio_thread → fsm_thread)
+ *
+ * Commands received from GS are packaged in this structure
+ * and sent to the FSM thread via queue.
+ */
 typedef struct {
-    fsm_command_t cmd;
-    uint8_t cmd_seq;
-    uint32_t gs_timestamp;      // GS timestamp when command was sent
+    fsm_command_t cmd;          /**< Command type */
+    uint8_t cmd_seq;            /**< Command sequence number */
+    uint32_t gs_timestamp;      /**< GS timestamp when command was sent */
     union {
         struct __attribute__((packed)) {
-            uint8_t profile_type;
-            float param1;
-            float param2;
+            uint8_t profile_type;   /**< Profile type for SET_PROFILE */
+            float param1;           /**< First parameter */
+            float param2;           /**< Second parameter */
         } profile;
-        float target_altitude;
-        uint8_t raw[16];
-    } payload;
+        float target_altitude;      /**< Target altitude for flight */
+        uint8_t raw[16];            /**< Raw payload bytes */
+    } payload;                  /**< Command-specific payload */
 } fsm_cmd_msg_t;
 
-// ============================================================================
-// Event Message (estimator_thread → fsm_thread)
-// ============================================================================
+/**
+ * @brief Event message structure (estimator_thread → fsm_thread)
+ *
+ * Internal events from the estimator are sent to the FSM
+ * via this structure.
+ */
 typedef struct {
-    fsm_internal_event_t type;
-    uint32_t timestamp;
+    fsm_internal_event_t type;  /**< Event type */
+    uint32_t timestamp;         /**< Event timestamp */
     union {
-        float altitude;
-        float velocity;
-        uint8_t raw[8];
-    } data;
+        float altitude;         /**< Altitude value */
+        float velocity;         /**< Velocity value */
+        uint8_t raw[8];         /**< Raw data bytes */
+    } data;                     /**< Event-specific data */
 } fsm_event_msg_t;
 
-// ============================================================================
-// State Change Payload
-// ============================================================================
+/**
+ * @brief State change event payload
+ */
 typedef struct __attribute__((packed)) {
-    uint8_t old_state;
-    uint8_t old_substate;
-    uint8_t new_state;
-    uint8_t new_substate;
-    uint8_t reason;
+    uint8_t old_state;          /**< Previous state */
+    uint8_t old_substate;       /**< Previous sub-state */
+    uint8_t new_state;          /**< New state */
+    uint8_t new_substate;       /**< New sub-state */
+    uint8_t reason;             /**< Reason code for transition */
 } event_state_change_t;
 
-// ============================================================================
-// Fault Payload
-// ============================================================================
+/**
+ * @brief Fault event payload
+ */
 typedef struct __attribute__((packed)) {
-    uint16_t code;
-    char desc[32];
+    uint16_t code;              /**< Fault code */
+    char desc[32];              /**< Fault description string */
 } event_fault_t;
 
-// ============================================================================
-// Queues (declared in create_threads.c or flight_computer_thread.c)
-// ============================================================================
+/* ============================================================================
+ * FreeRTOS Queues
+ * ============================================================================ */
+
+/** @brief Command queue (radio_thread → fsm_thread) */
 extern QueueHandle_t queue_cmd_to_fsm;
+/** @brief Event queue (estimator_thread → fsm_thread) */
 extern QueueHandle_t queue_event_to_fsm;
 
-// ============================================================================
-// Global Context
-// ============================================================================
+/* ============================================================================
+ * Global Context
+ * ============================================================================ */
+
+/** @brief Global FSM context (access via fsm_get_state/fsm_set_state) */
 extern fsm_ctx_t fsm_ctx;
 
-// ============================================================================
-// Function Prototypes
-// ============================================================================
+/* ============================================================================
+ * Function Prototypes
+ * ============================================================================ */
 
-// Init
+/**
+ * @defgroup FSMFunctions FSM Functions
+ * @brief FSM control and query functions
+ * @{
+ */
+
+/**
+ * @brief Initialize the flight computer FSM
+ *
+ * Initializes FSM context, creates queues, and sets initial state to BOOT.
+ * Must be called before starting the FSM thread.
+ */
 void fsm_init(void);
 
-// State access (thread-safe)
+/**
+ * @brief Get current FSM state (thread-safe)
+ * @return Current fsm_state_t value
+ */
 fsm_state_t fsm_get_state(void);
+
+/**
+ * @brief Get current FSM sub-state (thread-safe)
+ * @return Current fsm_substate_t value
+ */
 fsm_substate_t fsm_get_substate(void);
+
+/**
+ * @brief Set FSM state (thread-safe)
+ * @param state New state to set
+ */
 void fsm_set_state(fsm_state_t state);
+
+/**
+ * @brief Set FSM sub-state (thread-safe)
+ * @param substate New sub-state to set
+ */
 void fsm_set_substate(fsm_substate_t substate);
 
-// Boot status reporting (called by other threads)
+/**
+ * @brief Report component initialization status during boot
+ * @param component Component name (e.g., "IMU", "BARO")
+ * @param success true if init succeeded, false if failed
+ */
 void fsm_report_init_status(const char *component, bool success);
+
+/**
+ * @brief Report that a thread has started
+ * @param thread_name Thread name (e.g., "SENSORS", "RADIO")
+ */
 void fsm_report_thread_started(const char *thread_name);
+
+/**
+ * @brief Check if boot sequence is complete
+ * @return true if all boot checks are done
+ */
 bool fsm_is_boot_complete(void);
 
-// State queries for other threads
+/**
+ * @brief Check if data should be queued to estimator
+ * @return true if estimator should receive data
+ */
 bool fsm_should_queue_to_estimator(void);
+
+/**
+ * @brief Check if data should be queued to SD card
+ * @return true if SD logging is enabled
+ */
 bool fsm_should_queue_to_sd(void);
+
+/**
+ * @brief Check if logging is enabled
+ * @return true if SD card logging is active
+ */
 bool fsm_is_logging_enabled(void);
 
-// Calibration queries
+/**
+ * @brief Check if barometer is calibrated
+ * @return true if barometer calibration is complete
+ */
 bool fsm_is_baro_calibrated(void);
+
+/**
+ * @brief Get barometer calibration data
+ * @return Pointer to calibration structure, or NULL if not calibrated
+ */
 const baro_calibration_t* fsm_get_baro_calibration(void);
 
-// Command/Event sending (for other threads)
+/**
+ * @brief Send a command to the FSM (for internal use)
+ * @param cmd Command type
+ * @param cmd_seq Sequence number
+ * @param payload Command payload (can be NULL)
+ * @param size Payload size in bytes
+ * @return true if command was queued successfully
+ */
 bool fsm_send_command(fsm_command_t cmd, uint8_t cmd_seq, const void *payload, uint16_t size);
+
+/**
+ * @brief Send an internal event to the FSM
+ * @param event_type Event type
+ * @param data Event data (can be NULL)
+ * @return true if event was queued successfully
+ */
 bool fsm_send_event(fsm_internal_event_t event_type, const void *data);
 
-// String helpers
+/**
+ * @brief Convert FSM state to string
+ * @param state State value
+ * @return String representation (e.g., "IDLE", "ARMED")
+ */
 const char* fsm_state_to_str(fsm_state_t state);
+
+/**
+ * @brief Convert FSM sub-state to string
+ * @param substate Sub-state value
+ * @return String representation
+ */
 const char* fsm_substate_to_str(fsm_substate_t substate);
+
+/**
+ * @brief Convert profile type to string
+ * @param profile Profile type
+ * @return String representation (e.g., "GUTTER_RAMP")
+ */
 const char* fsm_profile_to_str(flight_profile_t profile);
+
+/** @} */ /* End of FSMFunctions group */
+
+/** @} */ /* End of FSM group */
 
 #endif /* FLIGHT_COMPUTER_FLIGHT_COMPUTER_H_ */

@@ -37,6 +37,8 @@ bool FX29_Init(FX29_t *dev, I2C_HandleTypeDef *hi2c,
     dev->force_range_n = range;
     dev->tare_offset = 0;
     dev->is_tared = false;
+    dev->scale_factor = 1.0f;
+    dev->is_calibrated = false;
 
     // Verify sensor is responding
     if (!FX29_IsConnected(dev)) {
@@ -116,6 +118,11 @@ bool FX29_ReadWithPWM(FX29_t *dev, LOADCELL_t *output, uint16_t pwm_value) {
         output->force_n = output->force_raw_n;
     }
 
+    // Apply scale factor calibration if set
+    if (dev->is_calibrated) {
+        output->force_n *= dev->scale_factor;
+    }
+
     return true;
 }
 
@@ -167,6 +174,52 @@ void FX29_ClearTare(FX29_t *dev) {
         dev->tare_offset = 0;
         dev->is_tared = false;
         printf("[FX29] Tare cleared\r\n");
+    }
+}
+
+bool FX29_Calibrate(FX29_t *dev, float known_weight1_n, float measured1_n,
+                    float known_weight2_n, float measured2_n) {
+    if (!dev) return false;
+
+    // Calculate delta for both known and measured
+    float known_delta = known_weight2_n - known_weight1_n;
+    float measured_delta = measured2_n - measured1_n;
+
+    // Check for division by zero
+    if (measured_delta == 0.0f || measured_delta < 0.001f && measured_delta > -0.001f) {
+        printf("[FX29] Calibration failed: measured values too close\r\n");
+        return false;
+    }
+
+    // Calculate scale factor: how much to multiply measured to get actual
+    dev->scale_factor = known_delta / measured_delta;
+    dev->is_calibrated = true;
+
+    printf("[FX29] Calibration complete: scale_factor=%.4f\r\n", dev->scale_factor);
+    printf("[FX29] Known: %.2fN -> %.2fN, Measured: %.2fN -> %.2fN\r\n",
+           known_weight1_n, known_weight2_n, measured1_n, measured2_n);
+
+    return true;
+}
+
+void FX29_SetScaleFactor(FX29_t *dev, float scale_factor) {
+    if (dev) {
+        dev->scale_factor = scale_factor;
+        dev->is_calibrated = true;
+        printf("[FX29] Scale factor set: %.4f\r\n", scale_factor);
+    }
+}
+
+float FX29_GetScaleFactor(FX29_t *dev) {
+    if (!dev) return 1.0f;
+    return dev->scale_factor;
+}
+
+void FX29_ClearCalibration(FX29_t *dev) {
+    if (dev) {
+        dev->scale_factor = 1.0f;
+        dev->is_calibrated = false;
+        printf("[FX29] Calibration cleared\r\n");
     }
 }
 

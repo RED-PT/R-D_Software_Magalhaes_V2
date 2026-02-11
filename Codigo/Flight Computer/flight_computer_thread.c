@@ -1,7 +1,72 @@
-/*
- * flight_computer_thread.c
+/**
+ * @file flight_computer_thread.c
+ * @brief Flight State Machine Thread Implementation
+ * @author Tomás Teixeira
+ * @date 2025
+ * @version 2.0
  *
- * FSM Thread - Complete state machine implementation
+ * @details
+ * Complete implementation of the Flight State Machine (FSM) thread, which
+ * serves as the central nervous system of the Magalhães Flight Computer.
+ *
+ * ## Architecture Overview
+ *
+ * @verbatim
+ *   ┌─────────────────────────────────────────────────────────────────────┐
+ *   │                       FSM Thread Main Loop                          │
+ *   └───────────────────────────────┬─────────────────────────────────────┘
+ *                                   │
+ *       ┌───────────────────────────┼───────────────────────────┐
+ *       │                           │                           │
+ *       ▼                           ▼                           ▼
+ *   ┌─────────┐              ┌─────────────┐             ┌───────────┐
+ *   │ Command │              │   State     │             │  Event    │
+ *   │ Handler │              │  Handlers   │             │  Handler  │
+ *   └────┬────┘              └──────┬──────┘             └─────┬─────┘
+ *        │                          │                          │
+ *        ▼                          ▼                          ▼
+ *   ┌─────────────────────────────────────────────────────────────────────┐
+ *   │                     State Transitions                                │
+ *   │  • transition_to() - Handles entry/exit actions                     │
+ *   │  • Thread suspend/resume (Estimator, Controller)                    │
+ *   │  • Telemetry event generation                                       │
+ *   └─────────────────────────────────────────────────────────────────────┘
+ * @endverbatim
+ *
+ * ## State Handler Functions
+ * | State | Handler | Description |
+ * |-------|---------|-------------|
+ * | BOOT | handle_state_boot() | Wait for critical init, timeout handling |
+ * | IDLE | handle_state_idle() | Waiting for configuration |
+ * | CONFIGED | handle_state_configed() | Profile loaded, awaiting ARM |
+ * | ARMED | handle_state_armed() | Motor init/cal sequence |
+ * | TEST_STAND | handle_state_test_stand() | Static thrust testing |
+ * | FLIGHT | handle_state_flight() | Active flight phases |
+ * | ABORT | handle_state_abort() | Emergency state |
+ * | SAFE | handle_state_safe() | Final safe state |
+ *
+ * ## Command Handlers
+ * | Command | Handler | Description |
+ * |---------|---------|-------------|
+ * | CMD_PING | handle_cmd_ping() | Connectivity check |
+ * | CMD_SET_PROFILE | handle_cmd_set_profile() | Load flight profile |
+ * | CMD_ARM | handle_cmd_arm() | Arm system |
+ * | CMD_LAUNCH | handle_cmd_launch() | Start flight |
+ * | CMD_ABORT | handle_cmd_abort() | Emergency abort |
+ * | CMD_CALIBRATE_BARO | handle_cmd_calibrate_baro() | Barometer calibration |
+ * | CMD_CALIBRATE_MOTOR | handle_cmd_calibrate_motor() | ESC calibration |
+ * | CMD_STATIC_TEST | handle_cmd_static_test() | Static thrust test |
+ *
+ * ## Background State Machines
+ * Three asynchronous state machines run within the main loop:
+ * 1. **process_calibration()**: Barometer calibration (50 samples)
+ * 2. **process_motor_calibration()**: ESC calibration sequence
+ * 3. **process_static_test()**: Static thrust test execution
+ *
+ * @see flight_computer_thread.h for interface documentation
+ * @see flight_computer.h for FSM types
+ *
+ * @ingroup Flight_Computer
  */
 
 #include "flight_computer_thread.h"
@@ -710,6 +775,14 @@ static void handle_cmd_calibrate_motor(fsm_cmd_msg_t *msg) {
     if (motor_cal_in_progress) {
         printf("[FSM] Motor calibration already in progress!\r\n");
         fsm_ctx.last_cmd_status = 1;
+        return;
+    }
+
+    // DEBUG: If payload byte 1 is 'D' (0x44), run PWM debug test instead
+    if (msg->payload.raw[0] == 0x44) {  // 'D' = Debug mode
+        printf("[FSM] Running PWM DEBUG TEST...\r\n");
+        PWM_DebugTest();
+        fsm_ctx.last_cmd_status = 0;
         return;
     }
 

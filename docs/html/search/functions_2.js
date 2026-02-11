@@ -1,0 +1,14 @@
+var searchData=
+[
+  ['bno055_5fconfigure_0',['BNO055_Configure',['../db/d0f/group___b_n_o_a_p_i.html#ga1cac413e6dd9bcc8cfcfd2faf394ae47',1,'BNO055_Configure(BNO055_t *dev):&#160;BNO055.c'],['../db/d0f/group___b_n_o_a_p_i.html#ga1cac413e6dd9bcc8cfcfd2faf394ae47',1,'BNO055_Configure(BNO055_t *dev):&#160;BNO055.c']]],
+  ['bno055_5fgetcalibstatus_1',['BNO055_GetCalibStatus',['../db/d0f/group___b_n_o_a_p_i.html#ga8540b428cc1764a857d740639e9c430d',1,'BNO055_GetCalibStatus(BNO055_t *dev, uint8_t *calib_status):&#160;BNO055.c'],['../db/d0f/group___b_n_o_a_p_i.html#ga8540b428cc1764a857d740639e9c430d',1,'BNO055_GetCalibStatus(BNO055_t *dev, uint8_t *calib_status):&#160;BNO055.c']]],
+  ['bno055_5finit_2',['BNO055_Init',['../db/d0f/group___b_n_o_a_p_i.html#gadd53562aa8a5d823d6fc2c08ec004b72',1,'BNO055_Init(BNO055_t *dev, I2C_HandleTypeDef *hi2c):&#160;BNO055.c'],['../db/d0f/group___b_n_o_a_p_i.html#gadd53562aa8a5d823d6fc2c08ec004b72',1,'BNO055_Init(BNO055_t *dev, I2C_HandleTypeDef *hi2c):&#160;BNO055.c']]],
+  ['bno055_5fparsedmabuffer_3',['BNO055_ParseDMABuffer',['../db/d0f/group___b_n_o_a_p_i.html#ga78334ab2485984ba13a8798a9f3d41f3',1,'BNO055_ParseDMABuffer(BNO055_t *dev):&#160;BNO055.c'],['../db/d0f/group___b_n_o_a_p_i.html#ga78334ab2485984ba13a8798a9f3d41f3',1,'BNO055_ParseDMABuffer(BNO055_t *dev):&#160;BNO055.c']]],
+  ['bno055_5fprocessdata_4',['BNO055_ProcessData',['../db/d0f/group___b_n_o_a_p_i.html#ga51c8ab6dc79da66664a077beeedcae8c',1,'BNO055_ProcessData(BNO055_t *dev, BNO_t *output):&#160;BNO055.c'],['../db/d0f/group___b_n_o_a_p_i.html#ga51c8ab6dc79da66664a077beeedcae8c',1,'BNO055_ProcessData(BNO055_t *dev, BNO_t *output):&#160;BNO055.c']]],
+  ['bno055_5freadregister_5',['BNO055_ReadRegister',['../d6/d0d/_b_n_o055_8c.html#a37aeb4b205820e03a9d1b673f62b166d',1,'BNO055.c']]],
+  ['bno055_5fsetopmode_6',['BNO055_SetOpMode',['../db/d0f/group___b_n_o_a_p_i.html#gae905349b1ef1bb60fb6b16558ba917be',1,'BNO055_SetOpMode(BNO055_t *dev, uint8_t mode):&#160;BNO055.c'],['../db/d0f/group___b_n_o_a_p_i.html#gae905349b1ef1bb60fb6b16558ba917be',1,'BNO055_SetOpMode(BNO055_t *dev, uint8_t mode):&#160;BNO055.c']]],
+  ['bno055_5fstartreaddma_7',['BNO055_StartReadDMA',['../db/d0f/group___b_n_o_a_p_i.html#ga562f51b55594ee736a1fa29085117aee',1,'BNO055_StartReadDMA(BNO055_t *dev):&#160;BNO055.c'],['../db/d0f/group___b_n_o_a_p_i.html#ga562f51b55594ee736a1fa29085117aee',1,'BNO055_StartReadDMA(BNO055_t *dev):&#160;BNO055.c']]],
+  ['bno055_5fwriteregister_8',['BNO055_WriteRegister',['../d6/d0d/_b_n_o055_8c.html#a838a13bf6bca148a8d0ef2f1d55a3eac',1,'BNO055.c']]],
+  ['broadcast_9',['broadcast',['../dd/d06/classserver_1_1_connection_manager.html#adb7250b5c0d9b85c62b652c44c5e4fae',1,'server::ConnectionManager']]],
+  ['build_5fboot_5freport_10',['build_boot_report',['../de/d09/flight__computer__thread_8c.html#a7edb7706a3a05efc73eaaba3f4165c6b',1,'flight_computer_thread.c']]]
+];

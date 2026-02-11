@@ -118,7 +118,7 @@ extern DMA_HandleTypeDef hdma_usart6_tx;
 #define PWM_ESC_TIM &htim3
 #define PWM_ESC_TIM_INSTANCE TIM3
 #define PWM_ESC_CHANNEL TIM_CHANNEL_1
-#define PWM_ESC_CHANNEL_WRITE TIM3->CCR4
+#define PWM_ESC_CHANNEL_WRITE TIM3->CCR1
 
 //TIM2: TIME IN (ms) 1KHz
 #define TIMER_TIME_IN_MILLIS &htim2

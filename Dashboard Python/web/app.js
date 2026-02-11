@@ -1,12 +1,71 @@
-﻿const pages = document.querySelectorAll('.page');
+/**
+ * @file app.js
+ * @brief Ground Station Dashboard Client Application
+ * @author Tomás Teixeira
+ * @date 2025
+ * @version 3.0
+ *
+ * @details
+ * Client-side JavaScript for the Magalhães Flight Computer Ground Station Dashboard.
+ * Provides real-time telemetry visualization, 3D rocket orientation display,
+ * GPS mapping, command interface, and static thrust testing functionality.
+ *
+ * ## Features
+ * - Real-time telemetry charts (altitude, velocity, orientation, etc.)
+ * - WebSocket communication with FastAPI backend
+ * - 3D rocket visualization using Three.js
+ * - GPS tracking with Leaflet maps
+ * - Flight state machine status display
+ * - Static thrust test controls and data export
+ * - Sensor boot status monitoring
+ *
+ * ## Architecture
+ * ```
+ * ┌─────────────────────────────────────────────────────────────┐
+ * │                    Dashboard Architecture                    │
+ * ├─────────────────────────────────────────────────────────────┤
+ * │  WebSocket ──► Message Router ──► Update Functions          │
+ * │                    │                                         │
+ * │                    ├── fast    ──► updateFast()             │
+ * │                    ├── slow    ──► updateSlow()             │
+ * │                    ├── gs_stats──► updateStats()            │
+ * │                    ├── event   ──► handleStaticTestEvent()  │
+ * │                    └── pong    ──► RTT Display              │
+ * └─────────────────────────────────────────────────────────────┘
+ * ```
+ *
+ * ## Dependencies
+ * - Chart.js: Real-time data charting
+ * - Three.js: 3D rocket visualization
+ * - Leaflet: GPS map display
+ *
+ * @see server.py for backend WebSocket server
+ * @see index.html for HTML structure
+ * @ingroup Dashboard
+ */
+
+// =============================================================================
+// DOM Elements
+// =============================================================================
+
+/** @type {NodeListOf<Element>} All page elements for navigation */
+const pages = document.querySelectorAll('.page');
+
+/** @type {NodeListOf<Element>} Navigation menu items */
 const navItems = document.querySelectorAll('.nav-item');
+
+/** @type {HTMLElement} Sidebar element */
 const sidebar = document.getElementById('sidebar');
+
+/** @type {HTMLElement} Menu toggle button */
 const menuToggle = document.getElementById('menuToggle');
 
+// Sidebar toggle event listener
 menuToggle.addEventListener('click', () => {
   sidebar.classList.toggle('collapsed');
 });
 
+// Navigation click handlers - switch between pages
 navItems.forEach((item) => {
   item.addEventListener('click', () => {
     navItems.forEach((btn) => btn.classList.remove('active'));
@@ -17,18 +76,63 @@ navItems.forEach((item) => {
   });
 });
 
+// =============================================================================
+// Global State Variables
+// =============================================================================
+
+/**
+ * @type {Object.<string, Chart>}
+ * @description Collection of Chart.js instances for telemetry visualization
+ */
 const charts = {};
+
+/**
+ * @type {number}
+ * @description Maximum number of data points to display on charts (rolling window)
+ */
 const maxPoints = 200;
+
+/**
+ * @type {number|null}
+ * @description Current round-trip time in milliseconds (null if not measured)
+ */
 let rttMs = null;
+
+/**
+ * @type {WebSocket|null}
+ * @description WebSocket connection to the backend server
+ */
 let ws = null;
 
-// Rate calculation
-let lastRxTotal = 0;
-let lastRateTime = Date.now();
-let rateHistory = [];
-const RATE_HISTORY_SIZE = 4;  // Rolling average over ~2 seconds
+// =============================================================================
+// Rate Calculation Variables
+// =============================================================================
 
-// Boot status tracking
+/** @type {number} Last total received packet count for rate calculation */
+let lastRxTotal = 0;
+
+/** @type {number} Timestamp of last rate calculation */
+let lastRateTime = Date.now();
+
+/** @type {number[]} Rolling history of data rates for averaging */
+let rateHistory = [];
+
+/** @type {number} Number of rate samples to keep for rolling average (~2 seconds) */
+const RATE_HISTORY_SIZE = 4;
+
+// =============================================================================
+// Boot Status Tracking
+// =============================================================================
+
+/**
+ * @type {Object}
+ * @description Sensor initialization status from boot report
+ * @property {string} imu - IMU sensor status ('ok', 'fail', 'unknown')
+ * @property {string} mag - Magnetometer status
+ * @property {string} baro - Barometer status
+ * @property {string} bno - BNO055 orientation sensor status
+ * @property {string} gps - GPS module status
+ */
 const bootStatus = {
   imu: 'unknown',
   mag: 'unknown',
@@ -37,23 +141,63 @@ const bootStatus = {
   gps: 'unknown'
 };
 
-// PWM gauge value
+// =============================================================================
+// Motor/PWM State
+// =============================================================================
+
+/** @type {number} Current motor throttle percentage (0-100) */
 let currentThrottle = 0;
 
-// Test data storage
+// =============================================================================
+// Static Thrust Test State
+// =============================================================================
+
+/**
+ * @type {Array<{time_ms: number, pwm: number, thrust: number}>}
+ * @description Collected test data points [{time_ms, pwm, thrust}, ...]
+ */
 let testData = [];
+
+/** @type {number} Maximum thrust recorded during current test (Newtons) */
 let testMaxThrust = 0;
+
+/** @type {number} PWM percentage at which max thrust occurred */
 let testMaxPWM = 0;
+
+/** @type {boolean} Whether a static thrust test is currently running */
 let testRunning = false;
+
+/** @type {boolean} Whether the motor has been calibrated */
 let motorCalibrated = false;
 
+/** @type {number} Timestamp when current test started (for client-side time tracking) */
+let testStartTime = 0;
+
+// =============================================================================
+// Flight State Machine Constants
+// =============================================================================
+
+/**
+ * @constant {string[]}
+ * @description FSM state names indexed by state ID
+ */
 const STATE_NAMES = ["BOOT", "IDLE", "CONFIGED", "ARMED", "TEST_STAND", "FLIGHT", "ABORT", "SAFE"];
+
+/**
+ * @constant {string[]}
+ * @description FSM substate names indexed by substate ID
+ */
 const SUBSTATE_NAMES = [
   "NONE", "TS_SENSOR_CHECK", "TS_THROTTLE_RAMP",
   "FL_IGNITION", "FL_LIFTOFF_DETECT", "FL_ASCENT", "FL_COAST",
   "FL_DESCENT_BRAKE", "FL_LANDING_FLARE", "FL_TOUCHDOWN", "FL_RECOVERY",
   "ARM_MOTOR_INIT", "ARM_MOTOR_CAL", "ARM_READY"
 ];
+
+/**
+ * @constant {Object.<number, string>}
+ * @description Event type ID to name mapping
+ */
 const EVENT_NAMES = {
   0: "STATE_CHANGE", 1: "FAULT", 2: "ABORT", 3: "PROFILE_LOADED",
   4: "CHECKS_GREEN", 5: "CHECKS_RED", 6: "BOOT_REPORT", 7: "ARMED",
@@ -63,6 +207,29 @@ const EVENT_NAMES = {
   19: "STATIC_TEST_STARTED", 20: "STATIC_TEST_PROGRESS", 21: "STATIC_TEST_COMPLETE", 22: "STATIC_TEST_FAILED"
 };
 
+// =============================================================================
+// Chart Creation Functions
+// =============================================================================
+
+/**
+ * Creates a Chart.js line chart with the specified datasets
+ *
+ * @param {string} id - Canvas element ID for the chart
+ * @param {Array<{label: string, color: string}>} datasets - Dataset configurations
+ * @returns {Chart} Configured Chart.js instance
+ *
+ * @example
+ * // Create a single-line altitude chart
+ * const altChart = createLineChart('altChart', [{ label: 'Alt', color: '#38bdf8' }]);
+ *
+ * @example
+ * // Create a multi-line gyroscope chart
+ * const gyroChart = createLineChart('gyroChart', [
+ *   { label: 'X', color: '#38bdf8' },
+ *   { label: 'Y', color: '#22c55e' },
+ *   { label: 'Z', color: '#a855f7' }
+ * ]);
+ */
 function createLineChart(id, datasets) {
   const ctx = document.getElementById(id).getContext('2d');
   return new Chart(ctx, {
@@ -94,6 +261,7 @@ function createLineChart(id, datasets) {
   });
 }
 
+// Initialize telemetry charts
 charts.alt = createLineChart('altChart', [{ label: 'Alt', color: '#38bdf8' }]);
 charts.vel = createLineChart('velChart', [{ label: 'Vel', color: '#22c55e' }]);
 charts.temp = createLineChart('tempChart', [{ label: 'Temp', color: '#f97316' }]);
@@ -114,7 +282,16 @@ charts.orient = createLineChart('orientChart', [
   { label: 'Yaw', color: '#f59e0b' }
 ]);
 
-// Thrust vs PWM chart (scatter plot style)
+/**
+ * Creates a scatter/line chart for thrust vs PWM visualization
+ *
+ * @returns {Chart|null} Chart.js instance or null if canvas not found
+ *
+ * @description
+ * Creates a specialized chart for static thrust testing that plots
+ * thrust (Newtons) against PWM percentage. Uses scatter plot with
+ * connected lines for better visualization of the thrust curve.
+ */
 function createThrustChart() {
   const ctx = document.getElementById('thrustChart');
   if (!ctx) return null;
@@ -157,6 +334,116 @@ function createThrustChart() {
 }
 charts.thrust = createThrustChart();
 
+/** @type {string} Current chart view mode: 'thrust_pwm', 'thrust_time', 'pwm_time' */
+let chartViewMode = 'thrust_pwm';
+
+/**
+ * Updates the thrust chart to show different data relationships
+ *
+ * @param {string} mode - Chart mode: 'thrust_pwm', 'thrust_time', or 'pwm_time'
+ */
+function setChartView(mode) {
+  chartViewMode = mode;
+  if (!charts.thrust) return;
+
+  // Update axis labels based on mode
+  const xAxis = charts.thrust.options.scales.x;
+  const yAxis = charts.thrust.options.scales.y;
+
+  switch (mode) {
+    case 'thrust_pwm':
+      xAxis.title.text = 'PWM (%)';
+      xAxis.min = 0;
+      xAxis.max = 100;
+      yAxis.title.text = 'Thrust (N)';
+      yAxis.min = 0;
+      charts.thrust.data.datasets[0].label = 'Thrust vs PWM';
+      break;
+    case 'thrust_time':
+      xAxis.title.text = 'Time (s)';
+      xAxis.min = 0;
+      xAxis.max = undefined;  // Auto scale
+      yAxis.title.text = 'Thrust (N)';
+      yAxis.min = 0;
+      charts.thrust.data.datasets[0].label = 'Thrust vs Time';
+      break;
+    case 'pwm_time':
+      xAxis.title.text = 'Time (s)';
+      xAxis.min = 0;
+      xAxis.max = undefined;  // Auto scale
+      yAxis.title.text = 'PWM (%)';
+      yAxis.min = 0;
+      yAxis.max = 100;
+      charts.thrust.data.datasets[0].label = 'PWM vs Time';
+      break;
+  }
+
+  // Rebuild chart data from testData based on mode
+  const chartData = testData.map(point => {
+    switch (mode) {
+      case 'thrust_pwm':
+        return { x: point.pwm, y: point.thrust };
+      case 'thrust_time':
+        return { x: point.time_ms / 1000, y: point.thrust };
+      case 'pwm_time':
+        return { x: point.time_ms / 1000, y: point.pwm };
+    }
+  });
+
+  charts.thrust.data.datasets[0].data = chartData;
+  charts.thrust.update();
+
+  // Update button states
+  document.querySelectorAll('.chart-view-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.view === mode);
+  });
+
+  appendLog(`[TEST] Chart view: ${mode}`);
+}
+
+/**
+ * Gets chart point based on current view mode
+ * @param {Object} dataPoint - {time_ms, pwm, thrust}
+ * @returns {Object} - {x, y} for chart
+ */
+function getChartPointForMode(dataPoint) {
+  switch (chartViewMode) {
+    case 'thrust_pwm':
+      return { x: dataPoint.pwm, y: dataPoint.thrust };
+    case 'thrust_time':
+      return { x: dataPoint.time_ms / 1000, y: dataPoint.thrust };
+    case 'pwm_time':
+      return { x: dataPoint.time_ms / 1000, y: dataPoint.pwm };
+    default:
+      return { x: dataPoint.pwm, y: dataPoint.thrust };
+  }
+}
+
+// Setup chart view button handlers - use event delegation for reliability
+document.addEventListener('click', (e) => {
+  if (e.target.classList.contains('chart-view-btn')) {
+    const mode = e.target.dataset.view;
+    if (mode) {
+      setChartView(mode);
+    }
+  }
+});
+
+/**
+ * Pushes new data points to a chart and maintains rolling window
+ *
+ * @param {Chart} chart - Chart.js instance to update
+ * @param {number[]} values - Array of values (one per dataset)
+ *
+ * @description
+ * Adds new data points to all datasets in the chart simultaneously.
+ * Removes oldest points when maxPoints limit is reached to maintain
+ * a rolling window display. Uses 'none' animation for real-time performance.
+ *
+ * @example
+ * // Update gyroscope chart with X, Y, Z values
+ * pushData(charts.gyro, [gyro_x, gyro_y, gyro_z]);
+ */
 function pushData(chart, values) {
   const label = '';
   chart.data.labels.push(label);
@@ -170,6 +457,29 @@ function pushData(chart, values) {
   chart.update('none');
 }
 
+// =============================================================================
+// WebSocket Communication
+// =============================================================================
+
+/**
+ * Establishes WebSocket connection to the backend server
+ *
+ * @description
+ * Connects to the WebSocket endpoint at /ws on the current host.
+ * Handles incoming messages by routing to appropriate update functions
+ * based on message type. Automatically reconnects on connection close.
+ *
+ * ## Message Types
+ * | Type | Handler | Description |
+ * |------|---------|-------------|
+ * | fast | updateFast() | High-rate telemetry (8 Hz) |
+ * | slow | updateSlow() | Low-rate telemetry (1 Hz) |
+ * | gs_stats | updateStats() | Ground station statistics |
+ * | gs_status | updateStatus() | TDMA sync status |
+ * | event | handleStaticTestEvent() | Flight events |
+ * | pong | - | RTT measurement response |
+ * | log | appendLog() | Server log messages |
+ */
 function connectWebSocket() {
   ws = new WebSocket(`ws://${location.host}/ws`);
   ws.addEventListener('open', () => {
@@ -219,12 +529,46 @@ function connectWebSocket() {
 
 connectWebSocket();
 
+// =============================================================================
+// UI Update Functions
+// =============================================================================
+
+/**
+ * Updates the connection status indicator
+ *
+ * @param {boolean} connected - Whether the serial connection is active
+ */
 function setStatus(connected) {
   const el = document.getElementById('statusValue');
   el.textContent = connected ? 'CONNECTED' : 'DISCONNECTED';
   el.style.color = connected ? '#22c55e' : '#ef4444';
 }
 
+/**
+ * Updates dashboard with fast telemetry data (8 Hz)
+ *
+ * @param {Object} pkt - Fast telemetry packet
+ * @param {number} pkt.altitude - Altitude in meters
+ * @param {number} pkt.vario - Vertical velocity in m/s
+ * @param {number} pkt.accel_x - X-axis acceleration in g
+ * @param {number} pkt.accel_y - Y-axis acceleration in g
+ * @param {number} pkt.accel_z - Z-axis acceleration in g
+ * @param {number} pkt.gyro_x - X-axis angular rate in deg/s
+ * @param {number} pkt.gyro_y - Y-axis angular rate in deg/s
+ * @param {number} pkt.gyro_z - Z-axis angular rate in deg/s
+ * @param {number} pkt.pitch - Pitch angle in degrees
+ * @param {number} pkt.roll - Roll angle in degrees
+ * @param {number} [pkt.yaw] - Yaw angle in degrees (optional)
+ * @param {number} pkt.state - FSM state ID
+ * @param {number} pkt.substate - FSM substate ID
+ *
+ * @description
+ * Updates all fast-rate telemetry displays including:
+ * - Altitude and velocity values
+ * - Acceleration and gyroscope charts
+ * - Orientation chart and 3D rocket model
+ * - State machine status display
+ */
 function updateFast(pkt) {
   document.getElementById('altValue').textContent = `${pkt.altitude.toFixed(1)} m`;
   document.getElementById('velValue').textContent = `${pkt.vario.toFixed(2)} m/s`;
@@ -265,6 +609,25 @@ function updateFast(pkt) {
   }
 }
 
+/**
+ * Updates dashboard with slow telemetry data (1 Hz)
+ *
+ * @param {Object} pkt - Slow telemetry packet
+ * @param {number} pkt.temperature - Temperature in Celsius
+ * @param {number} pkt.pressure - Pressure in mbar
+ * @param {number} pkt.battery - Battery percentage
+ * @param {number} pkt.satellites - Number of GPS satellites
+ * @param {number} pkt.latitude - GPS latitude in degrees
+ * @param {number} pkt.longitude - GPS longitude in degrees
+ * @param {number} pkt.gps_altitude - GPS altitude in meters
+ * @param {number} pkt.gps_lock - GPS lock type (0=none, 2=2D, 3=3D)
+ *
+ * @description
+ * Updates slow-rate telemetry displays including:
+ * - Temperature and pressure values/charts
+ * - Battery level
+ * - GPS information and map position
+ */
 function updateSlow(pkt) {
   document.getElementById('tempValue').textContent = `${pkt.temperature.toFixed(1)} C`;
   document.getElementById('pressValue').textContent = `${pkt.pressure.toFixed(1)} mbar`;
@@ -281,6 +644,24 @@ function updateSlow(pkt) {
   updateMap(pkt.latitude, pkt.longitude, pkt.gps_lock >= 2);
 }
 
+/**
+ * Updates ground station statistics display
+ *
+ * @param {Object} pkt - Statistics packet
+ * @param {number} pkt.rx_fast - Fast packets received count
+ * @param {number} pkt.rx_slow - Slow packets received count
+ * @param {number} pkt.rx_event - Event packets received count
+ * @param {number} pkt.tx_cmd - Command packets transmitted count
+ * @param {number} pkt.tx_sync - Sync packets transmitted count
+ * @param {number} pkt.crc_errors - CRC error count
+ * @param {number} pkt.ack_ok - Successful acknowledgments count
+ * @param {number} pkt.ack_timeout - Acknowledgment timeout count
+ *
+ * @description
+ * Updates communication statistics display and calculates
+ * rolling average data rate in kbps. Signal icon color indicates
+ * link quality (green > 0.5 kbps, red otherwise).
+ */
 function updateStats(pkt) {
   const rxTotal = pkt.rx_fast + pkt.rx_slow + pkt.rx_event;
   const txTotal = pkt.tx_cmd + pkt.tx_sync;
@@ -316,16 +697,45 @@ function updateStats(pkt) {
   }
 }
 
+/**
+ * Updates TDMA synchronization status display
+ *
+ * @param {Object} pkt - Status packet
+ * @param {boolean} pkt.synced - Whether TDMA is synchronized
+ */
 function updateStatus(pkt) {
   document.getElementById('syncValue').textContent = pkt.synced ? 'SYNC' : 'UNSYNC';
 }
 
+/**
+ * Appends a message to the console log display
+ *
+ * @param {string} text - Message text to append
+ *
+ * @description
+ * Adds timestamped message to the console log pre element
+ * and auto-scrolls to show the latest entry.
+ */
 function appendLog(text) {
   const log = document.getElementById('consoleLog');
   log.textContent += `${text}\n`;
   log.scrollTop = log.scrollHeight;
 }
 
+// =============================================================================
+// Boot Status Functions
+// =============================================================================
+
+/**
+ * Updates a sensor's boot status indicator
+ *
+ * @param {string} sensor - Sensor name ('imu', 'mag', 'baro', 'bno', 'gps')
+ * @param {boolean} status - true if sensor initialized OK, false if failed
+ *
+ * @description
+ * Updates both the bootStatus object and the corresponding DOM element
+ * with visual indicator (checkmark for OK, X for failure).
+ */
 function updateBootStatus(sensor, status) {
   bootStatus[sensor] = status ? 'ok' : 'fail';
   const el = document.getElementById(`boot-${sensor}`);
@@ -335,6 +745,24 @@ function updateBootStatus(sensor, status) {
   }
 }
 
+/**
+ * Parses boot report payload and updates sensor status indicators
+ *
+ * @param {string} payloadHex - Hex-encoded boot report payload
+ * @param {boolean} checksOk - Whether all critical checks passed
+ *
+ * @description
+ * Boot report payload format:
+ * - Bytes 0: total_checks
+ * - Byte 1: passed count
+ * - Byte 2: failed count
+ * - Byte 3: critical failures
+ * - Bytes 4-7: boot_time_ms (uint32)
+ * - Bytes 8+: error strings (8 x 16 bytes)
+ * - Byte 136: error_count
+ *
+ * Parses error strings to identify which sensors failed initialization.
+ */
 function parseBootReport(payloadHex, checksOk) {
   // Boot report payload format:
   // Bytes 0: total_checks, 1: passed, 2: failed, 3: critical
@@ -379,6 +807,19 @@ function parseBootReport(payloadHex, checksOk) {
   appendLog(`[BOOT] ${passed}/${total} checks passed, ${critical} critical, boot ${checksOk ? 'OK' : 'FAILED'}`);
 }
 
+// =============================================================================
+// PWM Gauge Functions
+// =============================================================================
+
+/**
+ * Updates the dashboard PWM gauge display
+ *
+ * @param {number} percent - Throttle percentage (0-100)
+ *
+ * @description
+ * Updates the SVG arc gauge with stroke-dashoffset animation.
+ * Color coding: green (<30%), yellow (30-70%), red (>70%).
+ */
 function updatePWMGauge(percent) {
   currentThrottle = Math.max(0, Math.min(100, percent));
   const valueEl = document.getElementById('pwmValue');
@@ -401,7 +842,27 @@ function updatePWMGauge(percent) {
   }
 }
 
-// Handle static test events from flight computer
+// =============================================================================
+// Static Thrust Test Event Handlers
+// =============================================================================
+
+/**
+ * Handles static thrust test events from the flight computer
+ *
+ * @param {number} eventType - Event type ID (19-22 for test events)
+ * @param {string} payload - Hex-encoded event payload
+ *
+ * @description
+ * Processes static thrust test events:
+ * - 19: EVT_STATIC_TEST_STARTED - Initialize test state
+ * - 20: EVT_STATIC_TEST_PROGRESS - Update with new data point
+ * - 21: EVT_STATIC_TEST_COMPLETE - Finalize test
+ * - 22: EVT_STATIC_TEST_FAILED - Handle test failure
+ *
+ * Progress payload format:
+ * - Byte 0: pwm_percent (uint8)
+ * - Bytes 1-4: thrust_n (float32, little-endian)
+ */
 function handleStaticTestEvent(eventType, payload) {
   const statusEl = document.getElementById('staticTestStatus');
   const testStatusEl = document.getElementById('testStatus');
@@ -411,6 +872,7 @@ function handleStaticTestEvent(eventType, payload) {
     case 19: // EVT_STATIC_TEST_STARTED
       console.log('[DEBUG] Static test STARTED event received');
       testRunning = true;
+      testStartTime = Date.now();  // Track when test started for time calculation
       testData = [];
       testMaxThrust = 0;
       testMaxPWM = 0;
@@ -433,31 +895,37 @@ function handleStaticTestEvent(eventType, payload) {
     case 20: // EVT_STATIC_TEST_PROGRESS
       // Payload: byte 0 = pwm_percent, bytes 1-4 = thrust_n (float, little-endian)
       console.log('[DEBUG] Progress event payload:', payload, 'length:', payload ? payload.length : 0);
-      if (payload && payload.length >= 10) {
+      if (payload && payload.length >= 10) {  // 1 + 4 bytes = 5 bytes = 10 hex chars
         const pwmPercent = parseInt(payload.substring(0, 2), 16);
+
         // Parse float from bytes 1-4 (little-endian IEEE 754)
         const floatBytes = new Uint8Array(4);
         for (let i = 0; i < 4; i++) {
           floatBytes[i] = parseInt(payload.substring(2 + i*2, 4 + i*2), 16);
         }
         const thrustN = new Float32Array(floatBytes.buffer)[0];
-        console.log('[DEBUG] Parsed: PWM=', pwmPercent, '% Thrust=', thrustN, 'N');
+
+        // Calculate time since test started (client-side)
+        const timestampMs = Date.now() - testStartTime;
+
+        console.log('[DEBUG] Parsed: Time=', timestampMs, 'ms PWM=', pwmPercent, '% Thrust=', thrustN, 'N');
 
         // Update displays
         updateAllPWMGauges(pwmPercent);
-        console.log('[DEBUG] Updated gauges with PWM:', pwmPercent);
         const currentPWMEl = document.getElementById('currentPWM');
         const currentThrustEl = document.getElementById('currentThrust');
+        const currentTimeEl = document.getElementById('currentTime');
         if (currentPWMEl) currentPWMEl.textContent = `${pwmPercent}%`;
         if (currentThrustEl) currentThrustEl.textContent = `${thrustN.toFixed(2)} N`;
+        if (currentTimeEl) currentTimeEl.textContent = `${(timestampMs / 1000).toFixed(1)} s`;
 
         if (statusEl) {
-          statusEl.textContent = `Test running: ${pwmPercent}% | ${thrustN.toFixed(1)}N`;
+          statusEl.textContent = `Test: ${(timestampMs/1000).toFixed(1)}s | ${pwmPercent}% | ${thrustN.toFixed(1)}N`;
           statusEl.style.color = '#38bdf8';
         }
 
-        // Add data point
-        const dataPoint = { x: pwmPercent, y: thrustN };
+        // Add data point with time
+        const dataPoint = { time_ms: timestampMs, pwm: pwmPercent, thrust: thrustN };
         testData.push(dataPoint);
 
         // Track max
@@ -466,9 +934,10 @@ function handleStaticTestEvent(eventType, payload) {
           testMaxPWM = pwmPercent;
         }
 
-        // Update chart
+        // Update chart based on current view mode
         if (charts.thrust) {
-          charts.thrust.data.datasets[0].data.push(dataPoint);
+          const chartPoint = getChartPointForMode(dataPoint);
+          charts.thrust.data.datasets[0].data.push(chartPoint);
           charts.thrust.update('none');
         }
 
@@ -512,13 +981,24 @@ function handleStaticTestEvent(eventType, payload) {
   }
 }
 
-// Update all PWM gauges (dashboard and test page)
+/**
+ * Updates all PWM gauges (dashboard and test page)
+ *
+ * @param {number} percent - Throttle percentage (0-100)
+ */
 function updateAllPWMGauges(percent) {
   updatePWMGauge(percent);
   updateTestPWMGauge(percent);
 }
 
-// Update test page PWM gauge
+/**
+ * Updates the test page PWM gauge display
+ *
+ * @param {number} percent - Throttle percentage (0-100)
+ *
+ * @description
+ * Similar to updatePWMGauge but for the dedicated test page gauge.
+ */
 function updateTestPWMGauge(percent) {
   const value = Math.max(0, Math.min(100, percent));
   const valueEl = document.getElementById('testPwmValue');
@@ -539,7 +1019,18 @@ function updateTestPWMGauge(percent) {
   }
 }
 
-// Handle motor calibration events from flight computer
+/**
+ * Handles motor calibration events from the flight computer
+ *
+ * @param {number} eventType - Event type ID (16-18 for calibration events)
+ * @param {string} payload - Hex-encoded event payload (unused)
+ *
+ * @description
+ * Processes ESC calibration events:
+ * - 16: EVT_MOTOR_CAL_STARTED - Calibration phase 1 (MAX throttle)
+ * - 17: EVT_MOTOR_CAL_PHASE2 - Calibration phase 2 (MIN throttle)
+ * - 18: EVT_MOTOR_CALIBRATED - Calibration complete
+ */
 function handleMotorCalEvent(eventType, payload) {
   const consoleStatusEl = document.getElementById('staticTestStatus');
   const testStatusEl = document.getElementById('testStatus');
@@ -584,6 +1075,11 @@ function handleMotorCalEvent(eventType, payload) {
   }
 }
 
+// =============================================================================
+// Command Button Handlers
+// =============================================================================
+
+// Setup command buttons with data-cmd attributes
 const cmdButtons = document.querySelectorAll('[data-cmd]');
 cmdButtons.forEach((btn) => {
   btn.addEventListener('click', () => {
@@ -592,6 +1088,7 @@ cmdButtons.forEach((btn) => {
   });
 });
 
+// Manual command input handler
 document.getElementById('sendCmd').addEventListener('click', () => {
   const input = document.getElementById('cmdInput');
   const cmd = input.value.trim();
@@ -640,10 +1137,12 @@ document.getElementById('startTestBtn')?.addEventListener('click', () => {
   statusEl.style.color = '#f59e0b';
 });
 
+// Clear test data button handler
 document.getElementById('clearTestBtn')?.addEventListener('click', () => {
   testData = [];
   testMaxThrust = 0;
   testMaxPWM = 0;
+  testStartTime = 0;
   if (charts.thrust) {
     charts.thrust.data.datasets[0].data = [];
     charts.thrust.update('none');
@@ -651,28 +1150,33 @@ document.getElementById('clearTestBtn')?.addEventListener('click', () => {
   document.getElementById('testSamples').textContent = '0';
   document.getElementById('testMaxThrust').textContent = '-- N';
   document.getElementById('testMaxPWM').textContent = '--%';
+  document.getElementById('currentTime').textContent = '0.0 s';
+  document.getElementById('currentPWM').textContent = '0%';
+  document.getElementById('currentThrust').textContent = '0.00 N';
   document.getElementById('testStatus').textContent = 'Cleared - Ready for new test';
   document.getElementById('testStatus').style.color = '#888';
   document.getElementById('testState').textContent = 'IDLE';
   appendLog('[TEST] Data cleared');
 });
 
+// CSV download button handler
 document.getElementById('downloadCsvBtn')?.addEventListener('click', () => {
   if (testData.length === 0) {
     alert('No test data to download. Run a test first.');
     return;
   }
 
-  // Generate CSV content
-  let csv = 'pwm_percent,thrust_n\n';
+  // Generate CSV content with time column
+  let csv = 'time_ms,time_s,pwm_percent,thrust_n\n';
   testData.forEach(point => {
-    csv += `${point.x},${point.y.toFixed(3)}\n`;
+    csv += `${point.time_ms},${(point.time_ms / 1000).toFixed(3)},${point.pwm},${point.thrust.toFixed(3)}\n`;
   });
 
   // Add summary
   csv += `\n# Test Summary\n`;
   csv += `# Samples: ${testData.length}\n`;
   csv += `# Max Thrust: ${testMaxThrust.toFixed(3)} N at ${testMaxPWM}% PWM\n`;
+  csv += `# Test Duration: ${testData.length > 0 ? (testData[testData.length-1].time_ms / 1000).toFixed(1) : 0} s\n`;
 
   // Create download
   const blob = new Blob([csv], { type: 'text/csv' });
@@ -688,6 +1192,18 @@ document.getElementById('downloadCsvBtn')?.addEventListener('click', () => {
   appendLog(`[TEST] Downloaded CSV: ${testData.length} samples`);
 });
 
+// =============================================================================
+// Serial Port Management
+// =============================================================================
+
+/**
+ * Loads available serial ports from the server
+ *
+ * @async
+ * @description
+ * Fetches list of available COM ports from /api/ports endpoint
+ * and populates the port selection dropdown.
+ */
 async function loadPorts() {
   const select = document.getElementById('portSelect');
   select.innerHTML = '';
@@ -705,6 +1221,7 @@ loadPorts();
 
 document.getElementById('refreshPorts').addEventListener('click', loadPorts);
 
+// Connect button handler
 document.getElementById('connectBtn').addEventListener('click', async () => {
   const port = document.getElementById('portSelect').value;
   const res = await fetch('/api/connect', {
@@ -717,12 +1234,21 @@ document.getElementById('connectBtn').addEventListener('click', async () => {
   setStatus(data.ok);
 });
 
+// Disconnect button handler
 document.getElementById('disconnectBtn').addEventListener('click', async () => {
   await fetch('/api/disconnect', { method: 'POST' });
   document.getElementById('connectStatus').textContent = 'Disconnected';
   setStatus(false);
 });
 
+/**
+ * Loads help information (commands and profiles) from the server
+ *
+ * @async
+ * @description
+ * Fetches command reference and flight profiles from /api/help
+ * and renders them in the Help page.
+ */
 async function loadHelp() {
   const res = await fetch('/api/help');
   const data = await res.json();
@@ -745,6 +1271,14 @@ async function loadHelp() {
   });
 }
 
+/**
+ * Loads current connection status from the server
+ *
+ * @async
+ * @description
+ * Checks if a serial connection is already established
+ * and updates the UI accordingly.
+ */
 async function loadStatus() {
   const res = await fetch('/api/status');
   const data = await res.json();
@@ -754,11 +1288,29 @@ async function loadStatus() {
   setStatus(data.connected);
 }
 
+// =============================================================================
+// Map Functions (Leaflet)
+// =============================================================================
+
+/** @type {L.Map|null} Leaflet map instance */
 let map = null;
+
+/** @type {L.Marker|null} Rocket position marker */
 let marker = null;
+
+/** @type {Array<[number, number]>} GPS track path coordinates */
 let path = [];
+
+/** @type {L.Polyline|null} Track path line on map */
 let pathLine = null;
 
+/**
+ * Initializes the Leaflet map for GPS tracking
+ *
+ * @description
+ * Creates a Leaflet map centered on Lisbon with OpenStreetMap tiles.
+ * Adds a marker for rocket position and a polyline for track history.
+ */
 function initMap() {
   if (map || !window.L) return;
   map = L.map('map').setView([38.7223, -9.1393], 15);
@@ -769,6 +1321,17 @@ function initMap() {
   pathLine = L.polyline(path, { color: '#22c55e', weight: 2 }).addTo(map);
 }
 
+/**
+ * Updates the map with new GPS coordinates
+ *
+ * @param {number} lat - Latitude in degrees
+ * @param {number} lon - Longitude in degrees
+ * @param {boolean} hasFix - Whether GPS has a valid fix
+ *
+ * @description
+ * Updates marker position and adds point to track path.
+ * Maintains a rolling window of 200 track points.
+ */
 function updateMap(lat, lon, hasFix) {
   if (!map) {
     initMap();
@@ -781,9 +1344,41 @@ function updateMap(lat, lon, hasFix) {
   pathLine.setLatLngs(path);
 }
 
-let scene, camera, renderer, rocket;
+// =============================================================================
+// 3D Visualization Functions (Three.js)
+// =============================================================================
+
+/** @type {THREE.Scene|undefined} Three.js scene */
+let scene;
+
+/** @type {THREE.PerspectiveCamera|undefined} Three.js camera */
+let camera;
+
+/** @type {THREE.WebGLRenderer|undefined} Three.js renderer */
+let renderer;
+
+/** @type {THREE.Group|undefined} Rocket 3D model group */
+let rocket;
+
+/**
+ * @type {{x: number, y: number, z: number}}
+ * @description Target rotation for smooth rocket animation (radians)
+ */
 let targetRotation = { x: 0, y: 0, z: 0 };
 
+/**
+ * Initializes the Three.js 3D rocket visualization
+ *
+ * @description
+ * Creates a Three.js scene with:
+ * - Perspective camera with 60° FOV
+ * - Ambient and directional lighting
+ * - Grid helper for reference
+ * - Rocket model (cylinder body, cone nose, fins)
+ *
+ * Animation loop smoothly interpolates rocket rotation towards
+ * target values received from telemetry.
+ */
 function initThree() {
   const container = document.getElementById('threeContainer');
   if (!container) return;
@@ -840,6 +1435,9 @@ function initThree() {
   camera.position.set(0, 1.5, 8);
   camera.lookAt(0, 0, 0);
 
+  /**
+   * Animation loop - smoothly interpolates rocket rotation
+   */
   function animate() {
     requestAnimationFrame(animate);
     if (rocket) {
@@ -851,6 +1449,7 @@ function initThree() {
   }
   animate();
 
+  // Handle container resize
   const resizeObserver = new ResizeObserver(() => {
     const { clientWidth, clientHeight } = container;
     if (clientWidth && clientHeight) {
@@ -861,6 +1460,10 @@ function initThree() {
   });
   resizeObserver.observe(container);
 }
+
+// =============================================================================
+// Initialization
+// =============================================================================
 
 window.addEventListener('load', () => {
   initMap();
@@ -873,7 +1476,18 @@ window.addEventListener('load', () => {
   }, 1000);
 });
 
-// Fullscreen toggle functionality
+// =============================================================================
+// Fullscreen Toggle Functions
+// =============================================================================
+
+/**
+ * Initializes fullscreen toggle buttons on chart cards
+ *
+ * @description
+ * Adds fullscreen toggle buttons to cards containing canvases,
+ * 3D container, or map elements. Skips cards that already have
+ * buttons or don't need them.
+ */
 function initFullscreenButtons() {
   const cards = document.querySelectorAll('.card');
   cards.forEach((card) => {
@@ -893,6 +1507,11 @@ function initFullscreenButtons() {
   });
 }
 
+/**
+ * Toggles fullscreen mode for a card element
+ *
+ * @param {HTMLElement} card - Card element to toggle fullscreen
+ */
 function toggleCardFullscreen(card) {
   if (document.fullscreenElement === card) {
     document.exitFullscreen();
@@ -903,7 +1522,7 @@ function toggleCardFullscreen(card) {
   }
 }
 
-// Handle fullscreen change events
+// Handle fullscreen change events - apply styling
 document.addEventListener('fullscreenchange', () => {
   const fullscreenElement = document.fullscreenElement;
   if (fullscreenElement) {

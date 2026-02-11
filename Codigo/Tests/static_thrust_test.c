@@ -19,6 +19,10 @@
 // Use I2C_LOADCELL from config.h (hi2c2)
 extern I2C_HandleTypeDef hi2c2;
 
+// Load cell calibration (from linear regression with 11 points)
+// Formula: F_real = LOADCELL_SCALE_FACTOR * F_measured
+#define LOADCELL_SCALE_FACTOR  0.4481f
+
 // Test context (singleton)
 static static_test_ctx_t test_ctx = {0};
 static char test_filename[32] = {0};
@@ -113,6 +117,10 @@ static_test_state_t StaticTest_Update(void) {
             }
             test_ctx.loadcell_initialized = true;
 
+            // Apply calibration scale factor
+            FX29_SetScaleFactor(&test_ctx.loadcell, LOADCELL_SCALE_FACTOR);
+            printf("[STATIC_TEST] Calibration applied: scale=%.4f\r\n", LOADCELL_SCALE_FACTOR);
+
             // Tare the load cell
             printf("[STATIC_TEST] Taring load cell...\r\n");
             if (!FX29_Tare(&test_ctx.loadcell)) {
@@ -135,36 +143,15 @@ static_test_state_t StaticTest_Update(void) {
 
         case STATIC_TEST_SETTLE: {
             if (phase_elapsed >= STATIC_TEST_SETTLE_DELAY_MS) {
-                printf("[STATIC_TEST] Starting ramp up to %d%%\r\n",
+                // STEP: Jump directly to max throttle (no ramp)
+                printf("[STATIC_TEST] STEP to %d%%\r\n",
                        test_ctx.config.max_throttle_percent);
-                test_ctx.state = STATIC_TEST_RAMP_UP;
-                test_ctx.phase_start_tick = now;
-                test_ctx.last_sample_tick = now;
-                test_ctx.current_throttle = 0.0f;
-            }
-            break;
-        }
+                test_ctx.current_throttle = (float)test_ctx.config.max_throttle_percent;
+                PWM_SetThrottle(test_ctx.current_throttle);
 
-        case STATIC_TEST_RAMP_UP: {
-            // Calculate current throttle based on ramp progress
-            float ramp_progress = (float)phase_elapsed / (float)test_ctx.config.ramp_duration_ms;
-            if (ramp_progress > 1.0f) ramp_progress = 1.0f;
-
-            test_ctx.current_throttle = ramp_progress * (float)test_ctx.config.max_throttle_percent;
-            PWM_SetThrottle(test_ctx.current_throttle);
-
-            // Take sample at regular intervals
-            if ((now - test_ctx.last_sample_tick) >= test_ctx.config.sample_interval_ms) {
-                take_sample();
-                test_ctx.last_sample_tick = now;
-            }
-
-            // Check if ramp complete
-            if (phase_elapsed >= test_ctx.config.ramp_duration_ms) {
-                printf("[STATIC_TEST] Ramp complete, holding at %d%%\r\n",
-                       test_ctx.config.max_throttle_percent);
                 test_ctx.state = STATIC_TEST_HOLD;
                 test_ctx.phase_start_tick = now;
+                test_ctx.last_sample_tick = now;
             }
             break;
         }
@@ -182,30 +169,8 @@ static_test_state_t StaticTest_Update(void) {
 
             // Check if hold complete
             if (phase_elapsed >= test_ctx.config.hold_duration_ms) {
-                printf("[STATIC_TEST] Hold complete, ramping down\r\n");
-                test_ctx.state = STATIC_TEST_RAMP_DOWN;
-                test_ctx.phase_start_tick = now;
-            }
-            break;
-        }
-
-        case STATIC_TEST_RAMP_DOWN: {
-            // Calculate current throttle based on ramp down progress
-            float ramp_progress = (float)phase_elapsed / (float)test_ctx.config.ramp_duration_ms;
-            if (ramp_progress > 1.0f) ramp_progress = 1.0f;
-
-            test_ctx.current_throttle = (1.0f - ramp_progress) * (float)test_ctx.config.max_throttle_percent;
-            PWM_SetThrottle(test_ctx.current_throttle);
-
-            // Take sample at regular intervals
-            if ((now - test_ctx.last_sample_tick) >= test_ctx.config.sample_interval_ms) {
-                take_sample();
-                test_ctx.last_sample_tick = now;
-            }
-
-            // Check if ramp down complete
-            if (phase_elapsed >= test_ctx.config.ramp_duration_ms) {
-                printf("[STATIC_TEST] Ramp down complete, saving data\r\n");
+                // STEP: Jump directly to 0% (no ramp)
+                printf("[STATIC_TEST] Hold complete, STEP to 0%%\r\n");
                 PWM_SetThrottle(0.0f);
                 test_ctx.current_throttle = 0.0f;
                 test_ctx.state = STATIC_TEST_SAVING;

@@ -1,11 +1,48 @@
-/*
- * sd_card_thread.c
+/**
+ * @file sd_card_thread.c
+ * @brief SD Card Data Logging Thread Implementation
+ * @author Tomás Teixeira
+ * @date October 10, 2025
+ * @version 2.0
  *
- * High-performance SD card logging - F446ZE optimized
- * Updated for cleaned GPS_t struct
+ * @details
+ * Implements high-performance SD card logging for the Magalhães Flight
+ * Computer using FatFS with buffered writes optimized for STM32F446ZE.
  *
- * Created on: Oct 10, 2025
- * Author: Tomas Teixeira
+ * ## Performance Optimizations
+ * - **Write Buffering**: 4KB buffer reduces SD write frequency
+ * - **Deferred Sync**: f_sync() called after flush, not every write
+ * - **Pause Support**: SD can be paused during motor tests (EMI protection)
+ *
+ * ## CSV Log Format
+ * All sensor data logged to `log_0.csv` with columns:
+ * ```
+ * timestamp_ms,type,seq,accel_x,accel_y,accel_z,gyro_x,gyro_y,gyro_z,
+ * temp_c,pressure_mbar,altitude_m,mag_x,mag_y,mag_z,heading_deg,
+ * roll_deg,pitch_deg,latitude,longitude,gps_alt_m,lock,satellites,
+ * hdop,speed_kts,course_deg,quat_w,quat_x,quat_y,quat_z
+ * ```
+ *
+ * ## Thread Timing
+ * | Parameter | Value |
+ * |-----------|-------|
+ * | Queue Timeout | 50ms |
+ * | Flush Timeout | 200ms |
+ * | Stats Period | 10s |
+ *
+ * ## Buffer Management
+ * - Buffer size: 4096 bytes
+ * - Flush at 75% full or 200ms timeout
+ * - Immediate flush before pause
+ *
+ * ## Pause/Resume API
+ * Motor tests generate EMI that can corrupt SD writes. Use:
+ * - sd_card_pause() before motor operations
+ * - sd_card_resume() after motor stops
+ *
+ * @see sd_card_thread.h for interface documentation
+ * @see fatfs_sd.h for low-level SD driver
+ * @ingroup Storage
  */
 
 #include "sd_card_thread.h"

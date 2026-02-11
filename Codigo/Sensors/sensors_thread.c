@@ -1,40 +1,94 @@
-/*
- * sensors_thread.c
+/**
+ * @file sensors_thread.c
+ * @brief Sensor Acquisition Thread Implementation
+ * @author Tomás Teixeira
+ * @date October 10, 2025
+ * @version 2.0
  *
- *  Created on: Oct 10, 2025
- *      Author: Tomas Teixeira
+ * @details
+ * Implements the sensor acquisition and processing for the Magalhães Flight
+ * Computer. This thread manages all hardware sensors using DMA transfers
+ * for efficient, low-latency data collection.
+ *
+ * ## Sensor Overview
+ * | Sensor | Interface | Rate | Data Type |
+ * |--------|-----------|------|-----------|
+ * | ASM330LHHX | SPI1 DMA | 416 Hz | 6-axis IMU |
+ * | MMC5983MA | SPI3 DMA | 100 Hz | 3-axis MAG |
+ * | MS5607 | SPI1 Poll | 50 Hz | Barometer |
+ * | BNO055 | I2C1 DMA | 100 Hz | 9-DOF Fusion |
+ * | u-blox GPS | UART DMA | 1 Hz | Position/Velocity |
+ *
+ * ## Data Flow
+ *
+ * @verbatim
+ *   Hardware Interrupts                     Sensor Thread
+ *   ─────────────────                     ─────────────────
+ *   IMU DRDY (EXTI) ─────────────────────► Start IMU DMA
+ *   MAG DRDY (EXTI) ─────────────────────► Start MAG DMA
+ *   Baro Timer ──────────────────────────► Poll MS5607
+ *   BNO Timer ───────────────────────────► Start I2C DMA
+ *   GPS UART RX ─────────────────────────► Parse NMEA
+ *        │
+ *        ▼
+ *   DMA Complete (callback) ─────────────► Process & Store
+ *        │
+ *        ▼
+ *   Circular Buffers (cb_imu, cb_baro, etc.)
+ * @endverbatim
+ *
+ * ## Error Recovery
+ * - I2C bus recovery after 100ms timeout
+ * - DMA error handling with chip select reset
+ * - Statistics tracking for diagnostics
+ *
+ * @see sensors_thread.h for interface documentation
+ * @see hal_callbacks.c for interrupt handlers
+ * @ingroup Sensors
  */
 
 #include "sensors_thread.h"
 #include "Flight Computer/flight_computer.h"  // For fsm_get_baro_calibration()
 
-// Sensor Instances
-ASM330LHHX_t imu_device;
-MMC5983MA_t mag_device;
-MS5607_t baro_device;
-BNO055_t bno_device;
-UBLOX_GPS_t gps_device;
+/** @name Sensor Device Instances
+ *  @brief Global sensor device structures
+ *  @{
+ */
+ASM330LHHX_t imu_device;    /**< 6-axis IMU (accel + gyro) */
+MMC5983MA_t mag_device;     /**< 3-axis magnetometer */
+MS5607_t baro_device;       /**< Barometric pressure sensor */
+BNO055_t bno_device;        /**< 9-DOF orientation sensor */
+UBLOX_GPS_t gps_device;     /**< u-blox GPS receiver */
+/** @} */
 
-// Bus Tracking (make these accessible to hal_callbacks.c)
-volatile active_sensor_t spi1_active_sensor = ACTIVE_SENSOR_NONE;
-volatile active_sensor_t spi3_active_sensor = ACTIVE_SENSOR_NONE;
-volatile active_sensor_t i2c1_active_sensor = ACTIVE_SENSOR_NONE;
+/** @name Bus Tracking Variables
+ *  @brief Track which sensor is currently using each bus (for DMA routing)
+ *  @{
+ */
+volatile active_sensor_t spi1_active_sensor = ACTIVE_SENSOR_NONE;  /**< SPI1: IMU or BARO */
+volatile active_sensor_t spi3_active_sensor = ACTIVE_SENSOR_NONE;  /**< SPI3: MAG */
+volatile active_sensor_t i2c1_active_sensor = ACTIVE_SENSOR_NONE;  /**< I2C1: BNO055 */
+/** @} */
 
-// Statistics
+/**
+ * @brief Sensor statistics tracking structure
+ * @details Tracks samples collected, errors encountered, and recovery events
+ *          for diagnostic purposes. Reported every 10 seconds.
+ */
 static struct {
-    uint32_t imu_samples;
-    uint32_t mag_samples;
-    uint32_t baro_samples;
-    uint32_t bno_samples;
-    uint32_t gps_samples;
-    uint32_t imu_errors;
-    uint32_t mag_errors;
-    uint32_t baro_errors;
-    uint32_t bno_errors;
-    uint32_t gps_errors;
-    uint32_t dma_errors;
-    uint32_t i2c_timeouts;
-    uint32_t i2c_recoveries;
+    uint32_t imu_samples;      /**< IMU samples successfully processed */
+    uint32_t mag_samples;      /**< Magnetometer samples processed */
+    uint32_t baro_samples;     /**< Barometer samples processed */
+    uint32_t bno_samples;      /**< BNO055 samples processed */
+    uint32_t gps_samples;      /**< GPS fixes processed */
+    uint32_t imu_errors;       /**< IMU read/process errors */
+    uint32_t mag_errors;       /**< Magnetometer errors */
+    uint32_t baro_errors;      /**< Barometer errors */
+    uint32_t bno_errors;       /**< BNO055 errors */
+    uint32_t gps_errors;       /**< GPS parse errors */
+    uint32_t dma_errors;       /**< DMA transfer errors */
+    uint32_t i2c_timeouts;     /**< I2C bus timeouts */
+    uint32_t i2c_recoveries;   /**< I2C bus recovery attempts */
 } sensor_stats = {0};
 
 // DMA timeout tracking

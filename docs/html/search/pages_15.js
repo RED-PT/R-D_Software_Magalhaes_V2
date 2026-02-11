@@ -1,0 +1,28 @@
+var searchData=
+[
+  ['safety_0',['Safety',['../de/d08/_p_w_m___f_u_n_c_t_i_o_n_s_8h.html#pwm_safety',1,'Safety'],['../d4/d0d/flight__computer_8c.html#autotoc_md18',1,'Thread Safety'],['../de/d05/hal__callbacks_8h.html#autotoc_md35',1,'Thread Safety']]],
+  ['safety_20monitoring_1',['Safety Monitoring',['../d7/d03/estimator__thread_8c.html#autotoc_md11',1,'']]],
+  ['sensor_20data_2',['Cached Sensor Data',['../de/d04/telemetry__thread_8h.html#autotoc_md56',1,'']]],
+  ['sensor_20hardware_3',['Sensor Hardware',['../dc/d0c/sensors__thread_8h.html#sensor_hw',1,'']]],
+  ['sensor_20overview_4',['Sensor Overview',['../d3/d05/sensors__thread_8c.html#autotoc_md43',1,'']]],
+  ['sensor_20specifications_5',['Sensor Specifications',['../d2/d03/_a_s_m330_l_h_h_x_8c.html#autotoc_md40',1,'']]],
+  ['sentences_6',['Supported NMEA Sentences',['../db/d06/_g_p_s_8h.html#gps_sentences',1,'']]],
+  ['sequence_7',['DMA Read Sequence',['../d2/d03/_a_s_m330_l_h_h_x_8c.html#autotoc_md41',1,'']]],
+  ['sizes_8',['Thread Stack Sizes',['../d3/d02/create__threads_8c.html#autotoc_md58',1,'']]],
+  ['slot_9',['TX Timing Within Slot',['../de/d0c/radio__thread_8c.html#autotoc_md37',1,'']]],
+  ['software_20architecture_10',['Software Architecture',['../index.html#autotoc_md63',1,'']]],
+  ['specifications_11',['Sensor Specifications',['../d2/d03/_a_s_m330_l_h_h_x_8c.html#autotoc_md40',1,'']]],
+  ['spi_20dma_20callbacks_12',['2. SPI DMA Callbacks',['../d0/d00/hal__callbacks_8c.html#autotoc_md29',1,'']]],
+  ['stack_20sizes_13',['Thread Stack Sizes',['../d3/d02/create__threads_8c.html#autotoc_md58',1,'']]],
+  ['state_20handler_20functions_14',['State Handler Functions',['../de/d09/flight__computer__thread_8c.html#autotoc_md21',1,'']]],
+  ['state_20machine_15',['Flight State Machine',['../index.html#autotoc_md64',1,'']]],
+  ['state_20machine_20overview_16',['State Machine Overview',['../d4/d0d/flight__computer_8c.html#autotoc_md17',1,'']]],
+  ['state_20machines_17',['Background State Machines',['../de/d09/flight__computer__thread_8c.html#autotoc_md23',1,'']]],
+  ['station_18',['Arduino Ground Station',['../index.html#autotoc_md73',1,'']]],
+  ['station_20components_19',['Ground Station Components',['../index.html#autotoc_md71',1,'']]],
+  ['structure_20',['Structure',['../d9/d09/data__handler__thread_8c.html#autotoc_md1',1,'Data Packet Structure'],['../de/d0c/radio__thread_8c.html#autotoc_md36',1,'TDMA Frame Structure']]],
+  ['support_21',['Support',['../index.html#autotoc_md70',1,'']]],
+  ['supported_20nmea_20sentences_22',['Supported NMEA Sentences',['../db/d06/_g_p_s_8h.html#gps_sentences',1,'']]],
+  ['synchronization_23',['Synchronization',['../de/d0c/radio__thread_8c.html#autotoc_md38',1,'Synchronization'],['../df/d08/radio__thread_8h.html#radio_sync',1,'Synchronization']]],
+  ['system_20overview_24',['System Overview',['../index.html#autotoc_md61',1,'']]]
+];

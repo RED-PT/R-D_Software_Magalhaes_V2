@@ -1,0 +1,26 @@
+var group___a_s_m330_l_h_h_x___sensor__hub =
+[
+    [ "asm330lhhx_sh_cfg_write", "group___a_s_m330_l_h_h_x___sensor__hub.html#ga208ff14f6208695e9e349ce4ee95ea94", null ],
+    [ "asm330lhhx_sh_data_rate_get", "group___a_s_m330_l_h_h_x___sensor__hub.html#ga0720511ac746fac9fa8686511996880b", null ],
+    [ "asm330lhhx_sh_data_rate_set", "group___a_s_m330_l_h_h_x___sensor__hub.html#gacd8c0ec78adee0343ad0f8ec79bbe360", null ],
+    [ "asm330lhhx_sh_master_get", "group___a_s_m330_l_h_h_x___sensor__hub.html#gabd9ee58e31ed054570243520f369ef9a", null ],
+    [ "asm330lhhx_sh_master_set", "group___a_s_m330_l_h_h_x___sensor__hub.html#ga417477e9187ca6676826e20e9f1ce3cd", null ],
+    [ "asm330lhhx_sh_pass_through_get", "group___a_s_m330_l_h_h_x___sensor__hub.html#ga7a81878dce27c5fe028aa5630632e9fb", null ],
+    [ "asm330lhhx_sh_pass_through_set", "group___a_s_m330_l_h_h_x___sensor__hub.html#ga2c4eef753223d1e6b6eed817ec038e4a", null ],
+    [ "asm330lhhx_sh_pin_mode_get", "group___a_s_m330_l_h_h_x___sensor__hub.html#ga6c357d05b4f151e42c364f06a1b2b7ab", null ],
+    [ "asm330lhhx_sh_pin_mode_set", "group___a_s_m330_l_h_h_x___sensor__hub.html#ga74dfecd5f48cf185c115c5ce6fe2d145", null ],
+    [ "asm330lhhx_sh_read_data_raw_get", "group___a_s_m330_l_h_h_x___sensor__hub.html#ga69eec209818184a02744a09b1bc0fad4", null ],
+    [ "asm330lhhx_sh_reset_get", "group___a_s_m330_l_h_h_x___sensor__hub.html#ga7edb1184310c707bf9724b56218bf5fb", null ],
+    [ "asm330lhhx_sh_reset_set", "group___a_s_m330_l_h_h_x___sensor__hub.html#ga22be935335173eea707db920cf511ceb", null ],
+    [ "asm330lhhx_sh_slave_connected_get", "group___a_s_m330_l_h_h_x___sensor__hub.html#ga65e9805508f29000b551bd718adb000e", null ],
+    [ "asm330lhhx_sh_slave_connected_set", "group___a_s_m330_l_h_h_x___sensor__hub.html#ga72f03123c430689dbf32a26577772af7", null ],
+    [ "asm330lhhx_sh_slv0_cfg_read", "group___a_s_m330_l_h_h_x___sensor__hub.html#gae78adf6b0880b721fc50c01fd2353f26", null ],
+    [ "asm330lhhx_sh_slv1_cfg_read", "group___a_s_m330_l_h_h_x___sensor__hub.html#gae41d989e206a9c1ecdfdcf82f20b4de7", null ],
+    [ "asm330lhhx_sh_slv2_cfg_read", "group___a_s_m330_l_h_h_x___sensor__hub.html#gac8471d659acb0a783a7e29efdbd5a640", null ],
+    [ "asm330lhhx_sh_slv3_cfg_read", "group___a_s_m330_l_h_h_x___sensor__hub.html#ga1984799cfacfc8680dceb19c839589a5", null ],
+    [ "asm330lhhx_sh_status_get", "group___a_s_m330_l_h_h_x___sensor__hub.html#ga67dfd8f2e4e133b14aacaf230d054f04", null ],
+    [ "asm330lhhx_sh_syncro_mode_get", "group___a_s_m330_l_h_h_x___sensor__hub.html#gaa08020e85b21ccc095e404f10800b169", null ],
+    [ "asm330lhhx_sh_syncro_mode_set", "group___a_s_m330_l_h_h_x___sensor__hub.html#gaee2a4ce25ebcb86bb3df51d96e94be4b", null ],
+    [ "asm330lhhx_sh_write_mode_get", "group___a_s_m330_l_h_h_x___sensor__hub.html#ga06bc457ebcb1578e9e4969b167d88148", null ],
+    [ "asm330lhhx_sh_write_mode_set", "group___a_s_m330_l_h_h_x___sensor__hub.html#gaf86c6faa9888759d5bedf5b6b277b7b4", null ]
+];

@@ -1,8 +1,39 @@
-/*
- * estimator_thread.c
+/**
+ * @file estimator_thread.c
+ * @brief State Estimation Thread Implementation
+ * @author Tomás Teixeira
+ * @date October 10, 2025
+ * @version 2.0
  *
- *  Created on: Oct 10, 2025
- *      Author: Tomas Teixeira
+ * @details
+ * Implements the state estimation and flight event detection for the
+ * Magalhães Flight Computer. This thread processes barometer and IMU
+ * data to track the rocket's navigation state throughout flight.
+ *
+ * ## Estimation Algorithm
+ * Current implementation uses simple altitude differentiation:
+ * ```
+ * velocity = (altitude_now - altitude_prev) / dt
+ * ```
+ *
+ * ## Flight Phase Detection
+ * The estimator tracks flight phases through a sequence of events:
+ *
+ * | Event | Trigger Condition | FSM Event |
+ * |-------|-------------------|-----------|
+ * | Liftoff | velocity > 2.0 m/s | FSM_EVT_LIFTOFF |
+ * | Apogee | velocity crosses 0 (descending) | FSM_EVT_APOGEE |
+ * | Flare | altitude ≤ flare_altitude_m | FSM_EVT_FLARE_ALT |
+ * | Touchdown | altitude ≤ 0.5 m | FSM_EVT_TOUCHDOWN |
+ * | Landed | stable (vel < 0.3 m/s) for 3s | FSM_EVT_LANDED |
+ *
+ * ## Safety Monitoring
+ * Continuously checks against configured limits:
+ * - Maximum altitude (profile.max_altitude_m)
+ * - Maximum velocity (profile.max_velocity_ms)
+ *
+ * @see estimator_thread.h for interface documentation
+ * @ingroup Estimator
  */
 
 #include "estimator_thread.h"
@@ -11,20 +42,28 @@
 #include "cmsis_os.h"
 #include <math.h>
 
-// Thresholds for flight event detection
-#define LIFTOFF_VELOCITY_THRESHOLD_MS   2.0f
-#define APOGEE_VELOCITY_THRESHOLD_MS    1.0f
-#define TOUCHDOWN_ALT_THRESHOLD_M       0.5f
-#define LANDED_VELOCITY_THRESHOLD_MS    0.3f
-#define LANDED_TIME_MS                  3000
+/** @name Flight Event Detection Thresholds
+ *  @brief Configurable thresholds for detecting flight phases
+ *  @{
+ */
+#define LIFTOFF_VELOCITY_THRESHOLD_MS   2.0f   /**< Minimum velocity to confirm liftoff (m/s) */
+#define APOGEE_VELOCITY_THRESHOLD_MS    1.0f   /**< Velocity hysteresis for apogee detection (m/s) */
+#define TOUCHDOWN_ALT_THRESHOLD_M       0.5f   /**< Altitude threshold for touchdown (m AGL) */
+#define LANDED_VELOCITY_THRESHOLD_MS    0.3f   /**< Maximum velocity to consider "stable" (m/s) */
+#define LANDED_TIME_MS                  3000   /**< Time stable before confirming landed (ms) */
+/** @} */
 
-// State tracking
-static float max_altitude_m = 0.0f;
-static bool liftoff_detected = false;
-static bool apogee_detected = false;
-static bool flare_triggered = false;
-static bool touchdown_detected = false;
-static uint32_t touchdown_time = 0;
+/** @name Flight State Tracking Variables
+ *  @brief Static variables tracking flight phase progression
+ *  @{
+ */
+static float max_altitude_m = 0.0f;        /**< Maximum altitude reached during flight */
+static bool liftoff_detected = false;      /**< Liftoff event has been triggered */
+static bool apogee_detected = false;       /**< Apogee event has been triggered */
+static bool flare_triggered = false;       /**< Flare altitude event has been triggered */
+static bool touchdown_detected = false;    /**< Touchdown event has been triggered */
+static uint32_t touchdown_time = 0;        /**< Timestamp of touchdown for landed confirmation */
+/** @} */
 
 // ============================================================================
 // Flight Event Detection

@@ -25,21 +25,120 @@ static float ramp_direction = 0.0f;  // +1 or -1
 
 void PWM_Init(void) {
     // Start PWM on TIM3 (ESC timer per config.h)
-    HAL_TIM_PWM_Start(PWM_ESC_TIM, TIM_CHANNEL_1);
-    HAL_TIM_PWM_Start(PWM_ESC_TIM, TIM_CHANNEL_2);
-    HAL_TIM_PWM_Start(PWM_ESC_TIM, TIM_CHANNEL_3);
-    HAL_TIM_PWM_Start(PWM_ESC_TIM, TIM_CHANNEL_4);
-    
+    HAL_StatusTypeDef status = HAL_TIM_PWM_Start(PWM_ESC_TIM, TIM_CHANNEL_1);
+    printf("[PWM] TIM3 CH1 Start: %s\r\n", (status == HAL_OK) ? "OK" : "FAIL");
+
     // Set to minimum (arm) position
     PWM_SetThrottle(0.0f);
-    
-    printf("[PWM] Initialized on TIM3\r\n");
+
+    // Debug: show timer config
+    printf("[PWM] TIM3 Prescaler=%lu, Period=%lu, CCR1=%lu\r\n",
+           htim3.Init.Prescaler, htim3.Init.Period, htim3.Instance->CCR1);
+    printf("[PWM] Initialized on TIM3 CH1 (PC6)\r\n");
+}
+
+// Debug function to test PWM output directly
+void PWM_DebugTest(void) {
+    printf("\r\n========== PWM DEBUG TEST ==========\r\n");
+    printf("[PWM DEBUG] Testing PC6 (TIM3_CH1)\r\n");
+    printf("[PWM DEBUG] NUCLEO-F446ZE: PC6 is on CN10 pin 4 (Arduino D1)\r\n");
+    printf("[PWM DEBUG] LD1 (Green) will blink during test\r\n");
+
+    // Blink LD1 to show test is starting
+    for (int i = 0; i < 3; i++) {
+        HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_SET);
+        HAL_Delay(100);
+        HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_RESET);
+        HAL_Delay(100);
+    }
+
+    // Step 1: Test GPIO manually first
+    printf("\r\n[STEP 1] GPIO Toggle Test on PC6 (should see 1Hz square wave)\r\n");
+    printf("         Also testing LD2 (Blue) as visual reference\r\n");
+    HAL_TIM_PWM_Stop(&htim3, TIM_CHANNEL_1);  // Stop PWM first
+
+    // Reconfigure PC6 as regular GPIO output
+    GPIO_InitTypeDef GPIO_InitStruct = {0};
+    GPIO_InitStruct.Pin = GPIO_PIN_6;
+    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+    HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+    for (int i = 0; i < 5; i++) {
+        HAL_GPIO_WritePin(GPIOC, GPIO_PIN_6, GPIO_PIN_SET);
+        HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);  // Visual reference
+        printf("[GPIO] PC6 = HIGH (LD2 ON)\r\n");
+        HAL_Delay(500);
+        HAL_GPIO_WritePin(GPIOC, GPIO_PIN_6, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+        printf("[GPIO] PC6 = LOW (LD2 OFF)\r\n");
+        HAL_Delay(500);
+    }
+
+    // Step 2: Reconfigure as TIM3 PWM
+    printf("\r\n[STEP 2] Reconfiguring PC6 as TIM3_CH1 PWM...\r\n");
+    GPIO_InitStruct.Pin = GPIO_PIN_6;
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+    GPIO_InitStruct.Alternate = GPIO_AF2_TIM3;
+    HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+    // Step 3: Start PWM and test different duty cycles
+    printf("\r\n[STEP 3] Starting TIM3 PWM...\r\n");
+    printf("  TIM3->PSC  = %lu (Prescaler)\r\n", TIM3->PSC);
+    printf("  TIM3->ARR  = %lu (Period)\r\n", TIM3->ARR);
+    printf("  TIM3->CR1  = 0x%04lX (Control)\r\n", TIM3->CR1);
+    printf("  TIM3->CCER = 0x%04lX (Capture/Compare Enable)\r\n", TIM3->CCER);
+
+    // Enable TIM3 clock if not already enabled
+    __HAL_RCC_TIM3_CLK_ENABLE();
+
+    // Force timer to be running
+    TIM3->CR1 |= TIM_CR1_CEN;  // Enable counter
+    TIM3->CCER |= TIM_CCER_CC1E;  // Enable CH1 output
+
+    printf("  After enable: TIM3->CR1 = 0x%04lX, TIM3->CCER = 0x%04lX\r\n", TIM3->CR1, TIM3->CCER);
+
+    HAL_StatusTypeDef status = HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);
+    printf("  HAL_TIM_PWM_Start: %s\r\n", (status == HAL_OK) ? "OK" : "FAIL");
+
+    printf("\r\n[STEP 4] Testing duty cycles (check oscilloscope on PC6)...\r\n");
+    printf("         LD1 will toggle every 3 seconds\r\n");
+
+    printf("  50%% duty (CCR=10000) - 10ms HIGH, 10ms LOW at 50Hz\r\n");
+    __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, 10000);
+    printf("  TIM3->CCR1 = %lu, CNT = %lu\r\n", TIM3->CCR1, TIM3->CNT);
+    HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_SET);
+    HAL_Delay(3000);
+
+    printf("  5%% duty (CCR=1000) - 1ms HIGH, 19ms LOW (ESC MIN)\r\n");
+    __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, 1000);
+    printf("  TIM3->CCR1 = %lu, CNT = %lu\r\n", TIM3->CCR1, TIM3->CNT);
+    HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_RESET);
+    HAL_Delay(3000);
+
+    printf("  10%% duty (CCR=2000) - 2ms HIGH, 18ms LOW (ESC MAX)\r\n");
+    __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, 2000);
+    printf("  TIM3->CCR1 = %lu, CNT = %lu\r\n", TIM3->CCR1, TIM3->CNT);
+    HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_SET);
+    HAL_Delay(3000);
+
+    printf("  Back to 5%% (MIN)\r\n");
+    __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, 1000);
+    HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_RESET);
+
+    printf("\r\n========== TEST COMPLETE ==========\r\n");
+    printf("If GPIO toggle worked but PWM didn't: Timer config issue\r\n");
+    printf("If GPIO toggle didn't work: Check PC6 wiring\r\n");
+    printf("PC6 location on NUCLEO-F446ZE: CN10 pin 4 (Arduino D1)\r\n");
 }
 
 void DC_to_Period(float percentage_motor) {
     // Convert motor percentage (0-100%) to duty cycle
     // DC_MIN (5%) = 0% throttle, DC_MAX (10%) = 100% throttle
-    float DC = DC_MIN + (percentage_motor / 100.0f) * (DC_MAX - DC_MIN);
+    float DC = DC_MIN + (percentage_motor / 20);
     
     // Clamp to valid range
     if (DC > DC_MAX) {
@@ -51,8 +150,9 @@ void DC_to_Period(float percentage_motor) {
     // Calculate CCR value
     // CCR = (DC / 100) * Period
     uint32_t ccr = (uint32_t)(DC * htim3.Init.Period / 100.0f);
-    
     // Apply to all channels (TIM3 for ESC)
+    PWM_ESC_CHANNEL_WRITE = ccr;
+
     __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, ccr);
     __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, ccr);
     __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_3, ccr);

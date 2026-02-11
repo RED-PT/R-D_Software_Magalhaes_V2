@@ -1,11 +1,54 @@
-/*
- * radio_thread.c - FIXED VERSION v3
+/**
+ * @file radio_thread.c
+ * @brief LoRa Radio Communication Thread Implementation (TDMA v3)
+ * @author Tomás Teixeira
+ * @date 2025
+ * @version 3.0
  *
- * Key fixes:
- * - slot_index properly updated
- * - One TX per slot only
- * - Guard time before RX slot to avoid collision
- * - Better ACK tracking
+ * @details
+ * Implements the LoRa radio communication system for the Magalhães Flight
+ * Computer using Time Division Multiple Access (TDMA) synchronization with
+ * the Ground Station.
+ *
+ * ## TDMA Frame Structure
+ *
+ * @verbatim
+ *   ├────────────────── 1000ms Superframe ──────────────────┤
+ *   │                                                        │
+ *   ┌─────┬─────┬─────┬─────┬─────┬─────┬─────┬─────┬─────┬─────┐
+ *   │  0  │  1  │  2  │  3  │  4  │  5  │  6  │  7  │  8  │  9  │
+ *   ├─────┴─────┴─────┴─────┴─────┴─────┴─────┴─────┴─────┴─────┤
+ *   │ FAST│FAST │FAST │FAST │FAST │FAST │FAST │FAST │SLOW │ RX  │
+ *   │ TX  │ TX  │ TX  │ TX  │ TX  │ TX  │ TX  │ TX  │ TX  │only │
+ *   └─────────────────────────────────────────────────────────────┘
+ *
+ *   Slots 0-7: Fast telemetry (8 Hz) - FC transmits
+ *   Slot 8:    Slow telemetry (1 Hz) - FC transmits GPS/temp
+ *   Slot 9:    RX only - FC listens for GS commands/sync
+ * @endverbatim
+ *
+ * ## TX Timing Within Slot
+ * | Phase | Time (ms) | Action |
+ * |-------|-----------|--------|
+ * | Start | 0-5 | Guard time |
+ * | TX Window | 5-70 | Transmit telemetry |
+ * | Guard | 70-100 | Prepare for next slot |
+ *
+ * ## Synchronization
+ * - FC starts in UNSYNCED mode, beaconing every 5 seconds
+ * - GS sends SYNC packets in slot 9
+ * - FC aligns frame timing to received SYNC
+ * - Lost sync after 10 missed frames
+ *
+ * ## Key Improvements in v3
+ * - slot_index properly tracked globally
+ * - Single TX per slot enforced
+ * - 20ms guard before RX slot
+ * - Improved ACK piggyback in telemetry
+ *
+ * @see radio_thread.h for interface documentation
+ * @see telemetry.h for packet formats
+ * @ingroup Radio_Communication
  */
 
 #include "radio_thread.h"

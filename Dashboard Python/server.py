@@ -1,4 +1,69 @@
-﻿import argparse
+"""
+@file server.py
+@brief Ground Station Dashboard Server
+@author Tomás Teixeira
+@date 2025
+@version 2.0
+
+@details
+FastAPI-based web server for the Magalhães Flight Computer Ground Station.
+Provides real-time telemetry visualization, command interface, and data
+analysis through a modern web dashboard.
+
+## Features
+- Real-time WebSocket telemetry streaming
+- Serial communication with Arduino ground station
+- Binary protocol parsing (Fast/Slow/Event packets)
+- Command relay to flight computer
+- Demo mode for testing without hardware
+
+## Architecture
+```
+┌─────────────┐     Serial      ┌─────────────┐     LoRa      ┌──────────────┐
+│  Dashboard  │◄───(USB)────────│   Arduino   │◄──────────────│    Flight    │
+│   Server    │    115200 baud  │     GS      │   433 MHz     │   Computer   │
+└──────┬──────┘                 └─────────────┘               └──────────────┘
+       │
+       │ WebSocket
+       ▼
+┌─────────────┐
+│   Browser   │
+│  Dashboard  │
+└─────────────┘
+```
+
+## Binary Protocol
+All messages use framed format:
+| Field | Size | Description |
+|-------|------|-------------|
+| Sync1 | 1 | 0xAA |
+| Sync2 | 1 | 0x55 |
+| Length | 2 | Payload length (big-endian) |
+| Type | 1 | Message type ID |
+| Payload | N | Message-specific data |
+| CRC16 | 2 | CRC-16 checksum |
+
+## Usage
+```bash
+python server.py                    # Normal mode
+python server.py --demo             # Demo mode (no hardware)
+python server.py --port COM3        # Specify serial port
+```
+
+## API Endpoints
+- GET  /           - Serve dashboard HTML
+- GET  /api/ports  - List available serial ports
+- GET  /api/status - Connection status
+- GET  /api/help   - Command documentation
+- POST /api/connect    - Connect to serial port
+- POST /api/disconnect - Disconnect
+- WS   /ws         - WebSocket for real-time data
+
+@see app.js for frontend JavaScript
+@see index.html for dashboard UI
+"""
+
+import argparse
 import asyncio
 import json
 import struct
@@ -14,17 +79,22 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-FRAME_SYNC_1 = 0xAA
-FRAME_SYNC_2 = 0x55
+# =============================================================================
+# Protocol Constants
+# =============================================================================
 
-MSG_TYPE_FC_FAST = 0x01
-MSG_TYPE_FC_SLOW = 0x02
-MSG_TYPE_FC_EVENT = 0x03
-MSG_TYPE_GS_STATUS = 0x10
-MSG_TYPE_GS_ACK = 0x11
-MSG_TYPE_GS_PONG = 0x12
-MSG_TYPE_GS_STATS = 0x13
-MSG_TYPE_GS_LOG = 0x20
+FRAME_SYNC_1 = 0xAA  #: First sync byte for frame detection
+FRAME_SYNC_2 = 0x55  #: Second sync byte for frame detection
+
+# Message type identifiers (must match Arduino GS firmware)
+MSG_TYPE_FC_FAST = 0x01    #: Fast telemetry packet (8 Hz) - IMU, altitude, attitude
+MSG_TYPE_FC_SLOW = 0x02    #: Slow telemetry packet (1 Hz) - GPS, temperature
+MSG_TYPE_FC_EVENT = 0x03   #: Event packet - state changes, alerts
+MSG_TYPE_GS_STATUS = 0x10  #: Ground station status update
+MSG_TYPE_GS_ACK = 0x11     #: Command acknowledgment
+MSG_TYPE_GS_PONG = 0x12    #: Ping response with RTT
+MSG_TYPE_GS_STATS = 0x13   #: Communication statistics
+MSG_TYPE_GS_LOG = 0x20     #: Debug log message from GS
 
 COMMANDS_DOC = [
     ("P", "PING", "Send ping to FC, measures round-trip latency"),
@@ -81,7 +151,44 @@ PROFILE_DETAILS = {
 }
 
 
+# =============================================================================
+# Packet Parsing Functions
+# =============================================================================
+
 def parse_fast_packet(data):
+    """
+    Parse a fast telemetry packet from the flight computer.
+
+    Fast packets are transmitted at 8 Hz (slots 0-7) and contain:
+    - IMU data (accelerometer, gyroscope)
+    - Altitude and vertical speed (vario)
+    - Attitude (pitch, roll, yaw)
+    - FSM state information
+    - ACK piggyback for command confirmation
+
+    @param data: Raw packet bytes (minimum 37 bytes)
+    @return: Dictionary with parsed fields, or None if invalid
+
+    Packet format (37 bytes):
+    | Offset | Type | Field |
+    |--------|------|-------|
+    | 0 | u8 | packet_type (0x01) |
+    | 1 | u8 | frame_id |
+    | 2 | u8 | slot_id |
+    | 3 | u8 | sequence |
+    | 4 | u8 | flags |
+    | 5 | u32 | time_ms |
+    | 9 | u8 | state |
+    | 10 | u8 | substate |
+    | 11 | u8 | ack_seq |
+    | 12 | u8 | ack_status |
+    | 13 | i16[3] | accel_x/y/z (mG) |
+    | 19 | i16[3] | gyro_x/y/z (0.01 dps) |
+    | 25 | i16 | altitude (0.1 m) |
+    | 27 | i16 | vario (0.01 m/s) |
+    | 29 | i16[3] | pitch/roll/yaw (0.1 deg) |
+    | 35 | u16 | CRC16 |
+    """
     if len(data) < 37:
         return None
     fmt = '<BBBBBIBBBB3h3h5hH'
@@ -164,18 +271,48 @@ def parse_gs_stats(data):
     }
 
 
+# =============================================================================
+# WebSocket Connection Management
+# =============================================================================
+
 class ConnectionManager:
+    """
+    Manages WebSocket connections to browser clients.
+
+    Supports multiple simultaneous connections and broadcasts telemetry
+    data to all connected clients efficiently.
+
+    @note Automatically removes disconnected clients on broadcast errors.
+    """
+
     def __init__(self):
-        self.active = set()
+        """Initialize with empty connection set."""
+        self.active = set()  #: Set of active WebSocket connections
 
     async def connect(self, websocket: WebSocket):
+        """
+        Accept and register a new WebSocket connection.
+
+        @param websocket: FastAPI WebSocket instance
+        """
         await websocket.accept()
         self.active.add(websocket)
 
     def disconnect(self, websocket: WebSocket):
+        """
+        Remove a WebSocket from the active set.
+
+        @param websocket: WebSocket to disconnect
+        """
         self.active.discard(websocket)
 
     async def broadcast(self, message: dict):
+        """
+        Send a message to all connected WebSocket clients.
+
+        @param message: Dictionary to send (JSON serialized)
+        @note Failed sends result in automatic client disconnect
+        """
         if not self.active:
             return
         data = json.dumps(message)
@@ -189,17 +326,42 @@ class ConnectionManager:
             self.disconnect(ws)
 
 
+# =============================================================================
+# Serial Communication
+# =============================================================================
+
 class SerialReader:
+    """
+    Threaded serial port reader for Arduino Ground Station communication.
+
+    Handles:
+    - Asynchronous serial reading in background thread
+    - Binary frame detection and parsing
+    - Command transmission to GS
+    - Error recovery
+
+    The reader uses a framed protocol with sync bytes (0xAA 0x55) to
+    detect packet boundaries reliably.
+
+    @note Runs in a daemon thread to avoid blocking the async event loop.
+    """
+
     def __init__(self, loop, queue):
-        self.loop = loop
-        self.queue = queue
-        self.serial = None
-        self.running = False
-        self.rx_buffer = bytearray()
-        self.thread = None
-        self.cmd_queue = deque()
-        self.last_rx_time = None
-        self.last_error = None
+        """
+        Initialize the serial reader.
+
+        @param loop: asyncio event loop for cross-thread communication
+        @param queue: asyncio.Queue for parsed packets
+        """
+        self.loop = loop            #: Asyncio event loop reference
+        self.queue = queue          #: Queue for parsed packets
+        self.serial = None          #: pyserial Serial instance
+        self.running = False        #: Thread running flag
+        self.rx_buffer = bytearray()  #: Receive buffer for frame assembly
+        self.thread = None          #: Background reader thread
+        self.cmd_queue = deque()    #: Pending commands to send
+        self.last_rx_time = None    #: Timestamp of last received data
+        self.last_error = None      #: Last error message
 
     def connect(self, port, baudrate=115200):
         if self.running:
@@ -382,6 +544,21 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 app.mount('/static', StaticFiles(directory='web', html=True), name='static')
+
+# Disable caching for development - forces browser to always get fresh files
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import Response
+
+class NoCacheMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        response: Response = await call_next(request)
+        if request.url.path.startswith('/static'):
+            response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+            response.headers['Pragma'] = 'no-cache'
+            response.headers['Expires'] = '0'
+        return response
+
+app.add_middleware(NoCacheMiddleware)
 
 manager = ConnectionManager()
 

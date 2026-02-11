@@ -1,5 +1,40 @@
-/*
- * ASM330LHHX.c - 6-axis IMU Driver Implementation
+/**
+ * @file ASM330LHHX.c
+ * @brief ASM330LHHX 6-Axis IMU Driver Implementation
+ * @author Tomás Teixeira
+ * @date 2025
+ * @version 2.0
+ *
+ * @details
+ * Implements the driver for the ST ASM330LHHX 6-axis IMU (accelerometer + gyroscope).
+ * Uses DMA transfers for efficient, non-blocking sensor reads at high data rates.
+ *
+ * ## Sensor Specifications
+ * | Parameter | Value |
+ * |-----------|-------|
+ * | Accelerometer Range | ±2g (configurable) |
+ * | Gyroscope Range | ±2000 dps (configurable) |
+ * | Output Data Rate | 6.667 kHz max |
+ * | Interface | SPI (4-wire) |
+ * | Interrupt | DRDY on INT1 |
+ *
+ * ## DMA Read Sequence
+ * 1. DRDY interrupt triggers read start
+ * 2. DMA reads 15 bytes (temp + accel + gyro)
+ * 3. DMA complete callback parses buffer
+ * 4. Data stored to circular buffer
+ *
+ * ## Register Map (Read Block)
+ * | Offset | Register | Data |
+ * |--------|----------|------|
+ * | 0x20 | OUT_TEMP_L | Temperature LSB |
+ * | 0x21 | OUT_TEMP_H | Temperature MSB |
+ * | 0x22-0x27 | OUTX/Y/Z_L/H_A | Accel X,Y,Z |
+ * | 0x28-0x2D | OUTX/Y/Z_L/H_G | Gyro X,Y,Z |
+ *
+ * @see ASM330LHHX.h for interface documentation
+ * @see asm330lhhx_reg.c for ST HAL layer
+ * @ingroup Sensors
  */
 
 #include "ASM330LHHX.h"
