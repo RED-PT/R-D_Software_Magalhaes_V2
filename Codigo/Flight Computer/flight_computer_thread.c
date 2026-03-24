@@ -771,10 +771,17 @@ static void handle_cmd_calibrate_motor(fsm_cmd_msg_t *msg) {
         return;
     }
 
-    // Check if motor calibration already in progress
+    // If calibration is waiting in phase 1 (MAX throttle), treat a second M
+    // command as the user acknowledging the ESC beeps → immediately switch to MIN
     if (motor_cal_in_progress) {
-        printf("[FSM] Motor calibration already in progress!\r\n");
-        fsm_ctx.last_cmd_status = 1;
+        if (PWM_ESC_GetCalibrationState() == ESC_CAL_PHASE1_MAX) {
+            printf("[FSM] ESC beep acknowledged - switching to MIN throttle now\r\n");
+            PWM_ESC_AcknowledgeBeep();
+            fsm_ctx.last_cmd_status = 0;
+        } else {
+            printf("[FSM] Motor calibration already in progress!\r\n");
+            fsm_ctx.last_cmd_status = 1;
+        }
         return;
     }
 
@@ -810,7 +817,7 @@ static void handle_cmd_calibrate_motor(fsm_cmd_msg_t *msg) {
     send_telem_event(EVT_MOTOR_CAL_STARTED, NULL, 0);
 
     printf("[FSM] Motor calibration started\r\n");
-    printf("[FSM] >>> POWER CYCLE THE ESC WITHIN 10 SECONDS! <<<\r\n");
+    printf("[FSM] >>> POWER CYCLE THE ESC, then send M again after the beeps! <<<\r\n");
     fsm_ctx.last_cmd_status = 0;
 }
 

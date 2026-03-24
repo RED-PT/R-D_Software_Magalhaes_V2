@@ -1,0 +1,12 @@
+(sym_lib_table
+  (version 7)
+  (lib (name "ASM330LHHX")(type "KiCad")(uri "${KIPRJMOD}/libs/2025-10-15_22-33-37.kicad_sym")(options "")(descr ""))
+  (lib (name "MMC5983MA")(type "KiCad")(uri "${KIPRJMOD}/libs/2025-10-15_22-33-37.kicad_sym")(options "")(descr ""))
+  (lib (name "2025-10-15_22-33-37")(type "KiCad")(uri "${KIPRJMOD}/libs/2025-10-15_22-33-37.kicad_sym")(options "")(descr ""))
+  (lib (name "2025-10-17_16-55-12")(type "KiCad")(uri "${KIPRJMOD}/libs/2025-10-17_16-55-12.kicad_sym")(options "")(descr ""))
+  (lib (name "New_Symbols")(type "KiCad")(uri "${KIPRJMOD}/libs/New_Symbols.kicad_sym")(options "")(descr ""))
+  (lib (name "SD_Card_Module_GS")(type "KiCad")(uri "${KIPRJMOD}/libs/SD_Card_Module_GS.kicad_sym")(options "")(descr ""))
+  (lib (name "RFM95W-868S2")(type "KiCad")(uri "${KIPRJMOD}/libs/Radio_Module_Adafruit_RFM95W_GS.kicad_sym")(options "")(descr ""))
+  (lib (name "SD")(type "KiCad")(uri "${KIPRJMOD}/libs/DM3AT-SF-PEJM5.kicad_sym")(options "")(descr ""))
+  (lib (name "E22-900M22S")(type "KiCad")(uri "${KIPRJMOD}/libs/E22-900M22S.kicad_sym")(options "")(descr ""))
+)

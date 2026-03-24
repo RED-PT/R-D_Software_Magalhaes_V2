@@ -252,7 +252,7 @@ typedef struct {
  * @defgroup ESCCalTiming Calibration Timing Defaults
  * @{
  */
-#define ESC_CAL_PHASE1_DEFAULT_MS   10000   /**< Default phase 1 duration (10s) */
+#define ESC_CAL_PHASE1_DEFAULT_MS   30000   /**< Default phase 1 duration (30s) */
 #define ESC_CAL_PHASE2_DEFAULT_MS   3000    /**< Default phase 2 duration (3s) */
 /** @} */
 

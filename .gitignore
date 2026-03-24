@@ -15,3 +15,16 @@ Flight_computer_software Debug.cfg
 /Debug/
 /.settings/*
 readme.md
+
+# KiCad - gerados automaticamente (globais)
+fp-info-cache
+*-backups/
+~*.lck
+
+# Buzz V4 - exports gerados (regeneraveis)
+Buzz_V4 - STM32H7/*.pdf
+Buzz_V4 - STM32H7/*.svg
+Buzz_V4 - STM32H7/*.net
+Buzz_V4 - STM32H7/schematic_page-*.jpg
+Buzz_V4 - STM32H7/transferir.png
+Buzz_V4 - STM32H7/images.png

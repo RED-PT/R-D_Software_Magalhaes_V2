@@ -1,0 +1,8 @@
+(fp_lib_table
+  (version 7)
+  (lib (name "SD")(type "KiCad")(uri "${KIPRJMOD}/footprints/DM3ATSFPEJM5.pretty")(options "")(descr ""))
+  (lib (name "Radio")(type "KiCad")(uri "${KIPRJMOD}/footprints/Radio_Module_Adafruit_RFM95W_GS.pretty")(options "")(descr ""))
+  (lib (name "asm")(type "KiCad")(uri "${KIPRJMOD}/footprints/asm.pretty")(options "")(descr ""))
+  (lib (name "mag")(type "KiCad")(uri "${KIPRJMOD}/footprints/mag.pretty")(options "")(descr ""))
+  (lib (name "E22-900M22S")(type "KiCad")(uri "${KIPRJMOD}/footprints/E22-900M22S.pretty")(options "")(descr ""))
+)

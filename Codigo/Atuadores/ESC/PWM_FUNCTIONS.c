@@ -13,6 +13,12 @@
 // Current state
 float currentThrottle = 0.0f;
 
+// ESC pulse width limits (µs)
+// With Prescaler=83 and TIM3 at 84MHz: 1 timer count = 1µs exactly
+// Hobbywing FlyFun / Futaba standard: 1100µs = min, 1940µs = max
+#define PULSE_MIN_US  1100U
+#define PULSE_MAX_US  1940U
+
 // Ramp state (for non-blocking ramps)
 static bool ramp_active = false;
 static float ramp_target = 0.0f;
@@ -136,27 +142,22 @@ void PWM_DebugTest(void) {
 }
 
 void DC_to_Period(float percentage_motor) {
-    // Convert motor percentage (0-100%) to duty cycle
-    // DC_MIN (5%) = 0% throttle, DC_MAX (10%) = 100% throttle
-    float DC = DC_MIN + (percentage_motor / 20);
-    
-    // Clamp to valid range
-    if (DC > DC_MAX) {
-        DC = DC_MAX;
-    } else if (DC < DC_MIN) {
-        DC = DC_MIN;
-    }
-    
-    // Calculate CCR value
-    // CCR = (DC / 100) * Period
-    uint32_t ccr = (uint32_t)(DC * htim3.Init.Period / 100.0f);
-    // Apply to all channels (TIM3 for ESC)
-    PWM_ESC_CHANNEL_WRITE = ccr;
+    // With Prescaler=83 and TIM3 at 84MHz: 1 timer count = 1µs exactly
+    // CCR value directly equals pulse width in microseconds
+    // Map 0-100% throttle → PULSE_MIN_US to PULSE_MAX_US
+    uint32_t pulse_us = PULSE_MIN_US + (uint32_t)((percentage_motor / 100.0f) * (PULSE_MAX_US - PULSE_MIN_US));
 
-    __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, ccr);
-    __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, ccr);
-    __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_3, ccr);
-    __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_4, ccr);
+    // Clamp to valid ESC range
+    if (pulse_us < PULSE_MIN_US) pulse_us = PULSE_MIN_US;
+    if (pulse_us > PULSE_MAX_US) pulse_us = PULSE_MAX_US;
+
+    // Apply to all channels (TIM3 for ESC)
+    PWM_ESC_CHANNEL_WRITE = pulse_us;
+
+    __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, pulse_us);
+    __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, pulse_us);
+    __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_3, pulse_us);
+    __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_4, pulse_us);
 }
 
 void PWM_SetThrottle(float percentage) {
@@ -296,6 +297,9 @@ bool PWM_ESC_StartCalibration(uint32_t phase1_ms) {
         printf("[PWM] ESC calibration already in progress!\r\n");
         return false;
     }
+
+    // Ensure PWM timer is running before calibration
+    PWM_Init();
 
     // Initialize calibration context
     esc_cal_ctx.state = ESC_CAL_PHASE1_MAX;
