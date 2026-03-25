@@ -121,12 +121,11 @@ bool ASM330LHHX_StartReadDMA(ASM330LHHX_t *dev) {
     }
 
     // Prepare TX buffer: [COMMAND][DUMMIES]
-    uint8_t tx_buffer[15];
-    tx_buffer[0] = (1 << 7) | (0x20 << 1);  // Read from TEMP_OUT_L (0x20)
-    memset(&tx_buffer[1], 0x00, 14);
+    dev->tx_buffer[0] = (1 << 7) | (0x20 << 1);  // Read from TEMP_OUT_L (0x20)
+    memset(&dev->tx_buffer[1], 0x00, 14);
 
     // Single DMA TransmitReceive
-    if (HAL_SPI_TransmitReceive_DMA(dev->hspi, tx_buffer, dev->read_buffer, 15) != HAL_OK) {
+    if (HAL_SPI_TransmitReceive_DMA(dev->hspi, dev->tx_buffer, dev->read_buffer, 15) != HAL_OK) {
         return false;
     }
 

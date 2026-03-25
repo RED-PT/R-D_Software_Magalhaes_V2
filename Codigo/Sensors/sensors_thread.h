@@ -34,7 +34,6 @@
 #include "timers.h"
 #include "config.h"
 #include "defs.h"
-#include "stm32f4xx_hal.h"
 #include "print.h"
 #include <string.h>
 #include <limits.h>
@@ -92,8 +91,8 @@ typedef enum {
 /** @brief Current active sensor on SPI1 bus */
 extern volatile active_sensor_t spi1_active_sensor;
 
-/** @brief Current active sensor on SPI3 bus */
-extern volatile active_sensor_t spi3_active_sensor;
+/** @brief Current active sensor on MAG SPI bus */
+extern volatile active_sensor_t spi_mag_active_sensor;
 
 /** @brief Current active sensor on I2C1 bus */
 extern volatile active_sensor_t i2c1_active_sensor;

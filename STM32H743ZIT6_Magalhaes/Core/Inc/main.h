@@ -59,8 +59,42 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define uUMI_Pin GPIO_PIN_5
-#define uUMI_GPIO_Port GPIOC
+#define RADIO_BUSY_Pin GPIO_PIN_3
+#define RADIO_BUSY_GPIO_Port GPIOE
+#define RXEN_Pin GPIO_PIN_2
+#define RXEN_GPIO_Port GPIOF
+#define TXEN_Pin GPIO_PIN_3
+#define TXEN_GPIO_Port GPIOF
+#define RADIO_DIO1_Pin GPIO_PIN_4
+#define RADIO_DIO1_GPIO_Port GPIOF
+#define RADIO_DIO1_EXTI_IRQn EXTI4_IRQn
+#define RADIO_DIO2_Pin GPIO_PIN_5
+#define RADIO_DIO2_GPIO_Port GPIOF
+#define RADIO_DIO2_EXTI_IRQn EXTI9_5_IRQn
+#define RADIO_NRST_Pin GPIO_PIN_6
+#define RADIO_NRST_GPIO_Port GPIOF
+#define RADIO_CS_Pin GPIO_PIN_10
+#define RADIO_CS_GPIO_Port GPIOF
+#define IMU_CS_Pin GPIO_PIN_5
+#define IMU_CS_GPIO_Port GPIOC
+#define ALT_CS_Pin GPIO_PIN_0
+#define ALT_CS_GPIO_Port GPIOB
+#define MAG_CS_Pin GPIO_PIN_14
+#define MAG_CS_GPIO_Port GPIOE
+#define MAG_INTERRUPT_Pin GPIO_PIN_15
+#define MAG_INTERRUPT_GPIO_Port GPIOE
+#define MAG_INTERRUPT_EXTI_IRQn EXTI15_10_IRQn
+#define SD_CS_Pin GPIO_PIN_8
+#define SD_CS_GPIO_Port GPIOD
+#define PWM_ESC_Pin GPIO_PIN_12
+#define PWM_ESC_GPIO_Port GPIOD
+#define GPIO_BUZZER_Pin GPIO_PIN_4
+#define GPIO_BUZZER_GPIO_Port GPIOG
+#define GPS_RESET_N_Pin GPIO_PIN_11
+#define GPS_RESET_N_GPIO_Port GPIOA
+#define GPS_INTERRUPT_Pin GPIO_PIN_12
+#define GPS_INTERRUPT_GPIO_Port GPIOA
+#define GPS_INTERRUPT_EXTI_IRQn EXTI15_10_IRQn
 
 /* USER CODE BEGIN Private defines */
 

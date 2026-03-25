@@ -36,7 +36,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
-#include "stm32f4xx_hal.h"
+#include "config.h"
 #include "defs.h"
 
 /**

@@ -2,7 +2,7 @@
  * PWM_FUNCTIONS.c
  *
  * PWM control for ESC motor
- * Uses TIM3 for ESC (per config.h)
+ * Uses PWM_ESC_TIM for ESC (per config.h)
  */
 
 #include "PWM_FUNCTIONS.h"
@@ -14,7 +14,7 @@
 float currentThrottle = 0.0f;
 
 // ESC pulse width limits (µs)
-// With Prescaler=83 and TIM3 at 84MHz: 1 timer count = 1µs exactly
+// Timer configured so 1 count = 1µs (F446: PSC=83 @84MHz, H743: PSC=239 @240MHz)
 // Hobbywing FlyFun / Futaba standard: 1100µs = min, 1940µs = max
 #define PULSE_MIN_US  1100U
 #define PULSE_MAX_US  1940U
@@ -30,20 +30,22 @@ static float ramp_direction = 0.0f;  // +1 or -1
 // ============================================================================
 
 void PWM_Init(void) {
-    // Start PWM on TIM3 (ESC timer per config.h)
-    HAL_StatusTypeDef status = HAL_TIM_PWM_Start(PWM_ESC_TIM, TIM_CHANNEL_1);
-    printf("[PWM] TIM3 CH1 Start: %s\r\n", (status == HAL_OK) ? "OK" : "FAIL");
+    // Start PWM on ESC timer (per config.h)
+    HAL_StatusTypeDef status = HAL_TIM_PWM_Start(PWM_ESC_TIM, PWM_ESC_CHANNEL);
+    printf("[PWM] ESC PWM Start: %s\r\n", (status == HAL_OK) ? "OK" : "FAIL");
 
     // Set to minimum (arm) position
     PWM_SetThrottle(0.0f);
 
     // Debug: show timer config
-    printf("[PWM] TIM3 Prescaler=%lu, Period=%lu, CCR1=%lu\r\n",
-           htim3.Init.Prescaler, htim3.Init.Period, htim3.Instance->CCR1);
-    printf("[PWM] Initialized on TIM3 CH1 (PC6)\r\n");
+    printf("[PWM] ESC Prescaler=%lu, Period=%lu, CCR=%lu\r\n",
+           PWM_ESC_TIM_INSTANCE->PSC, PWM_ESC_TIM_INSTANCE->ARR, PWM_ESC_CHANNEL_WRITE);
+    printf("[PWM] ESC PWM Initialized\r\n");
 }
 
 // Debug function to test PWM output directly
+// NOTE: This test is Nucleo-F446ZE specific (PC6, TIM3, LD1/LD2)
+#ifdef RADIO_INTERFACE_UART  // F446ZE dev board
 void PWM_DebugTest(void) {
     printf("\r\n========== PWM DEBUG TEST ==========\r\n");
     printf("[PWM DEBUG] Testing PC6 (TIM3_CH1)\r\n");
@@ -140,9 +142,36 @@ void PWM_DebugTest(void) {
     printf("If GPIO toggle didn't work: Check PC6 wiring\r\n");
     printf("PC6 location on NUCLEO-F446ZE: CN10 pin 4 (Arduino D1)\r\n");
 }
+#else  // Buzz V4 / other boards
+void PWM_DebugTest(void) {
+    printf("\r\n========== PWM DEBUG TEST ==========\r\n");
+    printf("[PWM DEBUG] Testing ESC PWM output\r\n");
+
+    HAL_StatusTypeDef status = HAL_TIM_PWM_Start(PWM_ESC_TIM, PWM_ESC_CHANNEL);
+    printf("  HAL_TIM_PWM_Start: %s\r\n", (status == HAL_OK) ? "OK" : "FAIL");
+    printf("  PSC=%lu, ARR=%lu\r\n", PWM_ESC_TIM_INSTANCE->PSC, PWM_ESC_TIM_INSTANCE->ARR);
+
+    printf("\r\n  50%% duty (CCR=10000)\r\n");
+    PWM_ESC_CHANNEL_WRITE = 10000;
+    HAL_Delay(3000);
+
+    printf("  MIN (CCR=1100) - ESC arm\r\n");
+    PWM_ESC_CHANNEL_WRITE = PULSE_MIN_US;
+    HAL_Delay(3000);
+
+    printf("  MAX (CCR=1940) - Full throttle\r\n");
+    PWM_ESC_CHANNEL_WRITE = PULSE_MAX_US;
+    HAL_Delay(3000);
+
+    printf("  Back to MIN\r\n");
+    PWM_ESC_CHANNEL_WRITE = PULSE_MIN_US;
+
+    printf("\r\n========== TEST COMPLETE ==========\r\n");
+}
+#endif
 
 void DC_to_Period(float percentage_motor) {
-    // With Prescaler=83 and TIM3 at 84MHz: 1 timer count = 1µs exactly
+    // Timer configured so 1 count = 1µs
     // CCR value directly equals pulse width in microseconds
     // Map 0-100% throttle → PULSE_MIN_US to PULSE_MAX_US
     uint32_t pulse_us = PULSE_MIN_US + (uint32_t)((percentage_motor / 100.0f) * (PULSE_MAX_US - PULSE_MIN_US));
@@ -151,13 +180,8 @@ void DC_to_Period(float percentage_motor) {
     if (pulse_us < PULSE_MIN_US) pulse_us = PULSE_MIN_US;
     if (pulse_us > PULSE_MAX_US) pulse_us = PULSE_MAX_US;
 
-    // Apply to all channels (TIM3 for ESC)
+    // Apply to ESC channel (per config.h macro)
     PWM_ESC_CHANNEL_WRITE = pulse_us;
-
-    __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, pulse_us);
-    __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, pulse_us);
-    __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_3, pulse_us);
-    __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_4, pulse_us);
 }
 
 void PWM_SetThrottle(float percentage) {

@@ -294,7 +294,7 @@ void create_threads() {
 
 	printf("All threads created successfully\r\n");
 
-	HAL_TIM_PWM_Start(PWM_ESC_TIM, TIM_CHANNEL_1);
+	HAL_TIM_PWM_Start(PWM_ESC_TIM, PWM_ESC_CHANNEL);
 	PWM_ESC_CHANNEL_WRITE = 0;
 
 }

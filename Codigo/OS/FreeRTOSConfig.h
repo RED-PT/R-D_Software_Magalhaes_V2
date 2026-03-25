@@ -57,7 +57,11 @@
 /* USER CODE END 0 */
 #endif
 #ifndef CMSIS_device_header
-#define CMSIS_device_header "stm32f4xx.h"
+  #if defined(STM32H743xx)
+    #define CMSIS_device_header "stm32h7xx.h"
+  #else
+    #define CMSIS_device_header "stm32f4xx.h"
+  #endif
 #endif /* CMSIS_device_header */
 
 #define configENABLE_FPU                         1
@@ -190,7 +194,7 @@ standard names. */
 
 /* USER CODE BEGIN 2 */
 /* Definitions needed when configGENERATE_RUN_TIME_STATS is on */
-#include "stm32f4xx_hal.h"
+#include "main.h"
 
 #define portREMOVE_STATIC_QUALIFIER 1
 

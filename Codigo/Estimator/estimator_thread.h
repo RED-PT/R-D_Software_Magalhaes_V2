@@ -57,7 +57,6 @@
 #include "timers.h"
 #include "config.h"
 #include "defs.h"
-#include "stm32f4xx_hal.h"
 #include "print.h"
 
 #include "Data Handler/flash_data_handler.h"

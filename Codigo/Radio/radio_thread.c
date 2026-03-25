@@ -52,13 +52,20 @@
  */
 
 #include "radio_thread.h"
+#ifdef RADIO_INTERFACE_UART
 #include "Radio/LORA Drivers/e22_uart_dma.h"
+#endif
 #include "Radio/CRC16/crc16.h"
 #include "cmsis_os.h"
 #include "FreeRTOS.h"
 #include "semphr.h"
 #include <string.h>
 #include "Threads/create_threads.h"
+
+#ifdef RADIO_INTERFACE_UART
+// ============================================================================
+// E22 UART Radio Implementation (F446ZE dev board)
+// ============================================================================
 
 // TDMA timing
 #define SLOT_DURATION_MS        TDMA_SLOT_MS
@@ -527,3 +534,17 @@ void radio_thread_function() {
         vTaskDelay(pdMS_TO_TICKS(2));
     }
 }
+
+#else /* RADIO_INTERFACE_SPI */
+// ============================================================================
+// SX126x SPI Radio Implementation (Buzz V4 PCB) — TODO
+// ============================================================================
+
+void radio_thread_function() {
+    printf("[RADIO] SPI radio thread — not yet implemented\r\n");
+    fsm_report_thread_started("RADIO");
+    fsm_report_init_status("RADIO", false);
+    vTaskSuspend(NULL);
+}
+
+#endif /* RADIO_INTERFACE_UART / SPI */

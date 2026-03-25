@@ -54,11 +54,11 @@
  *  @brief Global sensor device structures
  *  @{
  */
-ASM330LHHX_t imu_device;    /**< 6-axis IMU (accel + gyro) */
-MMC5983MA_t mag_device;     /**< 3-axis magnetometer */
-MS5607_t baro_device;       /**< Barometric pressure sensor */
-BNO055_t bno_device;        /**< 9-DOF orientation sensor */
-UBLOX_GPS_t gps_device;     /**< u-blox GPS receiver */
+DMA_BUFFER  ASM330LHHX_t imu_device;    /**< 6-axis IMU (accel + gyro) — SPI1 DMA */
+BDMA_BUFFER MMC5983MA_t mag_device;     /**< 3-axis magnetometer — SPI6 BDMA */
+MS5607_t baro_device;                   /**< Barometric pressure sensor — blocking SPI */
+DMA_BUFFER  BNO055_t bno_device;        /**< 9-DOF orientation sensor — I2C1 DMA */
+DMA_BUFFER  UBLOX_GPS_t gps_device;     /**< u-blox GPS receiver — UART1 DMA */
 /** @} */
 
 /** @name Bus Tracking Variables
@@ -66,7 +66,7 @@ UBLOX_GPS_t gps_device;     /**< u-blox GPS receiver */
  *  @{
  */
 volatile active_sensor_t spi1_active_sensor = ACTIVE_SENSOR_NONE;  /**< SPI1: IMU or BARO */
-volatile active_sensor_t spi3_active_sensor = ACTIVE_SENSOR_NONE;  /**< SPI3: MAG */
+volatile active_sensor_t spi_mag_active_sensor = ACTIVE_SENSOR_NONE;  /**< MAG SPI bus */
 volatile active_sensor_t i2c1_active_sensor = ACTIVE_SENSOR_NONE;  /**< I2C1: BNO055 */
 /** @} */
 
@@ -261,10 +261,10 @@ void sensors_thread_function(void *argument) {
         }
 
         if (ulNotificationValue & SENSOR_NOTIFY_MAG_DRDY) {
-            if (spi3_active_sensor == ACTIVE_SENSOR_NONE) {
-                spi3_active_sensor = ACTIVE_SENSOR_MAG;
+            if (spi_mag_active_sensor == ACTIVE_SENSOR_NONE) {
+                spi_mag_active_sensor = ACTIVE_SENSOR_MAG;
                 if (!MMC5983MA_StartReadDMA(&mag_device)) {
-                    spi3_active_sensor = ACTIVE_SENSOR_NONE;
+                    spi_mag_active_sensor = ACTIVE_SENSOR_NONE;
                     sensor_stats.mag_errors++;
                 }
             }
@@ -327,7 +327,7 @@ void sensors_thread_function(void *argument) {
                 }
                 spi1_active_sensor = ACTIVE_SENSOR_NONE;
             }
-            else if (spi3_active_sensor == ACTIVE_SENSOR_MAG) {
+            else if (spi_mag_active_sensor == ACTIVE_SENSOR_MAG) {
                 MAG_t mag_data;
                 if (MMC5983MA_ProcessData(&mag_device, &mag_data)) {
                     sensor_stats.mag_samples++;
@@ -335,7 +335,7 @@ void sensors_thread_function(void *argument) {
                 } else {
                     sensor_stats.mag_errors++;
                 }
-                spi3_active_sensor = ACTIVE_SENSOR_NONE;
+                spi_mag_active_sensor = ACTIVE_SENSOR_NONE;
             }
             else if (i2c1_active_sensor == ACTIVE_SENSOR_BNO) {
                 BNO_t bno_data;
@@ -366,7 +366,7 @@ void sensors_thread_function(void *argument) {
             CS_BARO_HIGH();
             CS_MAG_HIGH();
             spi1_active_sensor = ACTIVE_SENSOR_NONE;
-            spi3_active_sensor = ACTIVE_SENSOR_NONE;
+            spi_mag_active_sensor = ACTIVE_SENSOR_NONE;
             i2c1_active_sensor = ACTIVE_SENSOR_NONE;
         }
 

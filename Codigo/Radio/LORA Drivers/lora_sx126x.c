@@ -3,12 +3,11 @@
  */
 
 #include "lora_sx126x.h"
-#include "stm32f4xx_hal.h"
 #include "FreeRTOS.h"
 #include "task.h"
 #include <string.h>
 
-static SX126x_DMA_t sx126x_state = {0};
+static DMA_BUFFER SX126x_DMA_t sx126x_state;
 
 // ============================================================================
 // LOW-LEVEL SPI
@@ -99,6 +98,9 @@ void SX126x_SetSleep(void) {
 }
 
 void SX126x_SetTx(uint32_t timeout_ms) {
+#ifdef RADIO_INTERFACE_SPI
+    RADIO_RF_SWITCH_TX();
+#endif
     uint8_t buf[3];
     uint32_t timeout = timeout_ms * 64;
     buf[0] = (timeout >> 16) & 0xFF;
@@ -108,6 +110,9 @@ void SX126x_SetTx(uint32_t timeout_ms) {
 }
 
 void SX126x_SetRx(uint32_t timeout_ms) {
+#ifdef RADIO_INTERFACE_SPI
+    RADIO_RF_SWITCH_RX();
+#endif
     uint8_t buf[3];
     if (timeout_ms == 0xFFFFFF) {
         buf[0] = 0xFF; buf[1] = 0xFF; buf[2] = 0xFF;
@@ -190,8 +195,16 @@ bool SX126x_Init(SX126x_LoRaConfig_t *config) {
     };
     SX126x_WriteRegister(SX126X_REG_LORA_SYNC_WORD_MSB, sync_word, 2);
 
+#ifdef RADIO_INTERFACE_SPI
+    // E22-900M22S has external RF switch (RXEN/TXEN GPIO) — do NOT use DIO2
+    uint8_t dio2_rf = 0x00;
+    SX126x_WriteCommand(SX126X_CMD_SET_DIO2_AS_RF_SWITCH, &dio2_rf, 1);
+    RADIO_RF_SWITCH_OFF();
+#else
+    // Direct SX1262 modules use DIO2 as internal RF switch
     uint8_t dio2_rf = 0x01;
     SX126x_WriteCommand(SX126X_CMD_SET_DIO2_AS_RF_SWITCH, &dio2_rf, 1);
+#endif
 
     uint16_t irq_mask = SX126X_IRQ_TX_DONE | SX126X_IRQ_RX_DONE |
                         SX126X_IRQ_TIMEOUT | SX126X_IRQ_CRC_ERROR;

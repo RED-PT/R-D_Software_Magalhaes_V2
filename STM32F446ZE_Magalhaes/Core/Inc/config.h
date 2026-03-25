@@ -7,9 +7,15 @@
 
 #ifndef INC_CONFIG_H_
 #define INC_CONFIG_H_
-//include do main
 
 #include "main.h"
+
+// ============================================================================
+// Board / Radio Interface Selection
+// ============================================================================
+// RADIO_INTERFACE_UART  -> E22-xxxT30D module via UART (Waveshare hat, F446ZE dev)
+// RADIO_INTERFACE_SPI   -> E22-900M22S module via SPI  (Buzz V4 PCB)
+#define RADIO_INTERFACE_UART
 
 //extern handles
 extern I2C_HandleTypeDef hi2c1;
@@ -137,5 +143,9 @@ extern DMA_HandleTypeDef hdma_usart6_tx;
 #define RADIO_M0_PIN GPIO_PIN_9
 #define RADIO_M1_PORT GPIOG
 #define RADIO_M1_PIN GPIO_PIN_0
+
+// DMA buffer placement (no-op on F446, Cortex-M4 has no D-Cache)
+#define DMA_BUFFER
+#define BDMA_BUFFER
 
 #endif /* INC_CONFIG_H_ */

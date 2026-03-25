@@ -77,7 +77,7 @@ extern float currentThrottle;
 /**
  * @brief Initialize PWM for ESC control
  *
- * Starts TIM3 PWM output and sets to minimum (arm) signal.
+ * Starts ESC PWM output and sets to minimum (arm) signal.
  * Must be called before using other PWM functions.
  */
 void PWM_Init(void);
@@ -85,7 +85,7 @@ void PWM_Init(void);
 /**
  * @brief Debug test function for PWM output
  *
- * Cycles through MIN/MID/MAX duty cycles on TIM3 CH1 (PC6).
+ * Cycles through MIN/MID/MAX duty cycles on ESC PWM output.
  * Use oscilloscope to verify output.
  */
 void PWM_DebugTest(void);

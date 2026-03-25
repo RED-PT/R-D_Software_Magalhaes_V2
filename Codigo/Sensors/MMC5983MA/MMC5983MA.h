@@ -39,9 +39,8 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "stm32f4xx_hal.h"
-#include "defs.h"
 #include "config.h"
+#include "defs.h"
 
 /**
  * @defgroup MMCRegisters Register Addresses
@@ -97,7 +96,8 @@
  */
 typedef struct {
     SPI_HandleTypeDef *hspi;        /**< SPI peripheral handle */
-    uint8_t read_buffer[8];         /**< DMA receive buffer */
+    uint8_t tx_buffer[9];           /**< DMA transmit buffer (1 cmd + 8 dummy) */
+    uint8_t read_buffer[9];         /**< DMA receive buffer (1 dummy + 8 data) */
     volatile uint8_t data_ready;    /**< Flag set when new data available */
 
     /* Internal raw data (18-bit values) */

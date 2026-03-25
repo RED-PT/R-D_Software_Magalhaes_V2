@@ -334,6 +334,12 @@ DSTATUS SD_disk_initialize(BYTE drv)
 	if (type)
 	{
 		Stat &= ~STA_NOINIT;
+
+#ifdef SD_SPI_PRESCALER_FAST
+		/* Switch SPI to high speed now that card is initialized */
+		(HSPI_SDCARD)->Init.BaudRatePrescaler = SD_SPI_PRESCALER_FAST;
+		HAL_SPI_Init(HSPI_SDCARD);
+#endif
 	}
 	else
 	{

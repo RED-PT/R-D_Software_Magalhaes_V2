@@ -41,8 +41,8 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include "config.h"
 #include "defs.h"
-#include "stm32f4xx_hal.h"
 
 /**
  * @defgroup FX29Addresses I2C Addresses

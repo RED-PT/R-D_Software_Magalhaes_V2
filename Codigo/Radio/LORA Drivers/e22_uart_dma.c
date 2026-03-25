@@ -2,7 +2,13 @@
  * e22_uart_dma.c
  *
  * Clean E22 UART driver - minimal debug output, production ready
+ * Only compiled when RADIO_INTERFACE_UART is defined (F446ZE dev board).
+ * The Buzz V4 (H743) uses SPI directly to the SX1262.
  */
+
+#include "config.h"
+
+#ifdef RADIO_INTERFACE_UART
 
 #include "e22_uart_dma.h"
 #include "FreeRTOS.h"
@@ -175,3 +181,5 @@ void E22_ResetStats(void) {
 void E22_UART_RxCpltCallback(void) {
     // Circular DMA - nothing to do
 }
+
+#endif /* RADIO_INTERFACE_UART */

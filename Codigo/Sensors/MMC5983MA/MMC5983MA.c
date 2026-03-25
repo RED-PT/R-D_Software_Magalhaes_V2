@@ -91,12 +91,11 @@ bool MMC5983MA_StartReadDMA(MMC5983MA_t *dev) {
 
     // Prepare TX buffer: [COMMAND][DUMMIES]
     // Read from XOUT0 (0x00) through TOUT (0x07) = 8 bytes of data
-    uint8_t tx_buffer[9];
-    tx_buffer[0] = (1 << 7) | (MMC5983MA_REG_XOUT0 << 1);  // Read from XOUT0
-    memset(&tx_buffer[1], 0x00, 8);
+    dev->tx_buffer[0] = (1 << 7) | (MMC5983MA_REG_XOUT0 << 1);  // Read from XOUT0
+    memset(&dev->tx_buffer[1], 0x00, 8);
 
     // Single DMA TransmitReceive
-    if (HAL_SPI_TransmitReceive_DMA(dev->hspi, tx_buffer, dev->read_buffer, 9) != HAL_OK) {
+    if (HAL_SPI_TransmitReceive_DMA(dev->hspi, dev->tx_buffer, dev->read_buffer, 9) != HAL_OK) {
         return false;
     }
 

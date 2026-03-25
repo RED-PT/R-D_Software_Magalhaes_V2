@@ -32,7 +32,6 @@
 #include "queue.h"
 #include "config.h"
 #include "defs.h"
-#include "stm32f4xx_hal.h"
 #include "Telemetry/telemetry.h"
 #include "Flight Computer/flight_computer.h"
 

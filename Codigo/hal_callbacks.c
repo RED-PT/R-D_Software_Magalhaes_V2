@@ -23,7 +23,7 @@
  * | SPI Instance | Active Sensor | Action |
  * |--------------|---------------|--------|
  * | SPI1 (IMU/BARO) | ACTIVE_SENSOR_IMU | ASM330LHHX_ParseDMABuffer() |
- * | SPI3 (MAG) | ACTIVE_SENSOR_MAG | MMC5983MA_ParseDMABuffer() |
+ * | SPI_MAG (MAG) | ACTIVE_SENSOR_MAG | MMC5983MA_ParseDMABuffer() |
  * | SPI_LORA | N/A | SX126x_SPI_TxCpltCallback() |
  *
  * ### 3. I2C DMA Callbacks
@@ -35,7 +35,7 @@
  * | UART Instance | Device | Handler |
  * |---------------|--------|---------|
  * | UART_UBLOX | GPS | sensors_thread notification |
- * | UART_RADIO | E22 LoRa | E22_UART_RxCpltCallback() |
+ * | UART_RADIO | E22 LoRa (UART only) | E22_UART_RxCpltCallback() |
  *
  * ## Design Considerations
  * - All callbacks first verify `osKernelGetState() == osKernelRunning`
@@ -54,7 +54,9 @@
 #include "config.h"
 #include "Sensors/sensors_thread.h"
 #include "Radio/LORA Drivers/lora_sx126x.h"
+#ifdef RADIO_INTERFACE_UART
 #include "Radio/LORA Drivers/e22_uart_dma.h"
+#endif
 
 /** @name External Thread Handles
  *  @brief Thread handles defined in other modules
@@ -68,7 +70,7 @@ extern osThreadId_t sensors_thread_id;  /**< Sensors thread handle from sensors_
  *  @{
  */
 extern volatile active_sensor_t spi1_active_sensor;  /**< Currently active sensor on SPI1 bus */
-extern volatile active_sensor_t spi3_active_sensor;  /**< Currently active sensor on SPI3 bus */
+extern volatile active_sensor_t spi_mag_active_sensor;  /**< Currently active sensor on MAG SPI bus */
 extern volatile active_sensor_t i2c1_active_sensor;  /**< Currently active sensor on I2C1 bus */
 /** @} */
 
@@ -158,7 +160,7 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi) {
         }
     }
     else if (hspi->Instance == SPI_MAG_INSTANCE) {
-        if (spi3_active_sensor == ACTIVE_SENSOR_MAG) {
+        if (spi_mag_active_sensor == ACTIVE_SENSOR_MAG) {
             MMC5983MA_ParseDMABuffer(&mag_device);
         }
     }
@@ -307,10 +309,12 @@ void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c) {
  * @see E22_UART_TxCpltCallback()
  */
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
+#ifdef RADIO_INTERFACE_UART
     // E22 TX complete
     if (huart->Instance == UART_RADIO_INSTANCE) {
         E22_UART_TxCpltCallback();
     }
+#endif
 }
 
 /**
@@ -340,10 +344,11 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
         xTaskNotifyFromISR(sensors_thread_id, SENSOR_NOTIFY_GPS_DATA,
                           eSetBits, &xHigherPriorityTaskWoken);
     }
-
+#ifdef RADIO_INTERFACE_UART
     else if (huart->Instance == UART_RADIO_INSTANCE) {
-            E22_UART_RxCpltCallback();
+        E22_UART_RxCpltCallback();
     }
+#endif
 
     portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
@@ -360,11 +365,13 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
  *       circular DMA buffer processing.
  */
 /*
+#ifdef RADIO_INTERFACE_UART
 void HAL_UART_RxHalfCpltCallback(UART_HandleTypeDef *huart) {
     if (huart->Instance == UART_RADIO_INSTANCE) {
         E22_UART_RxHalfCpltCallback();
     }
 }
+#endif
 */
 
 /**
@@ -384,7 +391,7 @@ void HAL_UART_RxHalfCpltCallback(UART_HandleTypeDef *huart) {
  * @todo Implement proper error recovery and statistics tracking
  */
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) {
-	if (huart->Instance == USART6) {
-		printf("ERROERRO DMA\r\n");
+	if (huart->Instance == UART_DEBUG_INSTANCE) {
+		printf("ERRO DMA UART\r\n");
 	}
 }

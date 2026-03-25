@@ -39,10 +39,9 @@
 
 #include <stdbool.h>
 #include <stdint.h>
-#include "stm32f4xx_hal.h"
+#include "config.h"
 #include "asm330lhhx_reg.h"
 #include "defs.h"
-#include "config.h"
 
 /** @brief Boot time required after power-on (milliseconds) */
 #define BOOT_TIME 10
@@ -55,6 +54,7 @@
  */
 typedef struct {
     SPI_HandleTypeDef *hspi;        /**< SPI peripheral handle */
+    uint8_t tx_buffer[15];          /**< DMA transmit buffer */
     uint8_t read_buffer[15];        /**< DMA receive buffer (1 cmd + 14 data bytes) */
     volatile uint8_t data_ready;    /**< Flag set when new data available */
 

@@ -166,6 +166,25 @@ SECTIONS
     . = ALIGN(8);
   } >RAM_D1
 
+  /* DMA buffers in D2 SRAM (non-cacheable, accessible by DMA1/DMA2) */
+  /* Used for SPI1/2/5, I2C1, UART1/2 DMA transfers */
+  .dma_buffer (NOLOAD) :
+  {
+    . = ALIGN(32);
+    *(.dma_buffer)
+    *(.dma_buffer*)
+    . = ALIGN(32);
+  } >RAM_D2
+
+  /* BDMA buffers in D3 SRAM (accessible by BDMA only — SPI6, etc.) */
+  .bdma_buffer (NOLOAD) :
+  {
+    . = ALIGN(32);
+    *(.bdma_buffer)
+    *(.bdma_buffer*)
+    . = ALIGN(32);
+  } >RAM_D3
+
   /* Remove information from the standard libraries */
   /DISCARD/ :
   {
