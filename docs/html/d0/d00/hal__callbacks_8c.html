@@ -110,7 +110,7 @@ $(function() {
 <p>HAL Interrupt Callback Implementations.  
 <a href="#details">More...</a></p>
 <div class="textblock"><code>#include &quot;<a class="el" href="../../de/d05/hal__callbacks_8h_source.html">hal_callbacks.h</a>&quot;</code><br />
-<code>#include &quot;config.h&quot;</code><br />
+<code>#include &quot;<a class="el" href="../../df/d0c/_s_t_m32_f446_z_e___magalhaes_2_core_2_inc_2config_8h_source.html">config.h</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="../../dc/d0c/sensors__thread_8h_source.html">Sensors/sensors_thread.h</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="../../db/d05/lora__sx126x_8h_source.html">Radio/LORA Drivers/lora_sx126x.h</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="../../dd/d03/e22__uart__dma_8h_source.html">Radio/LORA Drivers/e22_uart_dma.h</a>&quot;</code><br />
@@ -158,8 +158,8 @@ Variables</h2></td></tr>
 </div></td></tr>
 <tr class="memitem:a9341c303ff0629cc51ba13cdd7e0c21b" id="r_a9341c303ff0629cc51ba13cdd7e0c21b"><td class="memItemLeft">volatile <a class="el" href="../../d7/d0c/group___sensor_bus_tracking.html#ga236ff5c902af3e544b7e5ec44224769d">active_sensor_t</a>&#160;</td><td class="memItemRight"><a class="el" href="#a9341c303ff0629cc51ba13cdd7e0c21b">spi1_active_sensor</a></td></tr>
 <tr class="memdesc:a9341c303ff0629cc51ba13cdd7e0c21b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Currently active sensor on SPI1 bus.  <br /></td></tr>
-<tr class="memitem:a70b8d7beeada26526dc6ca712893863c" id="r_a70b8d7beeada26526dc6ca712893863c"><td class="memItemLeft">volatile <a class="el" href="../../d7/d0c/group___sensor_bus_tracking.html#ga236ff5c902af3e544b7e5ec44224769d">active_sensor_t</a>&#160;</td><td class="memItemRight"><a class="el" href="#a70b8d7beeada26526dc6ca712893863c">spi3_active_sensor</a></td></tr>
-<tr class="memdesc:a70b8d7beeada26526dc6ca712893863c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Currently active sensor on SPI3 bus.  <br /></td></tr>
+<tr class="memitem:a45603ab2dbaf4b2eb8d988b176304974" id="r_a45603ab2dbaf4b2eb8d988b176304974"><td class="memItemLeft">volatile <a class="el" href="../../d7/d0c/group___sensor_bus_tracking.html#ga236ff5c902af3e544b7e5ec44224769d">active_sensor_t</a>&#160;</td><td class="memItemRight"><a class="el" href="#a45603ab2dbaf4b2eb8d988b176304974">spi_mag_active_sensor</a></td></tr>
+<tr class="memdesc:a45603ab2dbaf4b2eb8d988b176304974"><td class="mdescLeft">&#160;</td><td class="mdescRight">Currently active sensor on MAG SPI bus.  <br /></td></tr>
 <tr class="memitem:aaf76c2387a5b632544ba92b873ec1d7a" id="r_aaf76c2387a5b632544ba92b873ec1d7a"><td class="memItemLeft">volatile <a class="el" href="../../d7/d0c/group___sensor_bus_tracking.html#ga236ff5c902af3e544b7e5ec44224769d">active_sensor_t</a>&#160;</td><td class="memItemRight"><a class="el" href="#aaf76c2387a5b632544ba92b873ec1d7a">i2c1_active_sensor</a></td></tr>
 <tr class="memdesc:aaf76c2387a5b632544ba92b873ec1d7a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Currently active sensor on I2C1 bus.  <br /></td></tr>
 <tr id="var-members-2" class="groupHeader"><td colspan="2"><div class="groupHeader">External Sensor Device Instances</div></td></tr>
@@ -176,8 +176,13 @@ Variables</h2></td></tr>
 <div class="textblock"><p>HAL Interrupt Callback Implementations. </p>
 <dl class="section author"><dt>Author</dt><dd>Tomás Teixeira (texman) </dd></dl>
 <dl class="section date"><dt>Date</dt><dd>November 18, 2025 </dd></dl>
-<dl class="section version"><dt>Version</dt><dd>2.0</dd></dl>
+<dl class="section version"><dt>Version</dt><dd>2.1</dd></dl>
 <p>This file implements all STM32 HAL interrupt callbacks for the Magalhães Flight Computer. It serves as the central interrupt handling module that bridges hardware interrupts with FreeRTOS task notifications.</p>
+<p>Supports dual-board configurations:</p><ul>
+<li><b>STM32F446ZE</b> (dev board): UART radio via E22, SPI3 for magnetometer</li>
+<li><b>STM32H743ZIT6</b> (Buzz V4 PCB): SPI radio via SX126x, SPI6 for magnetometer</li>
+</ul>
+<p>Peripheral instance macros (SPI_MAG_INSTANCE, UART_DEBUG_INSTANCE, etc.) are resolved at compile time via config.h to the correct hardware for each board.</p>
 <h2 class="doxsection"><a class="anchor" id="autotoc_md27"></a>
 Callback Categories</h2>
 <h3 class="doxsection"><a class="anchor" id="autotoc_md28"></a>
@@ -200,7 +205,7 @@ Callback Categories</h2>
 <tr class="markdownTableRowOdd">
 <td class="markdownTableBodyNone">SPI1 (IMU/BARO)  </td><td class="markdownTableBodyNone">ACTIVE_SENSOR_IMU  </td><td class="markdownTableBodyNone"><a class="el" href="../../dc/d01/group___a_s_m330_a_p_i.html#gaafe7f9fce9cf9ad75906f4a2da3d8b0a" title="Parse DMA buffer into raw values.">ASM330LHHX_ParseDMABuffer()</a>  </td></tr>
 <tr class="markdownTableRowEven">
-<td class="markdownTableBodyNone">SPI3 (MAG)  </td><td class="markdownTableBodyNone">ACTIVE_SENSOR_MAG  </td><td class="markdownTableBodyNone"><a class="el" href="../../d7/d06/group___m_m_c_a_p_i.html#gaa0de0066df1c9c8b3d6efaa1df7e63b9" title="Parse DMA buffer into raw values.">MMC5983MA_ParseDMABuffer()</a>  </td></tr>
+<td class="markdownTableBodyNone">SPI_MAG (MAG)  </td><td class="markdownTableBodyNone">ACTIVE_SENSOR_MAG  </td><td class="markdownTableBodyNone"><a class="el" href="../../d7/d06/group___m_m_c_a_p_i.html#gaa0de0066df1c9c8b3d6efaa1df7e63b9" title="Parse DMA buffer into raw values.">MMC5983MA_ParseDMABuffer()</a>  </td></tr>
 <tr class="markdownTableRowOdd">
 <td class="markdownTableBodyNone">SPI_LORA  </td><td class="markdownTableBodyNone">N/A  </td><td class="markdownTableBodyNone"><a class="el" href="../../de/d0a/lora__sx126x_8c.html#a0548f4a5ce714b365ccca355708b8b2d">SX126x_SPI_TxCpltCallback()</a>  </td></tr>
 </table>
@@ -220,7 +225,7 @@ Callback Categories</h2>
 <tr class="markdownTableRowOdd">
 <td class="markdownTableBodyNone">UART_UBLOX  </td><td class="markdownTableBodyNone">GPS  </td><td class="markdownTableBodyNone">sensors_thread notification  </td></tr>
 <tr class="markdownTableRowEven">
-<td class="markdownTableBodyNone">UART_RADIO  </td><td class="markdownTableBodyNone">E22 LoRa  </td><td class="markdownTableBodyNone"><a class="el" href="../../d0/d06/group___e22_callbacks.html#gae532b44cf8abbbf5953abc5ac30de3a4" title="RX complete callback.">E22_UART_RxCpltCallback()</a>  </td></tr>
+<td class="markdownTableBodyNone">UART_RADIO  </td><td class="markdownTableBodyNone">E22 LoRa (UART only)  </td><td class="markdownTableBodyNone"><a class="el" href="../../d0/d06/group___e22_callbacks.html#gae532b44cf8abbbf5953abc5ac30de3a4" title="RX complete callback.">E22_UART_RxCpltCallback()</a>  </td></tr>
 </table>
 <h2 class="doxsection"><a class="anchor" id="autotoc_md32"></a>
 Design Considerations</h2>
@@ -262,9 +267,9 @@ Design Considerations</h2>
 </dl>
 <p>Handles external interrupt events from sensor data-ready pins and LoRa DIO1. This callback is invoked by the HAL when any configured EXTI line triggers.</p>
 <p><b>Handled Pins:</b></p><ul>
-<li><span class="tt">EXTI_IMU_PIN</span>: IMU data-ready, notifies sensors thread with SENSOR_NOTIFY_IMU_DRDY</li>
-<li><span class="tt">EXTI_MAG_PIN</span>: Magnetometer data-ready, notifies with SENSOR_NOTIFY_MAG_DRDY</li>
-<li><span class="tt">EXTI_LORA_PIN</span>: SX126x DIO1 interrupt, calls <a class="el" href="../../de/d0a/lora__sx126x_8c.html#a441d1592efca8d6d70bfaa72b411412e">SX126x_DIO1_IRQ_Handler()</a></li>
+<li><span class="tt"><a class="el" href="../../df/d0c/_s_t_m32_f446_z_e___magalhaes_2_core_2_inc_2config_8h.html#a8ddf8fd9c344f533f4865c42ff0caab5">EXTI_IMU_PIN</a></span>: IMU data-ready, notifies sensors thread with SENSOR_NOTIFY_IMU_DRDY</li>
+<li><span class="tt"><a class="el" href="../../df/d0c/_s_t_m32_f446_z_e___magalhaes_2_core_2_inc_2config_8h.html#ab7a0772459dd280956fd5a4c654331ec">EXTI_MAG_PIN</a></span>: Magnetometer data-ready, notifies with SENSOR_NOTIFY_MAG_DRDY</li>
+<li><span class="tt"><a class="el" href="../../df/d0c/_s_t_m32_f446_z_e___magalhaes_2_core_2_inc_2config_8h.html#a3836a3f53da72fc2e2b060172a50d588">EXTI_LORA_PIN</a></span>: SX126x DIO1 interrupt, calls <a class="el" href="../../de/d0a/lora__sx126x_8c.html#a441d1592efca8d6d70bfaa72b411412e">SX126x_DIO1_IRQ_Handler()</a></li>
 </ul>
 <dl class="section note"><dt>Note</dt><dd>Returns immediately if RTOS kernel is not running (boot safety) </dd></dl>
 <dl class="section see"><dt>See also</dt><dd><a class="el" href="../../d9/d05/group___sensor_notifications.html#gad9129b40db8be02476ba2f1dde1bf577" title="IMU data ready interrupt.">SENSOR_NOTIFY_IMU_DRDY</a> </dd>
@@ -273,9 +278,9 @@ Design Considerations</h2>
 <dd>
 <a class="el" href="../../de/d0a/lora__sx126x_8c.html#a441d1592efca8d6d70bfaa72b411412e">SX126x_DIO1_IRQ_Handler()</a> </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html#l00106">106</a> of file <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html">hal_callbacks.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html#l00115">115</a> of file <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html">hal_callbacks.c</a>.</p>
 
-<p class="reference">References <a class="el" href="../../dc/d0c/sensors__thread_8h_source.html#l00111">SENSOR_NOTIFY_IMU_DRDY</a>, <a class="el" href="../../dc/d0c/sensors__thread_8h_source.html#l00112">SENSOR_NOTIFY_MAG_DRDY</a>, <a class="el" href="../../d3/d02/create__threads_8c_source.html#l00048">sensors_thread_id</a>, and <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00339">SX126x_DIO1_IRQ_Handler()</a>.</p>
+<p class="reference">References <a class="el" href="../../df/d0c/_s_t_m32_f446_z_e___magalhaes_2_core_2_inc_2config_8h_source.html#l00137">EXTI_IMU_PIN</a>, <a class="el" href="../../df/d0c/_s_t_m32_f446_z_e___magalhaes_2_core_2_inc_2config_8h_source.html#l00134">EXTI_LORA_PIN</a>, <a class="el" href="../../df/d0c/_s_t_m32_f446_z_e___magalhaes_2_core_2_inc_2config_8h_source.html#l00140">EXTI_MAG_PIN</a>, <a class="el" href="../../dc/d0c/sensors__thread_8h_source.html#l00113">SENSOR_NOTIFY_IMU_DRDY</a>, <a class="el" href="../../dc/d0c/sensors__thread_8h_source.html#l00114">SENSOR_NOTIFY_MAG_DRDY</a>, <a class="el" href="../../d3/d02/create__threads_8c_source.html#l00048">sensors_thread_id</a>, and <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00359">SX126x_DIO1_IRQ_Handler()</a>.</p>
 <div id="dynsection-1" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the call graph for this function:</div>
 <div id="dynsection-1-summary" class="dynsummary" style="display:block;">
 </div>
@@ -315,9 +320,9 @@ Design Considerations</h2>
 </ul>
 <dl class="section warning"><dt>Warning</dt><dd>I2C errors on BNO055 may require device reset sequence. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html#l00282">282</a> of file <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html">hal_callbacks.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html#l00291">291</a> of file <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html">hal_callbacks.c</a>.</p>
 
-<p class="reference">References <a class="el" href="../../dc/d0c/sensors__thread_8h_source.html#l00116">SENSOR_NOTIFY_DMA_ERROR</a>, and <a class="el" href="../../d3/d02/create__threads_8c_source.html#l00048">sensors_thread_id</a>.</p>
+<p class="reference">References <a class="el" href="../../dc/d0c/sensors__thread_8h_source.html#l00118">SENSOR_NOTIFY_DMA_ERROR</a>, and <a class="el" href="../../d3/d02/create__threads_8c_source.html#l00048">sensors_thread_id</a>.</p>
 
 </div>
 </div>
@@ -351,9 +356,9 @@ Design Considerations</h2>
 </ol>
 <dl class="section note"><dt>Note</dt><dd>The BNO055 provides pre-fused orientation data (Euler angles, quaternions) reducing CPU load for attitude estimation. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html#l00253">253</a> of file <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html">hal_callbacks.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html#l00262">262</a> of file <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html">hal_callbacks.c</a>.</p>
 
-<p class="reference">References <a class="el" href="../../d6/d0d/_b_n_o055_8c_source.html#l00090">BNO055_ParseDMABuffer()</a>, <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00060">bno_device</a>, <a class="el" href="../../dc/d0c/sensors__thread_8h_source.html#l00115">SENSOR_NOTIFY_DMA_COMPLETE</a>, and <a class="el" href="../../d3/d02/create__threads_8c_source.html#l00048">sensors_thread_id</a>.</p>
+<p class="reference">References <a class="el" href="../../d6/d0d/_b_n_o055_8c_source.html#l00090">BNO055_ParseDMABuffer()</a>, <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00063">bno_device</a>, <a class="el" href="../../dc/d0c/sensors__thread_8h_source.html#l00117">SENSOR_NOTIFY_DMA_COMPLETE</a>, and <a class="el" href="../../d3/d02/create__threads_8c_source.html#l00048">sensors_thread_id</a>.</p>
 <div id="dynsection-2" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the call graph for this function:</div>
 <div id="dynsection-2-summary" class="dynsummary" style="display:block;">
 </div>
@@ -388,9 +393,9 @@ Design Considerations</h2>
 <p>Called when an SPI communication error occurs (overrun, CRC, frame, etc.). Notifies sensors_thread with SENSOR_NOTIFY_DMA_ERROR for error recovery.</p>
 <dl class="section warning"><dt>Warning</dt><dd>DMA errors may indicate hardware issues or timing problems. The sensors thread should handle recovery and potentially reinitialize the affected sensor. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html#l00219">219</a> of file <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html">hal_callbacks.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html#l00228">228</a> of file <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html">hal_callbacks.c</a>.</p>
 
-<p class="reference">References <a class="el" href="../../dc/d0c/sensors__thread_8h_source.html#l00116">SENSOR_NOTIFY_DMA_ERROR</a>, and <a class="el" href="../../d3/d02/create__threads_8c_source.html#l00048">sensors_thread_id</a>.</p>
+<p class="reference">References <a class="el" href="../../dc/d0c/sensors__thread_8h_source.html#l00118">SENSOR_NOTIFY_DMA_ERROR</a>, <a class="el" href="../../d3/d02/create__threads_8c_source.html#l00048">sensors_thread_id</a>, <a class="el" href="../../df/d0c/_s_t_m32_f446_z_e___magalhaes_2_core_2_inc_2config_8h_source.html#l00069">SPI_IMU_BARO_INSTANCE</a>, and <a class="el" href="../../df/d0c/_s_t_m32_f446_z_e___magalhaes_2_core_2_inc_2config_8h_source.html#l00085">SPI_MAG_INSTANCE</a>.</p>
 
 </div>
 </div>
@@ -419,9 +424,9 @@ Design Considerations</h2>
 <p>Called when an SPI receive-only DMA transfer completes. Currently only handles SX126x LoRa radio SPI communications.</p>
 <dl class="section see"><dt>See also</dt><dd><a class="el" href="../../de/d0a/lora__sx126x_8c.html#a5d8b202111558a8137dbb4a823d5c2e5">SX126x_SPI_RxCpltCallback()</a> </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html#l00200">200</a> of file <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html">hal_callbacks.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html#l00209">209</a> of file <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html">hal_callbacks.c</a>.</p>
 
-<p class="reference">References <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00258">SX126x_SPI_RxCpltCallback()</a>.</p>
+<p class="reference">References <a class="el" href="../../df/d0c/_s_t_m32_f446_z_e___magalhaes_2_core_2_inc_2config_8h_source.html#l00076">SPI_LORA_INSTANCE</a>, and <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00278">SX126x_SPI_RxCpltCallback()</a>.</p>
 <div id="dynsection-3" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the call graph for this function:</div>
 <div id="dynsection-3-summary" class="dynsummary" style="display:block;">
 </div>
@@ -456,9 +461,9 @@ Design Considerations</h2>
 <p>Called when an SPI transmit-only DMA transfer completes. Currently only handles SX126x LoRa radio SPI communications.</p>
 <dl class="section see"><dt>See also</dt><dd><a class="el" href="../../de/d0a/lora__sx126x_8c.html#a0548f4a5ce714b365ccca355708b8b2d">SX126x_SPI_TxCpltCallback()</a> </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html#l00183">183</a> of file <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html">hal_callbacks.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html#l00192">192</a> of file <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html">hal_callbacks.c</a>.</p>
 
-<p class="reference">References <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00249">SX126x_SPI_TxCpltCallback()</a>.</p>
+<p class="reference">References <a class="el" href="../../df/d0c/_s_t_m32_f446_z_e___magalhaes_2_core_2_inc_2config_8h_source.html#l00076">SPI_LORA_INSTANCE</a>, and <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00269">SX126x_SPI_TxCpltCallback()</a>.</p>
 <div id="dynsection-4" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the call graph for this function:</div>
 <div id="dynsection-4-summary" class="dynsummary" style="display:block;">
 </div>
@@ -492,15 +497,15 @@ Design Considerations</h2>
 </dl>
 <p>Called when a full-duplex SPI DMA transfer completes. Parses the received data based on which sensor was active, then notifies the sensors thread.</p>
 <p><b>Active Sensor Handling:</b></p><ul>
-<li><span class="tt">SPI_IMU_BARO_INSTANCE</span> + <span class="tt"><a class="el" href="../../d7/d0c/group___sensor_bus_tracking.html#gga236ff5c902af3e544b7e5ec44224769da9bf7ffe542660bb5a764e9757fb28c9e" title="ASM330LHHX is using the bus.">ACTIVE_SENSOR_IMU</a></span>: Calls <a class="el" href="../../dc/d01/group___a_s_m330_a_p_i.html#gaafe7f9fce9cf9ad75906f4a2da3d8b0a" title="Parse DMA buffer into raw values.">ASM330LHHX_ParseDMABuffer()</a></li>
-<li><span class="tt">SPI_MAG_INSTANCE</span> + <span class="tt"><a class="el" href="../../d7/d0c/group___sensor_bus_tracking.html#gga236ff5c902af3e544b7e5ec44224769da92ba9f6880e3636d44a767f079fe230e" title="MMC5983MA is using the bus.">ACTIVE_SENSOR_MAG</a></span>: Calls <a class="el" href="../../d7/d06/group___m_m_c_a_p_i.html#gaa0de0066df1c9c8b3d6efaa1df7e63b9" title="Parse DMA buffer into raw values.">MMC5983MA_ParseDMABuffer()</a></li>
+<li><span class="tt"><a class="el" href="../../df/d0c/_s_t_m32_f446_z_e___magalhaes_2_core_2_inc_2config_8h.html#a43f92850004aa96fd67362e5e48de9a3">SPI_IMU_BARO_INSTANCE</a></span> + <span class="tt"><a class="el" href="../../d7/d0c/group___sensor_bus_tracking.html#gga236ff5c902af3e544b7e5ec44224769da9bf7ffe542660bb5a764e9757fb28c9e" title="ASM330LHHX is using the bus.">ACTIVE_SENSOR_IMU</a></span>: Calls <a class="el" href="../../dc/d01/group___a_s_m330_a_p_i.html#gaafe7f9fce9cf9ad75906f4a2da3d8b0a" title="Parse DMA buffer into raw values.">ASM330LHHX_ParseDMABuffer()</a></li>
+<li><span class="tt"><a class="el" href="../../df/d0c/_s_t_m32_f446_z_e___magalhaes_2_core_2_inc_2config_8h.html#a9d66db81bf5396b8b9526440dc2af9ae">SPI_MAG_INSTANCE</a></span> + <span class="tt"><a class="el" href="../../d7/d0c/group___sensor_bus_tracking.html#gga236ff5c902af3e544b7e5ec44224769da92ba9f6880e3636d44a767f079fe230e" title="MMC5983MA is using the bus.">ACTIVE_SENSOR_MAG</a></span>: Calls <a class="el" href="../../d7/d06/group___m_m_c_a_p_i.html#gaa0de0066df1c9c8b3d6efaa1df7e63b9" title="Parse DMA buffer into raw values.">MMC5983MA_ParseDMABuffer()</a></li>
 </ul>
 <p>After parsing, sends SENSOR_NOTIFY_DMA_COMPLETE to sensors_thread.</p>
 <dl class="section note"><dt>Note</dt><dd>The active sensor tracking prevents parsing wrong data when multiple sensors share the same SPI bus. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html#l00149">149</a> of file <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html">hal_callbacks.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html#l00158">158</a> of file <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html">hal_callbacks.c</a>.</p>
 
-<p class="reference">References <a class="el" href="../../dc/d0c/sensors__thread_8h_source.html#l00086">ACTIVE_SENSOR_IMU</a>, <a class="el" href="../../dc/d0c/sensors__thread_8h_source.html#l00088">ACTIVE_SENSOR_MAG</a>, <a class="el" href="../../d2/d03/_a_s_m330_l_h_h_x_8c_source.html#l00136">ASM330LHHX_ParseDMABuffer()</a>, <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00057">imu_device</a>, <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00058">mag_device</a>, <a class="el" href="../../d3/d01/_m_m_c5983_m_a_8c_source.html#l00106">MMC5983MA_ParseDMABuffer()</a>, <a class="el" href="../../dc/d0c/sensors__thread_8h_source.html#l00115">SENSOR_NOTIFY_DMA_COMPLETE</a>, <a class="el" href="../../d3/d02/create__threads_8c_source.html#l00048">sensors_thread_id</a>, <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00068">spi1_active_sensor</a>, and <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00069">spi3_active_sensor</a>.</p>
+<p class="reference">References <a class="el" href="../../dc/d0c/sensors__thread_8h_source.html#l00088">ACTIVE_SENSOR_IMU</a>, <a class="el" href="../../dc/d0c/sensors__thread_8h_source.html#l00090">ACTIVE_SENSOR_MAG</a>, <a class="el" href="../../d2/d03/_a_s_m330_l_h_h_x_8c_source.html#l00137">ASM330LHHX_ParseDMABuffer()</a>, <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00060">imu_device</a>, <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00061">mag_device</a>, <a class="el" href="../../d3/d01/_m_m_c5983_m_a_8c_source.html#l00116">MMC5983MA_ParseDMABuffer()</a>, <a class="el" href="../../dc/d0c/sensors__thread_8h_source.html#l00117">SENSOR_NOTIFY_DMA_COMPLETE</a>, <a class="el" href="../../d3/d02/create__threads_8c_source.html#l00048">sensors_thread_id</a>, <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00071">spi1_active_sensor</a>, <a class="el" href="../../df/d0c/_s_t_m32_f446_z_e___magalhaes_2_core_2_inc_2config_8h_source.html#l00069">SPI_IMU_BARO_INSTANCE</a>, <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00072">spi_mag_active_sensor</a>, and <a class="el" href="../../df/d0c/_s_t_m32_f446_z_e___magalhaes_2_core_2_inc_2config_8h_source.html#l00085">SPI_MAG_INSTANCE</a>.</p>
 <div id="dynsection-5" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the call graph for this function:</div>
 <div id="dynsection-5-summary" class="dynsummary" style="display:block;">
 </div>
@@ -533,14 +538,16 @@ Design Considerations</h2>
   </dd>
 </dl>
 <p>This callback is currently disabled. It was intended for double-buffering UART reception on the E22 radio module.</p>
-<dl class="section note"><dt>Note</dt><dd>Enable this callback if implementing continuous reception with circular DMA buffer processing.</dd></dl>
+<dl class="section note"><dt>Note</dt><dd>Only active when RADIO_INTERFACE_UART is defined (F446ZE dev board) </dd>
+<dd>
+Enable this callback if implementing continuous reception with circular DMA buffer processing.</dd></dl>
 <p>UART error callback </p><dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">huart</td><td>Pointer to the UART handle that encountered an error</td></tr>
   </table>
   </dd>
 </dl>
-<p>Called when a UART communication error occurs (overrun, framing, noise, etc.). Currently only logs errors for USART6 for debugging purposes.</p>
+<p>Called when a UART communication error occurs (overrun, framing, noise, etc.). Currently only logs errors for UART_DEBUG_INSTANCE (USART6 on F446ZE, USART2 on H743) for debugging purposes.</p>
 <p><b>Common UART Errors:</b></p><ul>
 <li>Overrun: Data received before previous byte read</li>
 <li>Framing: Stop bit not detected at expected time</li>
@@ -550,7 +557,9 @@ Design Considerations</h2>
 </li>
 </ul>
 
-<p class="definition">Definition at line <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html#l00386">386</a> of file <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html">hal_callbacks.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html#l00405">405</a> of file <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html">hal_callbacks.c</a>.</p>
+
+<p class="reference">References <a class="el" href="../../df/d0c/_s_t_m32_f446_z_e___magalhaes_2_core_2_inc_2config_8h_source.html#l00063">UART_DEBUG_INSTANCE</a>.</p>
 
 </div>
 </div>
@@ -585,13 +594,14 @@ Design Considerations</h2>
 <li>Calls <a class="el" href="../../d0/d06/group___e22_callbacks.html#gae532b44cf8abbbf5953abc5ac30de3a4" title="RX complete callback.">E22_UART_RxCpltCallback()</a> for radio data processing</li>
 <li>Handles telemetry packets and command responses</li>
 </ul>
+<dl class="section note"><dt>Note</dt><dd>The UART_RADIO_INSTANCE path is only active when RADIO_INTERFACE_UART is defined (F446ZE dev board) </dd></dl>
 <dl class="section see"><dt>See also</dt><dd>GPS_ProcessBuffer() for NMEA parsing </dd>
 <dd>
 <a class="el" href="../../d0/d06/group___e22_callbacks.html#gae532b44cf8abbbf5953abc5ac30de3a4" title="RX complete callback.">E22_UART_RxCpltCallback()</a> for radio handling </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html#l00334">334</a> of file <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html">hal_callbacks.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html#l00348">348</a> of file <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html">hal_callbacks.c</a>.</p>
 
-<p class="reference">References <a class="el" href="../../dc/d0b/e22__uart__dma_8c_source.html#l00175">E22_UART_RxCpltCallback()</a>, <a class="el" href="../../dc/d0c/sensors__thread_8h_source.html#l00117">SENSOR_NOTIFY_GPS_DATA</a>, and <a class="el" href="../../d3/d02/create__threads_8c_source.html#l00048">sensors_thread_id</a>.</p>
+<p class="reference">References <a class="el" href="../../dc/d0b/e22__uart__dma_8c_source.html#l00181">E22_UART_RxCpltCallback()</a>, <a class="el" href="../../dc/d0c/sensors__thread_8h_source.html#l00119">SENSOR_NOTIFY_GPS_DATA</a>, <a class="el" href="../../d3/d02/create__threads_8c_source.html#l00048">sensors_thread_id</a>, <a class="el" href="../../df/d0c/_s_t_m32_f446_z_e___magalhaes_2_core_2_inc_2config_8h_source.html#l00065">UART_RADIO_INSTANCE</a>, and <a class="el" href="../../df/d0c/_s_t_m32_f446_z_e___magalhaes_2_core_2_inc_2config_8h_source.html#l00062">UART_UBLOX_INSTANCE</a>.</p>
 <div id="dynsection-6" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the call graph for this function:</div>
 <div id="dynsection-6-summary" class="dynsummary" style="display:block;">
 </div>
@@ -624,11 +634,12 @@ Design Considerations</h2>
   </dd>
 </dl>
 <p>Called when a UART DMA transmit transfer completes. Currently handles E22 LoRa module command transmission.</p>
+<dl class="section note"><dt>Note</dt><dd>Only active when RADIO_INTERFACE_UART is defined (F446ZE dev board) </dd></dl>
 <dl class="section see"><dt>See also</dt><dd><a class="el" href="../../d0/d06/group___e22_callbacks.html#gad8041631244df857dbf9ef07481273e7" title="TX complete callback.">E22_UART_TxCpltCallback()</a> </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html#l00309">309</a> of file <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html">hal_callbacks.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html#l00319">319</a> of file <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html">hal_callbacks.c</a>.</p>
 
-<p class="reference">References <a class="el" href="../../dc/d0b/e22__uart__dma_8c_source.html#l00099">E22_UART_TxCpltCallback()</a>.</p>
+<p class="reference">References <a class="el" href="../../dc/d0b/e22__uart__dma_8c_source.html#l00105">E22_UART_TxCpltCallback()</a>, and <a class="el" href="../../df/d0c/_s_t_m32_f446_z_e___magalhaes_2_core_2_inc_2config_8h_source.html#l00065">UART_RADIO_INSTANCE</a>.</p>
 <div id="dynsection-7" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the call graph for this function:</div>
 <div id="dynsection-7-summary" class="dynsummary" style="display:block;">
 </div>
@@ -662,9 +673,9 @@ Design Considerations</h2>
 <p>9-DOF orientation sensor instance </p>
 <p>9-DOF orientation sensor instance </p>
 
-<p class="definition">Definition at line <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00060">60</a> of file <a class="el" href="../../d3/d05/sensors__thread_8c_source.html">sensors_thread.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00063">63</a> of file <a class="el" href="../../d3/d05/sensors__thread_8c_source.html">sensors_thread.c</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html#l00253">HAL_I2C_MemRxCpltCallback()</a>, <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00227">sensors_thread_function()</a>, and <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00133">sensors_thread_init()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html#l00262">HAL_I2C_MemRxCpltCallback()</a>, <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00230">sensors_thread_function()</a>, and <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00136">sensors_thread_init()</a>.</p>
 
 </div>
 </div>
@@ -691,9 +702,9 @@ Design Considerations</h2>
 <p>Currently active sensor on I2C1 bus. </p>
 <p>Currently active sensor on I2C1 bus. </p>
 
-<p class="definition">Definition at line <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00070">70</a> of file <a class="el" href="../../d3/d05/sensors__thread_8c_source.html">sensors_thread.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00073">73</a> of file <a class="el" href="../../d3/d05/sensors__thread_8c_source.html">sensors_thread.c</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00227">sensors_thread_function()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00230">sensors_thread_function()</a>.</p>
 
 </div>
 </div>
@@ -720,9 +731,9 @@ Design Considerations</h2>
 <p>6-axis IMU device instance </p>
 <p>6-axis IMU device instance </p>
 
-<p class="definition">Definition at line <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00057">57</a> of file <a class="el" href="../../d3/d05/sensors__thread_8c_source.html">sensors_thread.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00060">60</a> of file <a class="el" href="../../d3/d05/sensors__thread_8c_source.html">sensors_thread.c</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html#l00149">HAL_SPI_TxRxCpltCallback()</a>, <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00227">sensors_thread_function()</a>, and <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00133">sensors_thread_init()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html#l00158">HAL_SPI_TxRxCpltCallback()</a>, <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00230">sensors_thread_function()</a>, and <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00136">sensors_thread_init()</a>.</p>
 
 </div>
 </div>
@@ -749,9 +760,9 @@ Design Considerations</h2>
 <p>Magnetometer device instance. </p>
 <p>Magnetometer device instance. </p>
 
-<p class="definition">Definition at line <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00058">58</a> of file <a class="el" href="../../d3/d05/sensors__thread_8c_source.html">sensors_thread.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00061">61</a> of file <a class="el" href="../../d3/d05/sensors__thread_8c_source.html">sensors_thread.c</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html#l00149">HAL_SPI_TxRxCpltCallback()</a>, <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00227">sensors_thread_function()</a>, and <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00133">sensors_thread_init()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html#l00158">HAL_SPI_TxRxCpltCallback()</a>, <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00230">sensors_thread_function()</a>, and <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00136">sensors_thread_init()</a>.</p>
 
 </div>
 </div>
@@ -779,7 +790,7 @@ Design Considerations</h2>
 
 <p class="definition">Definition at line <a class="el" href="../../d3/d02/create__threads_8c_source.html#l00048">48</a> of file <a class="el" href="../../d3/d02/create__threads_8c_source.html">create_threads.c</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../d3/d02/create__threads_8c_source.html#l00219">create_threads()</a>, <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html#l00106">HAL_GPIO_EXTI_Callback()</a>, <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html#l00282">HAL_I2C_ErrorCallback()</a>, <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html#l00253">HAL_I2C_MemRxCpltCallback()</a>, <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html#l00219">HAL_SPI_ErrorCallback()</a>, <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html#l00149">HAL_SPI_TxRxCpltCallback()</a>, <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html#l00334">HAL_UART_RxCpltCallback()</a>, <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00116">vBaroTimerCallback()</a>, and <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00124">vBnoTimerCallback()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../d3/d02/create__threads_8c_source.html#l00219">create_threads()</a>, <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html#l00115">HAL_GPIO_EXTI_Callback()</a>, <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html#l00291">HAL_I2C_ErrorCallback()</a>, <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html#l00262">HAL_I2C_MemRxCpltCallback()</a>, <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html#l00228">HAL_SPI_ErrorCallback()</a>, <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html#l00158">HAL_SPI_TxRxCpltCallback()</a>, <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html#l00348">HAL_UART_RxCpltCallback()</a>, <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00119">vBaroTimerCallback()</a>, and <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00127">vBnoTimerCallback()</a>.</p>
 
 </div>
 </div>
@@ -806,14 +817,14 @@ Design Considerations</h2>
 <p>Currently active sensor on SPI1 bus. </p>
 <p>Currently active sensor on SPI1 bus. </p>
 
-<p class="definition">Definition at line <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00068">68</a> of file <a class="el" href="../../d3/d05/sensors__thread_8c_source.html">sensors_thread.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00071">71</a> of file <a class="el" href="../../d3/d05/sensors__thread_8c_source.html">sensors_thread.c</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html#l00149">HAL_SPI_TxRxCpltCallback()</a>, and <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00227">sensors_thread_function()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html#l00158">HAL_SPI_TxRxCpltCallback()</a>, and <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00230">sensors_thread_function()</a>.</p>
 
 </div>
 </div>
-<a id="a70b8d7beeada26526dc6ca712893863c" name="a70b8d7beeada26526dc6ca712893863c"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a70b8d7beeada26526dc6ca712893863c">&#9670;&#160;</a></span>spi3_active_sensor</h2>
+<a id="a45603ab2dbaf4b2eb8d988b176304974" name="a45603ab2dbaf4b2eb8d988b176304974"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a45603ab2dbaf4b2eb8d988b176304974">&#9670;&#160;</a></span>spi_mag_active_sensor</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -822,7 +833,7 @@ Design Considerations</h2>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">volatile <a class="el" href="../../d7/d0c/group___sensor_bus_tracking.html#ga236ff5c902af3e544b7e5ec44224769d">active_sensor_t</a> spi3_active_sensor</td>
+          <td class="memname">volatile <a class="el" href="../../d7/d0c/group___sensor_bus_tracking.html#ga236ff5c902af3e544b7e5ec44224769d">active_sensor_t</a> spi_mag_active_sensor</td>
         </tr>
       </table>
   </td>
@@ -832,12 +843,12 @@ Design Considerations</h2>
 </table>
 </div><div class="memdoc">
 
-<p>Currently active sensor on SPI3 bus. </p>
-<p>Currently active sensor on SPI3 bus. </p>
+<p>Currently active sensor on MAG SPI bus. </p>
+<p>Currently active sensor on MAG SPI bus. </p>
 
-<p class="definition">Definition at line <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00069">69</a> of file <a class="el" href="../../d3/d05/sensors__thread_8c_source.html">sensors_thread.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00072">72</a> of file <a class="el" href="../../d3/d05/sensors__thread_8c_source.html">sensors_thread.c</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html#l00149">HAL_SPI_TxRxCpltCallback()</a>, and <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00227">sensors_thread_function()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html#l00158">HAL_SPI_TxRxCpltCallback()</a>, and <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00230">sensors_thread_function()</a>.</p>
 
 </div>
 </div>

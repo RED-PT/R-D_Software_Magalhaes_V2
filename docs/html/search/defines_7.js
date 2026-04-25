@@ -1,22 +1,4 @@
 var searchData=
 [
-  ['include_5fetaskgetstate_0',['INCLUDE_eTaskGetState',['../de/d03/_free_r_t_o_s_config_8h.html#a4fd1d67d54044ac86e8ffc890180f9f6',1,'FreeRTOSConfig.h']]],
-  ['include_5fuxtaskgetstackhighwatermark_1',['INCLUDE_uxTaskGetStackHighWaterMark',['../de/d03/_free_r_t_o_s_config_8h.html#a23c7b4b41fe9b575cf2329c7cbe78b86',1,'FreeRTOSConfig.h']]],
-  ['include_5fuxtaskpriorityget_2',['INCLUDE_uxTaskPriorityGet',['../de/d03/_free_r_t_o_s_config_8h.html#a1279eb797355460aeeec06aa524e91df',1,'FreeRTOSConfig.h']]],
-  ['include_5fvtaskcleanupresources_3',['INCLUDE_vTaskCleanUpResources',['../de/d03/_free_r_t_o_s_config_8h.html#a7ee138825e57f243c8ee5fd4207b9e26',1,'FreeRTOSConfig.h']]],
-  ['include_5fvtaskdelay_4',['INCLUDE_vTaskDelay',['../de/d03/_free_r_t_o_s_config_8h.html#a24361a6eb816a965f1ee4e2e08e364f8',1,'FreeRTOSConfig.h']]],
-  ['include_5fvtaskdelayuntil_5',['INCLUDE_vTaskDelayUntil',['../de/d03/_free_r_t_o_s_config_8h.html#ae8459bfd5b428319bb10de9f504a53aa',1,'FreeRTOSConfig.h']]],
-  ['include_5fvtaskdelete_6',['INCLUDE_vTaskDelete',['../de/d03/_free_r_t_o_s_config_8h.html#a5ae1434fdf995108dc749ff9329f53bd',1,'FreeRTOSConfig.h']]],
-  ['include_5fvtaskpriorityset_7',['INCLUDE_vTaskPrioritySet',['../de/d03/_free_r_t_o_s_config_8h.html#ad6858ac8aaf726007fd19752956ef1bd',1,'FreeRTOSConfig.h']]],
-  ['include_5fvtasksuspend_8',['INCLUDE_vTaskSuspend',['../de/d03/_free_r_t_o_s_config_8h.html#aef8fbb97819ad3d962f334ac298206d1',1,'FreeRTOSConfig.h']]],
-  ['include_5fxqueuegetmutexholder_9',['INCLUDE_xQueueGetMutexHolder',['../de/d03/_free_r_t_o_s_config_8h.html#a4e2902143b6abf777065c15940321911',1,'FreeRTOSConfig.h']]],
-  ['include_5fxtaskgetcurrenttaskhandle_10',['INCLUDE_xTaskGetCurrentTaskHandle',['../de/d03/_free_r_t_o_s_config_8h.html#ac96b6a6e70667f266db4278be71cbd78',1,'FreeRTOSConfig.h']]],
-  ['include_5fxtaskgetschedulerstate_11',['INCLUDE_xTaskGetSchedulerState',['../de/d03/_free_r_t_o_s_config_8h.html#a9ed60ede556830584e6bfd4a3ab4f9de',1,'FreeRTOSConfig.h']]],
-  ['include_5fxtimerpendfunctioncall_12',['INCLUDE_xTimerPendFunctionCall',['../de/d03/_free_r_t_o_s_config_8h.html#a4b4336acd61a8e513ca2376be84326b5',1,'FreeRTOSConfig.h']]],
-  ['invalid_13',['INVALID',['../d8/d04/fatfs__funcoes__auxiliares_8h.html#adf770fe2eec438e3758ffe905dbae208',1,'fatfs_funcoes_auxiliares.h']]],
-  ['irq_5fcad_5fdetected_5fmask_14',['IRQ_CAD_DETECTED_MASK',['../df/d04/lora__sx1276_8h.html#a8acc167ac990f93d8dc07eb908d11521',1,'lora_sx1276.h']]],
-  ['irq_5fcad_5fdone_5fmask_15',['IRQ_CAD_DONE_MASK',['../df/d04/lora__sx1276_8h.html#aca372e6e19dfb0d0793801b0bc3734f2',1,'lora_sx1276.h']]],
-  ['irq_5fpayload_5fcrc_5ferror_5fmask_16',['IRQ_PAYLOAD_CRC_ERROR_MASK',['../df/d04/lora__sx1276_8h.html#a1c6981a372ca499afd8f60023bd67564',1,'lora_sx1276.h']]],
-  ['irq_5frx_5fdone_5fmask_17',['IRQ_RX_DONE_MASK',['../df/d04/lora__sx1276_8h.html#a79ac308f2a7c332325b9d4ab4b7399cb',1,'lora_sx1276.h']]],
-  ['irq_5ftx_5fdone_5fmask_18',['IRQ_TX_DONE_MASK',['../df/d04/lora__sx1276_8h.html#a5127cb2af4a6ecd93c81e9844a3b1f5e',1,'lora_sx1276.h']]]
+  ['hspi_5fsdcard_0',['HSPI_SDCARD',['../d2/d04/fatfs__sd_8h.html#aa0ea6263aeeeae2c7091c9de81f078c0',1,'fatfs_sd.h']]]
 ];

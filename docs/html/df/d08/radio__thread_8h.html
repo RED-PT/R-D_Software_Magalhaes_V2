@@ -112,9 +112,8 @@ $(function() {
 <div class="textblock"><code>#include &quot;FreeRTOS.h&quot;</code><br />
 <code>#include &quot;task.h&quot;</code><br />
 <code>#include &quot;queue.h&quot;</code><br />
-<code>#include &quot;config.h&quot;</code><br />
+<code>#include &quot;<a class="el" href="../../df/d0c/_s_t_m32_f446_z_e___magalhaes_2_core_2_inc_2config_8h_source.html">config.h</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="../../d5/d04/defs_8h_source.html">defs.h</a>&quot;</code><br />
-<code>#include &quot;stm32f4xx_hal.h&quot;</code><br />
 <code>#include &quot;<a class="el" href="../../de/d07/telemetry_8h_source.html">Telemetry/telemetry.h</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="../../d4/d0f/flight__computer_8h_source.html">Flight Computer/flight_computer.h</a>&quot;</code><br />
 </div><div class="textblock"><div id="dynsection-0" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Include dependency graph for radio_thread.h:</div>
@@ -168,6 +167,10 @@ Variables</h2></td></tr>
 <dl class="section author"><dt>Author</dt><dd>Tomas Teixeira </dd></dl>
 <dl class="section date"><dt>Date</dt><dd>October 2025</dd></dl>
 <p>This module implements the radio communication thread using a TDMA scheme where the Flight Computer operates as a slave, synchronized to the Ground Station's timing.</p>
+<p>Two radio backends are selected at compile time:</p><ul>
+<li><b>RADIO_INTERFACE_UART</b>: E22 module via UART DMA (F446ZE dev board)</li>
+<li><b>RADIO_INTERFACE_SPI</b>: SX126x via SPI DMA (Buzz V4 PCB / H743)</li>
+</ul>
 <h1 class="doxsection"><a class="anchor" id="radio_arch"></a>
 Architecture</h1>
 <p>The radio thread manages:</p><ul>
@@ -181,7 +184,9 @@ Synchronization</h1>
 <p>The FC synchronizes to the GS using sync beacon packets received in slot 9. If synchronization is lost (multiple missed sync packets), the FC continues transmitting in free-running mode until sync is reacquired.</p>
 <dl class="section see"><dt>See also</dt><dd><a class="el" href="../../de/d07/telemetry_8h.html" title="TDMA-aware telemetry packet definitions for the Magalhaes Flight Computer.">telemetry.h</a> for packet structure definitions </dd>
 <dd>
-<a class="el" href="../../dd/d03/e22__uart__dma_8h.html" title="E22 LoRa module driver using UART with DMA for the Magalhaes Flight Computer.">E22_uart_dma.h</a> for low-level radio driver </dd></dl>
+<a class="el" href="../../dd/d03/e22__uart__dma_8h.html" title="E22 LoRa module driver using UART with DMA for the Magalhaes Flight Computer.">e22_uart_dma.h</a> for UART radio driver (<a class="el" href="../../df/d0c/_s_t_m32_f446_z_e___magalhaes_2_core_2_inc_2config_8h.html#af71559407d18a5d5980d50ddb90cae51">RADIO_INTERFACE_UART</a>) </dd>
+<dd>
+<a class="el" href="../../db/d05/lora__sx126x_8h.html">lora_sx126x.h</a> for SPI radio driver (<a class="el" href="../../d4/d0c/_s_t_m32_h743_z_i_t6___magalhaes_2_core_2_inc_2config_8h.html#adb639e8ea87330eff75deae31a1efaa6">RADIO_INTERFACE_SPI</a>) </dd></dl>
 
 <p class="definition">Definition in file <a class="el" href="../../df/d08/radio__thread_8h_source.html">radio_thread.h</a>.</p>
 </div></div><!-- contents -->

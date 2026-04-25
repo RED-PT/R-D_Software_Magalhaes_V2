@@ -106,8 +106,10 @@ $(function() {
   <div class="headertitle"><div class="title">lora_sx126x.c File Reference</div></div>
 </div><!--header-->
 <div class="contents">
+
+<p>SX126x LoRa radio driver implementation (SPI, blocking + DMA TX).  
+<a href="#details">More...</a></p>
 <div class="textblock"><code>#include &quot;<a class="el" href="../../db/d05/lora__sx126x_8h_source.html">lora_sx126x.h</a>&quot;</code><br />
-<code>#include &quot;stm32f4xx_hal.h&quot;</code><br />
 <code>#include &quot;FreeRTOS.h&quot;</code><br />
 <code>#include &quot;task.h&quot;</code><br />
 <code>#include &lt;string.h&gt;</code><br />
@@ -150,9 +152,19 @@ Functions</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 id="header-var-members" class="groupheader"><a id="var-members" name="var-members"></a>
 Variables</h2></td></tr>
-<tr class="memitem:a3457bc98a50c76e432291737a2eb12bd" id="r_a3457bc98a50c76e432291737a2eb12bd"><td class="memItemLeft">static <a class="el" href="../../d0/d06/struct_s_x126x___d_m_a__t.html">SX126x_DMA_t</a>&#160;</td><td class="memItemRight"><a class="el" href="#a3457bc98a50c76e432291737a2eb12bd">sx126x_state</a> = {0}</td></tr>
+<tr class="memitem:a0d1dff2359f66db7611ea0b47e4cdb16" id="r_a0d1dff2359f66db7611ea0b47e4cdb16"><td class="memItemLeft">static <a class="el" href="../../df/d0c/_s_t_m32_f446_z_e___magalhaes_2_core_2_inc_2config_8h.html#a25275ca8d891f2f3f25504218e2bb720">DMA_BUFFER</a> <a class="el" href="../../d0/d06/struct_s_x126x___d_m_a__t.html">SX126x_DMA_t</a>&#160;</td><td class="memItemRight"><a class="el" href="#a0d1dff2359f66db7611ea0b47e4cdb16">sx126x_state</a></td></tr>
 </table>
-<a name="doc-func-members" id="doc-func-members"></a><h2 id="header-doc-func-members" class="groupheader">Function Documentation</h2>
+<a name="details" id="details"></a><h2 id="header-details" class="groupheader">Detailed Description</h2>
+<div class="textblock"><p>SX126x LoRa radio driver implementation (SPI, blocking + DMA TX). </p>
+<dl class="section author"><dt>Author</dt><dd>Tomas Teixeira </dd></dl>
+<dl class="section date"><dt>Date</dt><dd>November 2025</dd></dl>
+<p>Supports dual-board targets via config.h:</p><ul>
+<li>Buzz V4 (STM32H743): SPI to SX1262 with external RF switch (E22 module)</li>
+<li>F446ZE dev board: SPI to bare SX1262 with DIO2-based RF switch </li>
+</ul>
+
+<p class="definition">Definition in file <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html">lora_sx126x.c</a>.</p>
+</div><a name="doc-func-members" id="doc-func-members"></a><h2 id="header-doc-func-members" class="groupheader">Function Documentation</h2>
 <a id="a949a4e5fd38741adaf21cfd587371513" name="a949a4e5fd38741adaf21cfd587371513"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a949a4e5fd38741adaf21cfd587371513">&#9670;&#160;</a></span>SX126x_Available()</h2>
 
@@ -168,9 +180,9 @@ Variables</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00282">282</a> of file <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html">lora_sx126x.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00302">302</a> of file <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html">lora_sx126x.c</a>.</p>
 
-<p class="reference">References <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00011">sx126x_state</a>.</p>
+<p class="reference">References <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00017">sx126x_state</a>.</p>
 
 </div>
 </div>
@@ -189,11 +201,11 @@ Variables</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00082">82</a> of file <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html">lora_sx126x.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00088">88</a> of file <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html">lora_sx126x.c</a>.</p>
 
-<p class="reference">References <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00071">SX126X_CMD_CLR_IRQ_STATUS</a>, and <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00024">SX126x_WriteCommand()</a>.</p>
+<p class="reference">References <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00068">SX126X_CMD_CLR_IRQ_STATUS</a>, and <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00030">SX126x_WriteCommand()</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00339">SX126x_DIO1_IRQ_Handler()</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00136">SX126x_Init()</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00286">SX126x_Receive()</a>, and <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00249">SX126x_SPI_TxCpltCallback()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00359">SX126x_DIO1_IRQ_Handler()</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00148">SX126x_Init()</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00306">SX126x_Receive()</a>, and <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00269">SX126x_SPI_TxCpltCallback()</a>.</p>
 <div id="dynsection-1" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the call graph for this function:</div>
 <div id="dynsection-1-summary" class="dynsummary" style="display:block;">
 </div>
@@ -224,11 +236,11 @@ Variables</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00339">339</a> of file <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html">lora_sx126x.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00359">359</a> of file <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html">lora_sx126x.c</a>.</p>
 
-<p class="reference">References <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00082">SX126x_ClearIrqStatus()</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00076">SX126x_GetIrqStatus()</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00138">SX126X_IRQ_CRC_ERROR</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00133">SX126X_IRQ_RX_DONE</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00141">SX126X_IRQ_TIMEOUT</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00132">SX126X_IRQ_TX_DONE</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00110">SX126x_SetRx()</a>, and <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00011">sx126x_state</a>.</p>
+<p class="reference">References <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00088">SX126x_ClearIrqStatus()</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00082">SX126x_GetIrqStatus()</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00135">SX126X_IRQ_CRC_ERROR</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00130">SX126X_IRQ_RX_DONE</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00138">SX126X_IRQ_TIMEOUT</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00129">SX126X_IRQ_TX_DONE</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00119">SX126x_SetRx()</a>, and <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00017">sx126x_state</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html#l00106">HAL_GPIO_EXTI_Callback()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html#l00115">HAL_GPIO_EXTI_Callback()</a>.</p>
 <div id="dynsection-3" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the call graph for this function:</div>
 <div id="dynsection-3-summary" class="dynsummary" style="display:block;">
 </div>
@@ -259,11 +271,11 @@ Variables</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00076">76</a> of file <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html">lora_sx126x.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00082">82</a> of file <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html">lora_sx126x.c</a>.</p>
 
-<p class="reference">References <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00070">SX126X_CMD_GET_IRQ_STATUS</a>, and <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00038">SX126x_ReadCommand()</a>.</p>
+<p class="reference">References <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00067">SX126X_CMD_GET_IRQ_STATUS</a>, and <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00044">SX126x_ReadCommand()</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00339">SX126x_DIO1_IRQ_Handler()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00359">SX126x_DIO1_IRQ_Handler()</a>.</p>
 <div id="dynsection-5" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the call graph for this function:</div>
 <div id="dynsection-5-summary" class="dynsummary" style="display:block;">
 </div>
@@ -294,9 +306,9 @@ Variables</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00327">327</a> of file <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html">lora_sx126x.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00347">347</a> of file <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html">lora_sx126x.c</a>.</p>
 
-<p class="reference">References <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00011">sx126x_state</a>.</p>
+<p class="reference">References <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00017">sx126x_state</a>.</p>
 
 </div>
 </div>
@@ -315,9 +327,9 @@ Variables</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00331">331</a> of file <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html">lora_sx126x.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00351">351</a> of file <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html">lora_sx126x.c</a>.</p>
 
-<p class="reference">References <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00011">sx126x_state</a>.</p>
+<p class="reference">References <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00017">sx126x_state</a>.</p>
 
 </div>
 </div>
@@ -336,9 +348,9 @@ Variables</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00136">136</a> of file <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html">lora_sx126x.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00148">148</a> of file <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html">lora_sx126x.c</a>.</p>
 
-<p class="reference">References <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00201">SX126x_LoRaConfig_t::bandwidth</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00202">SX126x_LoRaConfig_t::coding_rate</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00206">SX126x_LoRaConfig_t::enable_crc</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00199">SX126x_LoRaConfig_t::frequency_hz</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00207">SX126x_LoRaConfig_t::invert_iq</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00204">SX126x_LoRaConfig_t::preamble_length</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00200">SX126x_LoRaConfig_t::spreading_factor</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00082">SX126x_ClearIrqStatus()</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00057">SX126X_CMD_CALIBRATE</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00083">SX126X_CMD_SET_BUFFER_BASE_ADDRESS</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00072">SX126X_CMD_SET_DIO2_AS_RF_SWITCH</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00069">SX126X_CMD_SET_DIO_IRQ_PARAMS</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00080">SX126X_CMD_SET_MODULATION_PARAMS</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00059">SX126X_CMD_SET_PA_CONFIG</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00081">SX126X_CMD_SET_PKT_PARAMS</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00077">SX126X_CMD_SET_PKT_TYPE</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00056">SX126X_CMD_SET_REGULATOR_MODE</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00076">SX126X_CMD_SET_RF_FREQUENCY</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00079">SX126X_CMD_SET_TX_PARAMS</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00142">SX126X_IRQ_ALL</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00138">SX126X_IRQ_CRC_ERROR</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00133">SX126X_IRQ_RX_DONE</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00141">SX126X_IRQ_TIMEOUT</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00132">SX126X_IRQ_TX_DONE</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00150">SX126X_PACKET_TYPE_LORA</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00112">SX126X_REG_LORA_SYNC_WORD_MSB</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00191">SX126X_REGULATOR_DC_DC</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00127">SX126x_Reset()</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00091">SX126x_SetStandby()</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00185">SX126X_STANDBY_RC</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00011">sx126x_state</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00024">SX126x_WriteCommand()</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00048">SX126x_WriteRegister()</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00205">SX126x_LoRaConfig_t::sync_word</a>, and <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00203">SX126x_LoRaConfig_t::tx_power_dbm</a>.</p>
+<p class="reference">References <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00198">SX126x_LoRaConfig_t::bandwidth</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00199">SX126x_LoRaConfig_t::coding_rate</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00203">SX126x_LoRaConfig_t::enable_crc</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00196">SX126x_LoRaConfig_t::frequency_hz</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00204">SX126x_LoRaConfig_t::invert_iq</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00201">SX126x_LoRaConfig_t::preamble_length</a>, <a class="el" href="../../d4/d0c/_s_t_m32_h743_z_i_t6___magalhaes_2_core_2_inc_2config_8h_source.html#l00162">RADIO_RF_SWITCH_OFF</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00197">SX126x_LoRaConfig_t::spreading_factor</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00088">SX126x_ClearIrqStatus()</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00054">SX126X_CMD_CALIBRATE</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00080">SX126X_CMD_SET_BUFFER_BASE_ADDRESS</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00069">SX126X_CMD_SET_DIO2_AS_RF_SWITCH</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00066">SX126X_CMD_SET_DIO_IRQ_PARAMS</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00077">SX126X_CMD_SET_MODULATION_PARAMS</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00056">SX126X_CMD_SET_PA_CONFIG</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00078">SX126X_CMD_SET_PKT_PARAMS</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00074">SX126X_CMD_SET_PKT_TYPE</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00053">SX126X_CMD_SET_REGULATOR_MODE</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00073">SX126X_CMD_SET_RF_FREQUENCY</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00076">SX126X_CMD_SET_TX_PARAMS</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00139">SX126X_IRQ_ALL</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00135">SX126X_IRQ_CRC_ERROR</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00130">SX126X_IRQ_RX_DONE</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00138">SX126X_IRQ_TIMEOUT</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00129">SX126X_IRQ_TX_DONE</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00147">SX126X_PACKET_TYPE_LORA</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00109">SX126X_REG_LORA_SYNC_WORD_MSB</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00188">SX126X_REGULATOR_DC_DC</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00139">SX126x_Reset()</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00097">SX126x_SetStandby()</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00182">SX126X_STANDBY_RC</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00017">sx126x_state</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00030">SX126x_WriteCommand()</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00054">SX126x_WriteRegister()</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00202">SX126x_LoRaConfig_t::sync_word</a>, and <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00200">SX126x_LoRaConfig_t::tx_power_dbm</a>.</p>
 <div id="dynsection-7" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the call graph for this function:</div>
 <div id="dynsection-7-summary" class="dynsummary" style="display:block;">
 </div>
@@ -363,9 +375,9 @@ Variables</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00263">263</a> of file <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html">lora_sx126x.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00283">283</a> of file <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html">lora_sx126x.c</a>.</p>
 
-<p class="reference">References <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00223">SX126X_DMA_TX_BUSY</a>, and <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00011">sx126x_state</a>.</p>
+<p class="reference">References <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00220">SX126X_DMA_TX_BUSY</a>, and <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00017">sx126x_state</a>.</p>
 
 </div>
 </div>
@@ -384,9 +396,9 @@ Variables</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00267">267</a> of file <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html">lora_sx126x.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00287">287</a> of file <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html">lora_sx126x.c</a>.</p>
 
-<p class="reference">References <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00011">sx126x_state</a>.</p>
+<p class="reference">References <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00017">sx126x_state</a>.</p>
 
 </div>
 </div>
@@ -414,11 +426,11 @@ Variables</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00038">38</a> of file <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html">lora_sx126x.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00044">44</a> of file <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html">lora_sx126x.c</a>.</p>
 
-<p class="reference">References <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00038">SPI_SX126X</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00029">SX126X_CS_HIGH</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00028">SX126X_CS_LOW</a>, and <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00017">wait_not_busy()</a>.</p>
+<p class="reference">References <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00035">SPI_SX126X</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00026">SX126X_CS_HIGH</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00025">SX126X_CS_LOW</a>, and <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00023">wait_not_busy()</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00076">SX126x_GetIrqStatus()</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00286">SX126x_Receive()</a>, and <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00214">SX126x_TransmitDMA()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00082">SX126x_GetIrqStatus()</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00306">SX126x_Receive()</a>, and <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00234">SX126x_TransmitDMA()</a>.</p>
 <div id="dynsection-8" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the call graph for this function:</div>
 <div id="dynsection-8-summary" class="dynsummary" style="display:block;">
 </div>
@@ -458,9 +470,9 @@ Variables</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00059">59</a> of file <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html">lora_sx126x.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00065">65</a> of file <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html">lora_sx126x.c</a>.</p>
 
-<p class="reference">References <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00038">SPI_SX126X</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00064">SX126X_CMD_READ_REGISTER</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00029">SX126X_CS_HIGH</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00028">SX126X_CS_LOW</a>, and <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00017">wait_not_busy()</a>.</p>
+<p class="reference">References <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00035">SPI_SX126X</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00061">SX126X_CMD_READ_REGISTER</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00026">SX126X_CS_HIGH</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00025">SX126X_CS_LOW</a>, and <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00023">wait_not_busy()</a>.</p>
 <div id="dynsection-10" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the call graph for this function:</div>
 <div id="dynsection-10-summary" class="dynsummary" style="display:block;">
 </div>
@@ -494,9 +506,9 @@ Variables</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00286">286</a> of file <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html">lora_sx126x.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00306">306</a> of file <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html">lora_sx126x.c</a>.</p>
 
-<p class="reference">References <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00214">SX126x_RxInfo_t::length</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00211">SX126x_RxInfo_t::rssi</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00213">SX126x_RxInfo_t::signal_rssi</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00212">SX126x_RxInfo_t::snr</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00038">SPI_SX126X</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00082">SX126x_ClearIrqStatus()</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00089">SX126X_CMD_GET_PKT_STATUS</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00088">SX126X_CMD_GET_RX_BUFFER_STATUS</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00066">SX126X_CMD_READ_BUFFER</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00029">SX126X_CS_HIGH</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00028">SX126X_CS_LOW</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00142">SX126X_IRQ_ALL</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00038">SX126x_ReadCommand()</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00110">SX126x_SetRx()</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00091">SX126x_SetStandby()</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00185">SX126X_STANDBY_RC</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00011">sx126x_state</a>, and <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00017">wait_not_busy()</a>.</p>
+<p class="reference">References <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00211">SX126x_RxInfo_t::length</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00208">SX126x_RxInfo_t::rssi</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00210">SX126x_RxInfo_t::signal_rssi</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00209">SX126x_RxInfo_t::snr</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00035">SPI_SX126X</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00088">SX126x_ClearIrqStatus()</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00086">SX126X_CMD_GET_PKT_STATUS</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00085">SX126X_CMD_GET_RX_BUFFER_STATUS</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00063">SX126X_CMD_READ_BUFFER</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00026">SX126X_CS_HIGH</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00025">SX126X_CS_LOW</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00139">SX126X_IRQ_ALL</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00044">SX126x_ReadCommand()</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00119">SX126x_SetRx()</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00097">SX126x_SetStandby()</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00182">SX126X_STANDBY_RC</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00017">sx126x_state</a>, and <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00023">wait_not_busy()</a>.</p>
 <div id="dynsection-11" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the call graph for this function:</div>
 <div id="dynsection-11-summary" class="dynsummary" style="display:block;">
 </div>
@@ -521,11 +533,11 @@ Variables</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00127">127</a> of file <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html">lora_sx126x.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00139">139</a> of file <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html">lora_sx126x.c</a>.</p>
 
-<p class="reference">References <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00031">SX126X_RESET_HIGH</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00030">SX126X_RESET_LOW</a>, and <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00017">wait_not_busy()</a>.</p>
+<p class="reference">References <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00028">SX126X_RESET_HIGH</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00027">SX126X_RESET_LOW</a>, and <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00023">wait_not_busy()</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00136">SX126x_Init()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00148">SX126x_Init()</a>.</p>
 <div id="dynsection-12" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the call graph for this function:</div>
 <div id="dynsection-12-summary" class="dynsummary" style="display:block;">
 </div>
@@ -556,11 +568,11 @@ Variables</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00110">110</a> of file <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html">lora_sx126x.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00119">119</a> of file <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html">lora_sx126x.c</a>.</p>
 
-<p class="reference">References <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00050">SX126X_CMD_SET_RX</a>, and <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00024">SX126x_WriteCommand()</a>.</p>
+<p class="reference">References <a class="el" href="../../d4/d0c/_s_t_m32_h743_z_i_t6___magalhaes_2_core_2_inc_2config_8h_source.html#l00160">RADIO_RF_SWITCH_RX</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00047">SX126X_CMD_SET_RX</a>, and <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00030">SX126x_WriteCommand()</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00339">SX126x_DIO1_IRQ_Handler()</a>, and <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00286">SX126x_Receive()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00359">SX126x_DIO1_IRQ_Handler()</a>, and <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00306">SX126x_Receive()</a>.</p>
 <div id="dynsection-14" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the call graph for this function:</div>
 <div id="dynsection-14-summary" class="dynsummary" style="display:block;">
 </div>
@@ -591,9 +603,9 @@ Variables</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00096">96</a> of file <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html">lora_sx126x.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00102">102</a> of file <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html">lora_sx126x.c</a>.</p>
 
-<p class="reference">References <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00046">SX126X_CMD_SET_SLEEP</a>, and <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00024">SX126x_WriteCommand()</a>.</p>
+<p class="reference">References <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00043">SX126X_CMD_SET_SLEEP</a>, and <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00030">SX126x_WriteCommand()</a>.</p>
 <div id="dynsection-16" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the call graph for this function:</div>
 <div id="dynsection-16-summary" class="dynsummary" style="display:block;">
 </div>
@@ -618,11 +630,11 @@ Variables</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00091">91</a> of file <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html">lora_sx126x.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00097">97</a> of file <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html">lora_sx126x.c</a>.</p>
 
-<p class="reference">References <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00047">SX126X_CMD_SET_STANDBY</a>, and <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00024">SX126x_WriteCommand()</a>.</p>
+<p class="reference">References <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00044">SX126X_CMD_SET_STANDBY</a>, and <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00030">SX126x_WriteCommand()</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00136">SX126x_Init()</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00286">SX126x_Receive()</a>, and <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00214">SX126x_TransmitDMA()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00148">SX126x_Init()</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00306">SX126x_Receive()</a>, and <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00234">SX126x_TransmitDMA()</a>.</p>
 <div id="dynsection-17" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the call graph for this function:</div>
 <div id="dynsection-17-summary" class="dynsummary" style="display:block;">
 </div>
@@ -653,11 +665,11 @@ Variables</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00101">101</a> of file <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html">lora_sx126x.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00107">107</a> of file <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html">lora_sx126x.c</a>.</p>
 
-<p class="reference">References <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00049">SX126X_CMD_SET_TX</a>, and <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00024">SX126x_WriteCommand()</a>.</p>
+<p class="reference">References <a class="el" href="../../d4/d0c/_s_t_m32_h743_z_i_t6___magalhaes_2_core_2_inc_2config_8h_source.html#l00161">RADIO_RF_SWITCH_TX</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00046">SX126X_CMD_SET_TX</a>, and <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00030">SX126x_WriteCommand()</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00249">SX126x_SPI_TxCpltCallback()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00269">SX126x_SPI_TxCpltCallback()</a>.</p>
 <div id="dynsection-19" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the call graph for this function:</div>
 <div id="dynsection-19-summary" class="dynsummary" style="display:block;">
 </div>
@@ -688,11 +700,11 @@ Variables</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00258">258</a> of file <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html">lora_sx126x.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00278">278</a> of file <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html">lora_sx126x.c</a>.</p>
 
-<p class="reference">References <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00029">SX126X_CS_HIGH</a>, and <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00011">sx126x_state</a>.</p>
+<p class="reference">References <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00026">SX126X_CS_HIGH</a>, and <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00017">sx126x_state</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html#l00200">HAL_SPI_RxCpltCallback()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html#l00209">HAL_SPI_RxCpltCallback()</a>.</p>
 <div id="dynsection-21" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the caller graph for this function:</div>
 <div id="dynsection-21-summary" class="dynsummary" style="display:block;">
 </div>
@@ -717,11 +729,11 @@ Variables</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00249">249</a> of file <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html">lora_sx126x.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00269">269</a> of file <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html">lora_sx126x.c</a>.</p>
 
-<p class="reference">References <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00082">SX126x_ClearIrqStatus()</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00029">SX126X_CS_HIGH</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00222">SX126X_DMA_IDLE</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00142">SX126X_IRQ_ALL</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00101">SX126x_SetTx()</a>, and <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00011">sx126x_state</a>.</p>
+<p class="reference">References <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00088">SX126x_ClearIrqStatus()</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00026">SX126X_CS_HIGH</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00219">SX126X_DMA_IDLE</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00139">SX126X_IRQ_ALL</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00107">SX126x_SetTx()</a>, and <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00017">sx126x_state</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html#l00183">HAL_SPI_TxCpltCallback()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html#l00192">HAL_SPI_TxCpltCallback()</a>.</p>
 <div id="dynsection-22" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the call graph for this function:</div>
 <div id="dynsection-22-summary" class="dynsummary" style="display:block;">
 </div>
@@ -756,9 +768,9 @@ Variables</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00214">214</a> of file <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html">lora_sx126x.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00234">234</a> of file <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html">lora_sx126x.c</a>.</p>
 
-<p class="reference">References <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00038">SPI_SX126X</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00081">SX126X_CMD_SET_PKT_PARAMS</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00065">SX126X_CMD_WRITE_BUFFER</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00029">SX126X_CS_HIGH</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00028">SX126X_CS_LOW</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00222">SX126X_DMA_IDLE</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00223">SX126X_DMA_TX_BUSY</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00038">SX126x_ReadCommand()</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00091">SX126x_SetStandby()</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00185">SX126X_STANDBY_RC</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00011">sx126x_state</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00024">SX126x_WriteCommand()</a>, and <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00017">wait_not_busy()</a>.</p>
+<p class="reference">References <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00035">SPI_SX126X</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00078">SX126X_CMD_SET_PKT_PARAMS</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00062">SX126X_CMD_WRITE_BUFFER</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00026">SX126X_CS_HIGH</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00025">SX126X_CS_LOW</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00219">SX126X_DMA_IDLE</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00220">SX126X_DMA_TX_BUSY</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00044">SX126x_ReadCommand()</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00097">SX126x_SetStandby()</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00182">SX126X_STANDBY_RC</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00017">sx126x_state</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00030">SX126x_WriteCommand()</a>, and <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00023">wait_not_busy()</a>.</p>
 <div id="dynsection-24" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the call graph for this function:</div>
 <div id="dynsection-24-summary" class="dynsummary" style="display:block;">
 </div>
@@ -783,9 +795,9 @@ Variables</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00362">362</a> of file <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html">lora_sx126x.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00382">382</a> of file <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html">lora_sx126x.c</a>.</p>
 
-<p class="reference">References <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00017">wait_not_busy()</a>.</p>
+<p class="reference">References <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00023">wait_not_busy()</a>.</p>
 <div id="dynsection-25" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the call graph for this function:</div>
 <div id="dynsection-25-summary" class="dynsummary" style="display:block;">
 </div>
@@ -810,9 +822,9 @@ Variables</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00271">271</a> of file <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html">lora_sx126x.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00291">291</a> of file <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html">lora_sx126x.c</a>.</p>
 
-<p class="reference">References <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00011">sx126x_state</a>.</p>
+<p class="reference">References <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00017">sx126x_state</a>.</p>
 
 </div>
 </div>
@@ -840,11 +852,11 @@ Variables</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00024">24</a> of file <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html">lora_sx126x.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00030">30</a> of file <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html">lora_sx126x.c</a>.</p>
 
-<p class="reference">References <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00038">SPI_SX126X</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00046">SX126X_CMD_SET_SLEEP</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00029">SX126X_CS_HIGH</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00028">SX126X_CS_LOW</a>, and <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00017">wait_not_busy()</a>.</p>
+<p class="reference">References <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00035">SPI_SX126X</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00043">SX126X_CMD_SET_SLEEP</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00026">SX126X_CS_HIGH</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00025">SX126X_CS_LOW</a>, and <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00023">wait_not_busy()</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00082">SX126x_ClearIrqStatus()</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00136">SX126x_Init()</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00110">SX126x_SetRx()</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00096">SX126x_SetSleep()</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00091">SX126x_SetStandby()</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00101">SX126x_SetTx()</a>, and <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00214">SX126x_TransmitDMA()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00088">SX126x_ClearIrqStatus()</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00148">SX126x_Init()</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00119">SX126x_SetRx()</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00102">SX126x_SetSleep()</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00097">SX126x_SetStandby()</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00107">SX126x_SetTx()</a>, and <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00234">SX126x_TransmitDMA()</a>.</p>
 <div id="dynsection-26" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the call graph for this function:</div>
 <div id="dynsection-26-summary" class="dynsummary" style="display:block;">
 </div>
@@ -884,11 +896,11 @@ Variables</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00048">48</a> of file <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html">lora_sx126x.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00054">54</a> of file <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html">lora_sx126x.c</a>.</p>
 
-<p class="reference">References <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00038">SPI_SX126X</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00063">SX126X_CMD_WRITE_REGISTER</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00029">SX126X_CS_HIGH</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00028">SX126X_CS_LOW</a>, and <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00017">wait_not_busy()</a>.</p>
+<p class="reference">References <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00035">SPI_SX126X</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00060">SX126X_CMD_WRITE_REGISTER</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00026">SX126X_CS_HIGH</a>, <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00025">SX126X_CS_LOW</a>, and <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00023">wait_not_busy()</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00136">SX126x_Init()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00148">SX126x_Init()</a>.</p>
 <div id="dynsection-28" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the call graph for this function:</div>
 <div id="dynsection-28-summary" class="dynsummary" style="display:block;">
 </div>
@@ -927,11 +939,11 @@ Variables</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00017">17</a> of file <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html">lora_sx126x.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00023">23</a> of file <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html">lora_sx126x.c</a>.</p>
 
-<p class="reference">References <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00032">SX126X_IS_BUSY</a>.</p>
+<p class="reference">References <a class="el" href="../../db/d05/lora__sx126x_8h_source.html#l00029">SX126X_IS_BUSY</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00038">SX126x_ReadCommand()</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00059">SX126x_ReadRegister()</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00286">SX126x_Receive()</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00127">SX126x_Reset()</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00214">SX126x_TransmitDMA()</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00362">SX126x_WaitNotBusy()</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00024">SX126x_WriteCommand()</a>, and <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00048">SX126x_WriteRegister()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00044">SX126x_ReadCommand()</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00065">SX126x_ReadRegister()</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00306">SX126x_Receive()</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00139">SX126x_Reset()</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00234">SX126x_TransmitDMA()</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00382">SX126x_WaitNotBusy()</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00030">SX126x_WriteCommand()</a>, and <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00054">SX126x_WriteRegister()</a>.</p>
 <div id="dynsection-30" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the caller graph for this function:</div>
 <div id="dynsection-30-summary" class="dynsummary" style="display:block;">
 </div>
@@ -942,8 +954,8 @@ Variables</h2></td></tr>
 </div>
 </div>
 <a name="doc-var-members" id="doc-var-members"></a><h2 id="header-doc-var-members" class="groupheader">Variable Documentation</h2>
-<a id="a3457bc98a50c76e432291737a2eb12bd" name="a3457bc98a50c76e432291737a2eb12bd"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a3457bc98a50c76e432291737a2eb12bd">&#9670;&#160;</a></span>sx126x_state</h2>
+<a id="a0d1dff2359f66db7611ea0b47e4cdb16" name="a0d1dff2359f66db7611ea0b47e4cdb16"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a0d1dff2359f66db7611ea0b47e4cdb16">&#9670;&#160;</a></span>sx126x_state</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -952,7 +964,7 @@ Variables</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname"><a class="el" href="../../d0/d06/struct_s_x126x___d_m_a__t.html">SX126x_DMA_t</a> sx126x_state = {0}</td>
+          <td class="memname"><a class="el" href="../../df/d0c/_s_t_m32_f446_z_e___magalhaes_2_core_2_inc_2config_8h.html#a25275ca8d891f2f3f25504218e2bb720">DMA_BUFFER</a> <a class="el" href="../../d0/d06/struct_s_x126x___d_m_a__t.html">SX126x_DMA_t</a> sx126x_state</td>
         </tr>
       </table>
   </td>
@@ -962,9 +974,9 @@ Variables</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00011">11</a> of file <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html">lora_sx126x.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00017">17</a> of file <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html">lora_sx126x.c</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00282">SX126x_Available()</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00339">SX126x_DIO1_IRQ_Handler()</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00327">SX126x_GetRssi()</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00331">SX126x_GetSnr()</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00136">SX126x_Init()</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00263">SX126x_IsTxBusy()</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00267">SX126x_IsTxDone()</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00286">SX126x_Receive()</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00258">SX126x_SPI_RxCpltCallback()</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00249">SX126x_SPI_TxCpltCallback()</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00214">SX126x_TransmitDMA()</a>, and <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00271">SX126x_WaitTxComplete()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00302">SX126x_Available()</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00359">SX126x_DIO1_IRQ_Handler()</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00347">SX126x_GetRssi()</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00351">SX126x_GetSnr()</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00148">SX126x_Init()</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00283">SX126x_IsTxBusy()</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00287">SX126x_IsTxDone()</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00306">SX126x_Receive()</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00278">SX126x_SPI_RxCpltCallback()</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00269">SX126x_SPI_TxCpltCallback()</a>, <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00234">SX126x_TransmitDMA()</a>, and <a class="el" href="../../de/d0a/lora__sx126x_8c_source.html#l00291">SX126x_WaitTxComplete()</a>.</p>
 
 </div>
 </div>

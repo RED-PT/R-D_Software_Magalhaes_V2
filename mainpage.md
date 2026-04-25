@@ -1,134 +1,92 @@
-# Magalhães Flight Computer Documentation {#mainpage}
+# Magalhães Flight Computer {#mainpage}
 
-Welcome to the official documentation for the **Magalhães Flight Computer** - a TVC (Thrust Vector Control) rocket flight computer system developed by R&D Software V2.
+A TVC (Thrust Vector Control) flight computer for experimental rockets,
+developed by **R&D Software** at AeroTéc. The same firmware runs on two
+boards: a custom **Buzz V4** (STM32H743) and a **Nucleo F446ZE** dev
+board.
 
-## System Overview
-
-The Magalhães Flight Computer is a complete avionics system for experimental rockets featuring:
-
-- **Thrust Vector Control** - Active motor gimbal control for stabilization
-- **Multi-sensor Fusion** - IMU, barometer, magnetometer, GPS, and orientation sensors
-- **Real-time Telemetry** - LoRa radio communication with ground station
-- **Data Logging** - High-speed SD card logging for post-flight analysis
-- **Autonomous Operation** - Full flight state machine from armed to recovery
-
-## Hardware Platform
-
-| Component | Model | Description |
-|-----------|-------|-------------|
-| MCU | STM32F446ZE | ARM Cortex-M4 @ 180 MHz |
-| IMU | ASM330LHHX | 6-axis accel/gyro (6.6 kHz) |
-| Orientation | BNO055 | 9-DOF fusion (100 Hz) |
-| Barometer | MS5607 | Pressure/altitude (50 Hz) |
-| Magnetometer | MMC5983MA | 3-axis compass (100 Hz) |
-| GPS | u-blox NEO-7M | Position/velocity (1 Hz) |
-| Radio | E22 (SX1262) | LoRa 433/868 MHz |
-| Storage | microSD | FatFS logging |
-
-## Software Architecture
-
-The system uses FreeRTOS with 8 dedicated threads:
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                     Thread Architecture                          │
-├─────────────────────────────────────────────────────────────────┤
-│  Priority  │ Thread      │ Rate   │ Function                    │
-├────────────┼─────────────┼────────┼─────────────────────────────┤
-│  Highest   │ Sensors     │ Event  │ Sensor DMA handling         │
-│  High2     │ DataHandler │ Event  │ Data routing to queues      │
-│  High1     │ Radio       │ TDMA   │ LoRa communication          │
-│  High      │ Estimator   │ 100Hz  │ State estimation            │
-│  High      │ Controller  │ 100Hz  │ TVC control loop            │
-│  AbvNorm1  │ FSM         │ 20Hz   │ Flight state machine        │
-│  AbvNorm   │ Telemetry   │ 20Hz   │ Packet building             │
-│  Normal    │ SDCard      │ Event  │ Data logging                │
-└────────────┴─────────────┴────────┴─────────────────────────────┘
-```
-
-## Flight State Machine
-
-@image html fsm_diagram.png "Flight State Machine" width=800px
-
-The FSM manages the complete flight lifecycle:
-
-1. **BOOT** - Hardware initialization and sensor verification
-2. **IDLE** - Waiting for configuration from ground station
-3. **CONFIGED** - Flight profile loaded, ready for arming
-4. **ARMED** - Motor initialized, ready for launch or test
-5. **TEST_STAND** - Static thrust testing mode
-6. **FLIGHT** - Active flight (ignition → ascent → descent → landing)
-7. **ABORT** - Emergency shutdown
-8. **SAFE** - Post-flight safe state
-
-## Communication Protocol
-
-The system uses TDMA (Time Division Multiple Access) for ground station communication:
-
-```
-1000ms Superframe
-├─────┬─────┬─────┬─────┬─────┬─────┬─────┬─────┬─────┬─────┤
-│  0  │  1  │  2  │  3  │  4  │  5  │  6  │  7  │  8  │  9  │
-├─────┴─────┴─────┴─────┴─────┴─────┴─────┴─────┴─────┴─────┤
-│ Fast Telemetry (8 Hz)          │Slow │ GS  │
-│ IMU + Altitude + State         │GPS  │ RX  │
-└────────────────────────────────┴─────┴─────┘
-```
-
-## Module Documentation
-
-### Core Modules
-- @ref Flight_Computer - Central state machine and command processing
-- @ref Sensors - Sensor drivers and data acquisition
-- @ref Estimator - State estimation (altitude, velocity)
-- @ref Controller - TVC and motor control
-
-### Communication
-- @ref Radio_Communication - LoRa radio and TDMA protocol
-- @ref Telemetry - Packet formats and building
-
-### Data Management
-- @ref Data_Handler - Circular buffers and queue routing
-- @ref Storage - SD card logging with FatFS
-
-### Support
-- @ref HAL_Callbacks - Hardware interrupt handling
-- @ref Thread_Management - FreeRTOS thread creation
-
-## Ground Station Components
-
-### Python Dashboard
-Web-based ground station interface:
-- Real-time telemetry display
-- 3D rocket visualization
-- Map tracking
-- Command interface
-- Test data analysis
-
-### Arduino Ground Station
-Firmware for the ground station radio module:
-- TDMA synchronization
-- Command relay
-- Telemetry forwarding to PC
-
-## Building the Documentation
-
-Generate this documentation using Doxygen:
-
-```bash
-doxygen Doxyfile
-```
-
-Then open `docs/html/index.html` in a web browser.
-
-## Authors
-
-- **Tomás Teixeira** - Lead Developer
-
-## License
-
-This project is proprietary software developed for R&D purposes.
+This documentation is organised as a **guided tour**. If this is your
+first time reading the codebase, follow the pages in order. If you
+already know the system and want a specific function, use the sidebar
+or the search bar.
 
 ---
 
-*Generated with Doxygen - Magalhães Flight Computer v2.0*
+## Start here
+
+1. **@subpage getting_started** — set up your environment, flash a board,
+   talk to the ground station. ~10 minutes.
+2. **@subpage architecture_tour** — the eight FreeRTOS threads, how data
+   moves between them, and *why* it's split that way.
+3. **@subpage flight_lifecycle** — the FSM from BOOT to SAFE, including
+   what each transition expects from the rest of the system.
+4. **@subpage porting_guide** — adding a new MCU target or swapping a
+   sensor. Read this *after* the architecture tour.
+
+## Reference
+
+- **Module reference** — see the *Modules* item in the sidebar. Groups
+  are organised top-down: hardware → sensors → estimation → control →
+  comms → data → flight core → tests.
+- **File reference** — see *Files* in the sidebar.
+
+---
+
+## At a glance
+
+The flight computer is a hard-real-time system built on FreeRTOS. Eight
+threads cooperate via queues and notifications; nothing is shared
+through globals that can race.
+
+```
+   [ Sensors ] -- DMA done --> [ DataHandler ] --queue--> [ SDCard ]
+                                      |
+                                      +--queue--> [ Estimator (100Hz) ]
+                                                       |
+                                                       v
+                                                  [ Controller (100Hz) ]
+                                                       |
+                                                       v
+                                                    [ ESC PWM ]
+
+   [ FSM (20Hz) ] <-- commands -- [ Radio (TDMA) ] <-- ground station
+        |
+        +-- events --> [ Telemetry (20Hz) ] --packets--> [ Radio ]
+```
+
+Decisions you'll see throughout:
+
+- **Sensor reads are DMA-driven**, never blocking. The sensors thread
+  unblocks on a callback notification, not a delay.
+- **Telemetry uses TDMA**, not handshakes. The ground station sends a
+  sync packet at slot 0; the FC transmits in fixed slots. No collisions,
+  no retries, predictable airtime.
+- **State estimation is decoupled from control**. Estimator publishes;
+  controller subscribes. Either can be replaced without touching the
+  other.
+- **Hardware differences live in `config.h`**. The application code
+  never sees `&hspi5` vs `&hspi3` — only `SPI_MAG`, `SPI_LORA`, etc.
+
+For the rationale behind each, see @ref architecture_tour.
+
+---
+
+## Hardware
+
+Two boards are supported. They share `Codigo/` verbatim; everything
+board-specific is a macro in `config.h`.
+
+| Board | MCU | Clock | Radio | Notes |
+|-------|-----|-------|-------|-------|
+| **Buzz V4** (primary) | STM32H743ZIT6 (Cortex-M7) | 480 MHz | E22-900M22S via SPI | Custom PCB, D-Cache, 3 SRAM domains |
+| **Nucleo F446ZE** | STM32F446ZE (Cortex-M4) | 180 MHz | E22-xxxT30D via UART | Dev board, simpler memory model |
+
+Full pinouts and abstraction tables live in @ref getting_started and
+@ref porting_guide.
+
+---
+
+## Authors and licence
+
+**Tomás Teixeira** — lead developer.
+Proprietary, R&D internal use.

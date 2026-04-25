@@ -18,6 +18,7 @@ var _p_w_m___f_u_n_c_t_i_o_n_s_8h =
     [ "DC_to_Period", "da/d05/group___p_w_m_core.html#ga1bdac1566a405cda6498a4735171ce00", null ],
     [ "PWM_ArmESC", "d0/d0a/group___p_w_m_arm.html#gabb2e2dbd66c3fa015fe8698cf46e4f45", null ],
     [ "PWM_CancelRamp", "d9/d01/group___p_w_m_ramp.html#gacc4d23ffcdaf9b350bce719306bdb37a", null ],
+    [ "PWM_DebugTest", "da/d05/group___p_w_m_core.html#ga0903e2555a9104763fcd114204242d9a", null ],
     [ "PWM_EmergencyStop", "d0/d0a/group___p_w_m_arm.html#ga90248f9e5e6957e3238bfca224a26c8f", null ],
     [ "PWM_ESC_AcknowledgeBeep", "d5/d00/group___e_s_c_calibration.html#gaa4c1dabf162ddb956b71c7eac30b7a27", null ],
     [ "PWM_ESC_CalibrationUpdate", "d5/d00/group___e_s_c_calibration.html#ga3ba212e0bbb3dc306e217beee7cc99e8", null ],

@@ -186,8 +186,13 @@ Variables</h2></td></tr>
 <div class="textblock"><p>LoRa Radio Communication Thread Implementation (TDMA v3). </p>
 <dl class="section author"><dt>Author</dt><dd>Tomás Teixeira </dd></dl>
 <dl class="section date"><dt>Date</dt><dd>2025 </dd></dl>
-<dl class="section version"><dt>Version</dt><dd>3.0</dd></dl>
+<dl class="section version"><dt>Version</dt><dd>3.1</dd></dl>
 <p>Implements the LoRa radio communication system for the Magalhães Flight Computer using Time Division Multiple Access (TDMA) synchronization with the Ground Station.</p>
+<p>Two radio interface backends are compiled via preprocessor selection:</p><ul>
+<li><b>RADIO_INTERFACE_UART</b>: E22 module over UART DMA (F446ZE dev board), uses <a class="el" href="../../dd/d03/e22__uart__dma_8h.html" title="E22 LoRa module driver using UART with DMA for the Magalhaes Flight Computer.">e22_uart_dma.h</a> driver</li>
+<li><b>RADIO_INTERFACE_SPI</b>: SX126x over SPI DMA (Buzz V4 PCB / H743), uses <a class="el" href="../../db/d05/lora__sx126x_8h.html">lora_sx126x.h</a> driver</li>
+</ul>
+<p>Both backends share the same TDMA frame structure and telemetry layer.</p>
 <h2 class="doxsection"><a class="anchor" id="autotoc_md36"></a>
 TDMA Frame Structure</h2>
 <pre class="fragment">*   ├────────────────── 1000ms Superframe ──────────────────┤
@@ -248,9 +253,9 @@ Key Improvements in v3</h2>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00068">68</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00083">83</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00136">can_transmit()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00151">can_transmit()</a>.</p>
 
 </div>
 </div>
@@ -266,9 +271,9 @@ Key Improvements in v3</h2>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00065">65</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00080">80</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00130">advance_frame()</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00358">handle_synced_mode()</a>, and <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00422">handle_unsynced_mode()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00145">advance_frame()</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00373">handle_synced_mode()</a>, and <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00437">handle_unsynced_mode()</a>.</p>
 
 </div>
 </div>
@@ -284,7 +289,7 @@ Key Improvements in v3</h2>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00092">92</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00107">107</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
 
 </div>
 </div>
@@ -300,9 +305,9 @@ Key Improvements in v3</h2>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00073">73</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00088">88</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00358">handle_synced_mode()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00373">handle_synced_mode()</a>.</p>
 
 </div>
 </div>
@@ -318,9 +323,9 @@ Key Improvements in v3</h2>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00096">96</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00111">111</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00304">process_rx_byte()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00319">process_rx_byte()</a>.</p>
 
 </div>
 </div>
@@ -336,9 +341,9 @@ Key Improvements in v3</h2>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00064">64</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00079">79</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00120">get_current_slot()</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00125">get_time_in_slot()</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00358">handle_synced_mode()</a>, and <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00150">sync_to_gs()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00135">get_current_slot()</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00140">get_time_in_slot()</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00373">handle_synced_mode()</a>, and <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00165">sync_to_gs()</a>.</p>
 
 </div>
 </div>
@@ -354,9 +359,9 @@ Key Improvements in v3</h2>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00067">67</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00082">82</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00150">sync_to_gs()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00165">sync_to_gs()</a>.</p>
 
 </div>
 </div>
@@ -372,9 +377,9 @@ Key Improvements in v3</h2>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00066">66</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00081">81</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00358">handle_synced_mode()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00373">handle_synced_mode()</a>.</p>
 
 </div>
 </div>
@@ -390,9 +395,9 @@ Key Improvements in v3</h2>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00072">72</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00087">87</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00358">handle_synced_mode()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00373">handle_synced_mode()</a>.</p>
 
 </div>
 </div>
@@ -408,9 +413,9 @@ Key Improvements in v3</h2>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00071">71</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00086">86</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00358">handle_synced_mode()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00373">handle_synced_mode()</a>.</p>
 
 </div>
 </div>
@@ -426,9 +431,9 @@ Key Improvements in v3</h2>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00076">76</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00091">91</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00422">handle_unsynced_mode()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00437">handle_unsynced_mode()</a>.</p>
 
 </div>
 </div>
@@ -456,11 +461,11 @@ Key Improvements in v3</h2>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00130">130</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00145">145</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
 
-<p class="reference">References <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00065">FRAME_DURATION_MS</a>, and <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00079">tdma_ctx</a>.</p>
+<p class="reference">References <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00080">FRAME_DURATION_MS</a>, and <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00094">tdma_ctx</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00358">handle_synced_mode()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00373">handle_synced_mode()</a>.</p>
 <div id="dynsection-1" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the caller graph for this function:</div>
 <div id="dynsection-1-summary" class="dynsummary" style="display:block;">
 </div>
@@ -493,11 +498,11 @@ Key Improvements in v3</h2>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00136">136</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00151">151</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
 
-<p class="reference">References <a class="el" href="../../dc/d0b/e22__uart__dma_8c_source.html#l00163">E22_IsBusy()</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00068">E22_TURNAROUND_MS</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00099">last_tx_tick</a>, and <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00101">tx_done_this_slot</a>.</p>
+<p class="reference">References <a class="el" href="../../dc/d0b/e22__uart__dma_8c_source.html#l00169">E22_IsBusy()</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00083">E22_TURNAROUND_MS</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00114">last_tx_tick</a>, and <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00116">tx_done_this_slot</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00180">tx_fast_telemetry()</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00229">tx_pending_events()</a>, and <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00205">tx_slow_telemetry()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00195">tx_fast_telemetry()</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00244">tx_pending_events()</a>, and <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00220">tx_slow_telemetry()</a>.</p>
 <div id="dynsection-2" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the call graph for this function:</div>
 <div id="dynsection-2-summary" class="dynsummary" style="display:block;">
 </div>
@@ -536,11 +541,11 @@ Key Improvements in v3</h2>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00120">120</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00135">135</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
 
-<p class="reference">References <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00064">SLOT_DURATION_MS</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00079">tdma_ctx</a>, and <a class="el" href="../../de/d07/telemetry_8h_source.html#l00066">TDMA_SLOTS_PER_FRAME</a>.</p>
+<p class="reference">References <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00079">SLOT_DURATION_MS</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00094">tdma_ctx</a>, and <a class="el" href="../../de/d07/telemetry_8h_source.html#l00066">TDMA_SLOTS_PER_FRAME</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00358">handle_synced_mode()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00373">handle_synced_mode()</a>.</p>
 <div id="dynsection-4" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the caller graph for this function:</div>
 <div id="dynsection-4-summary" class="dynsummary" style="display:block;">
 </div>
@@ -573,11 +578,11 @@ Key Improvements in v3</h2>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00256">256</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00271">271</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
 
 <p class="reference">References <a class="el" href="../../de/d07/telemetry_8h_source.html#l00211">command_packet_t</a>, <a class="el" href="../../de/d07/telemetry_8h_source.html#l00228">sync_packet_t</a>, <a class="el" href="../../de/d07/telemetry_8h_source.html#l00048">TELEM_PACKET_COMMAND</a>, and <a class="el" href="../../de/d07/telemetry_8h_source.html#l00049">TELEM_PACKET_SYNC</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00304">process_rx_byte()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00319">process_rx_byte()</a>.</p>
 <div id="dynsection-5" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the caller graph for this function:</div>
 <div id="dynsection-5-summary" class="dynsummary" style="display:block;">
 </div>
@@ -610,11 +615,11 @@ Key Improvements in v3</h2>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00125">125</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00140">140</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
 
-<p class="reference">References <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00064">SLOT_DURATION_MS</a>, and <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00079">tdma_ctx</a>.</p>
+<p class="reference">References <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00079">SLOT_DURATION_MS</a>, and <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00094">tdma_ctx</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00358">handle_synced_mode()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00373">handle_synced_mode()</a>.</p>
 <div id="dynsection-6" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the caller graph for this function:</div>
 <div id="dynsection-6-summary" class="dynsummary" style="display:block;">
 </div>
@@ -647,11 +652,11 @@ Key Improvements in v3</h2>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00358">358</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00373">373</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
 
-<p class="reference">References <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00130">advance_frame()</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00065">FRAME_DURATION_MS</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00120">get_current_slot()</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00125">get_time_in_slot()</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00346">process_rx_data()</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00073">RX_SLOT_GUARD_MS</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00064">SLOT_DURATION_MS</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00066">SYNC_TIMEOUT_FRAMES</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00079">tdma_ctx</a>, <a class="el" href="../../de/d07/telemetry_8h_source.html#l00068">TDMA_SLOW_SLOT</a>, <a class="el" href="../../de/d07/telemetry_8h_source.html#l00067">TDMA_TX_SLOTS</a>, <a class="el" href="../../df/d08/radio__thread_8h_source.html#l00051">TDMA_UNSYNCED</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00101">tx_done_this_slot</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00072">TX_END_OFFSET_MS</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00180">tx_fast_telemetry()</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00229">tx_pending_events()</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00205">tx_slow_telemetry()</a>, and <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00071">TX_START_OFFSET_MS</a>.</p>
+<p class="reference">References <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00145">advance_frame()</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00080">FRAME_DURATION_MS</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00135">get_current_slot()</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00140">get_time_in_slot()</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00361">process_rx_data()</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00088">RX_SLOT_GUARD_MS</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00079">SLOT_DURATION_MS</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00081">SYNC_TIMEOUT_FRAMES</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00094">tdma_ctx</a>, <a class="el" href="../../de/d07/telemetry_8h_source.html#l00068">TDMA_SLOW_SLOT</a>, <a class="el" href="../../de/d07/telemetry_8h_source.html#l00067">TDMA_TX_SLOTS</a>, <a class="el" href="../../df/d08/radio__thread_8h_source.html#l00055">TDMA_UNSYNCED</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00116">tx_done_this_slot</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00087">TX_END_OFFSET_MS</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00195">tx_fast_telemetry()</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00244">tx_pending_events()</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00220">tx_slow_telemetry()</a>, and <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00086">TX_START_OFFSET_MS</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00469">radio_thread_function()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00484">radio_thread_function()</a>.</p>
 <div id="dynsection-7" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the call graph for this function:</div>
 <div id="dynsection-7-summary" class="dynsummary" style="display:block;">
 </div>
@@ -690,11 +695,11 @@ Key Improvements in v3</h2>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00422">422</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00437">437</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
 
-<p class="reference">References <a class="el" href="../../dc/d0b/e22__uart__dma_8c_source.html#l00163">E22_IsBusy()</a>, <a class="el" href="../../dd/d03/e22__uart__dma_8h_source.html#l00065">E22_OK</a>, <a class="el" href="../../dc/d0b/e22__uart__dma_8c_source.html#l00078">E22_Transmit()</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00065">FRAME_DURATION_MS</a>, <a class="el" href="../../d4/d0d/flight__computer_8c_source.html#l00086">fsm_ctx</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00099">last_tx_tick</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00100">last_unsync_beacon_tick</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00086">latest_baro</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00087">latest_bno</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00085">latest_imu</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00346">process_rx_data()</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00080">radio_stats</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00089">sensor_mutex</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00079">tdma_ctx</a>, <a class="el" href="../../d5/d0b/telemetry_8c_source.html#l00011">telemetry_build_fast()</a>, <a class="el" href="../../de/d07/telemetry_8h_source.html#l00130">telemetry_fast_t</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00229">tx_pending_events()</a>, and <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00076">UNSYNC_BEACON_INTERVAL_MS</a>.</p>
+<p class="reference">References <a class="el" href="../../dc/d0b/e22__uart__dma_8c_source.html#l00169">E22_IsBusy()</a>, <a class="el" href="../../dd/d03/e22__uart__dma_8h_source.html#l00064">E22_OK</a>, <a class="el" href="../../dc/d0b/e22__uart__dma_8c_source.html#l00084">E22_Transmit()</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00080">FRAME_DURATION_MS</a>, <a class="el" href="../../d4/d0d/flight__computer_8c_source.html#l00086">fsm_ctx</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00114">last_tx_tick</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00115">last_unsync_beacon_tick</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00101">latest_baro</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00102">latest_bno</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00100">latest_imu</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00361">process_rx_data()</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00095">radio_stats</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00104">sensor_mutex</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00094">tdma_ctx</a>, <a class="el" href="../../d5/d0b/telemetry_8c_source.html#l00011">telemetry_build_fast()</a>, <a class="el" href="../../de/d07/telemetry_8h_source.html#l00130">telemetry_fast_t</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00244">tx_pending_events()</a>, and <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00091">UNSYNC_BEACON_INTERVAL_MS</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00469">radio_thread_function()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00484">radio_thread_function()</a>.</p>
 <div id="dynsection-9" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the call graph for this function:</div>
 <div id="dynsection-9-summary" class="dynsummary" style="display:block;">
 </div>
@@ -733,11 +738,11 @@ Key Improvements in v3</h2>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00264">264</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00279">279</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
 
-<p class="reference">References <a class="el" href="../../d4/d0f/flight__computer_8h_source.html#l00397">fsm_cmd_msg_t::cmd</a>, <a class="el" href="../../d4/d0f/flight__computer_8h_source.html#l00398">fsm_cmd_msg_t::cmd_seq</a>, <a class="el" href="../../de/d07/telemetry_8h_source.html#l00211">command_packet_t</a>, <a class="el" href="../../d4/d0f/crc16_8c_source.html#l00010">crc16_calculate()</a>, <a class="el" href="../../d4/d0d/flight__computer_8c_source.html#l00578">fsm_send_command()</a>, <a class="el" href="../../d8/d06/structfsm__cmd__msg__t.html#ac5ca2260683246d06316ec89a578f4e7">fsm_cmd_msg_t::payload</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00080">radio_stats</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00150">sync_to_gs()</a>, and <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00079">tdma_ctx</a>.</p>
+<p class="reference">References <a class="el" href="../../d4/d0f/flight__computer_8h_source.html#l00397">fsm_cmd_msg_t::cmd</a>, <a class="el" href="../../d4/d0f/flight__computer_8h_source.html#l00398">fsm_cmd_msg_t::cmd_seq</a>, <a class="el" href="../../de/d07/telemetry_8h_source.html#l00211">command_packet_t</a>, <a class="el" href="../../d4/d0f/crc16_8c_source.html#l00010">crc16_calculate()</a>, <a class="el" href="../../d4/d0d/flight__computer_8c_source.html#l00578">fsm_send_command()</a>, <a class="el" href="../../d8/d06/structfsm__cmd__msg__t.html#ac5ca2260683246d06316ec89a578f4e7">fsm_cmd_msg_t::payload</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00095">radio_stats</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00165">sync_to_gs()</a>, and <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00094">tdma_ctx</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00304">process_rx_byte()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00319">process_rx_byte()</a>.</p>
 <div id="dynsection-11" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the call graph for this function:</div>
 <div id="dynsection-11-summary" class="dynsummary" style="display:block;">
 </div>
@@ -776,11 +781,11 @@ Key Improvements in v3</h2>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00304">304</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00319">319</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
 
-<p class="reference">References <a class="el" href="../../de/d07/telemetry_8h_source.html#l00211">command_packet_t</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00256">get_packet_size()</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00264">process_command()</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00293">process_sync()</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00093">rx_buffer</a>, <a class="el" href="../../dc/d0b/e22__uart__dma_8c_source.html#l00014">RX_BUFFER_SIZE</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00094">rx_idx</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00095">rx_last_byte_tick</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00096">RX_TIMEOUT_MS</a>, <a class="el" href="../../de/d07/telemetry_8h_source.html#l00228">sync_packet_t</a>, <a class="el" href="../../de/d07/telemetry_8h_source.html#l00048">TELEM_PACKET_COMMAND</a>, and <a class="el" href="../../de/d07/telemetry_8h_source.html#l00049">TELEM_PACKET_SYNC</a>.</p>
+<p class="reference">References <a class="el" href="../../de/d07/telemetry_8h_source.html#l00211">command_packet_t</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00271">get_packet_size()</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00279">process_command()</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00308">process_sync()</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00108">rx_buffer</a>, <a class="el" href="../../dc/d0b/e22__uart__dma_8c_source.html#l00020">RX_BUFFER_SIZE</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00109">rx_idx</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00110">rx_last_byte_tick</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00111">RX_TIMEOUT_MS</a>, <a class="el" href="../../de/d07/telemetry_8h_source.html#l00228">sync_packet_t</a>, <a class="el" href="../../de/d07/telemetry_8h_source.html#l00048">TELEM_PACKET_COMMAND</a>, and <a class="el" href="../../de/d07/telemetry_8h_source.html#l00049">TELEM_PACKET_SYNC</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00346">process_rx_data()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00361">process_rx_data()</a>.</p>
 <div id="dynsection-13" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the call graph for this function:</div>
 <div id="dynsection-13-summary" class="dynsummary" style="display:block;">
 </div>
@@ -819,11 +824,11 @@ Key Improvements in v3</h2>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00346">346</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00361">361</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
 
-<p class="reference">References <a class="el" href="../../dc/d0b/e22__uart__dma_8c_source.html#l00133">E22_Receive()</a>, and <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00304">process_rx_byte()</a>.</p>
+<p class="reference">References <a class="el" href="../../dc/d0b/e22__uart__dma_8c_source.html#l00139">E22_Receive()</a>, and <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00319">process_rx_byte()</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00358">handle_synced_mode()</a>, and <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00422">handle_unsynced_mode()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00373">handle_synced_mode()</a>, and <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00437">handle_unsynced_mode()</a>.</p>
 <div id="dynsection-15" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the call graph for this function:</div>
 <div id="dynsection-15-summary" class="dynsummary" style="display:block;">
 </div>
@@ -862,11 +867,11 @@ Key Improvements in v3</h2>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00293">293</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00308">308</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
 
-<p class="reference">References <a class="el" href="../../d4/d0f/crc16_8c_source.html#l00010">crc16_calculate()</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00080">radio_stats</a>, <a class="el" href="../../de/d07/telemetry_8h_source.html#l00228">sync_packet_t</a>, and <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00150">sync_to_gs()</a>.</p>
+<p class="reference">References <a class="el" href="../../d4/d0f/crc16_8c_source.html#l00010">crc16_calculate()</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00095">radio_stats</a>, <a class="el" href="../../de/d07/telemetry_8h_source.html#l00228">sync_packet_t</a>, and <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00165">sync_to_gs()</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00304">process_rx_byte()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00319">process_rx_byte()</a>.</p>
 <div id="dynsection-17" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the call graph for this function:</div>
 <div id="dynsection-17-summary" class="dynsummary" style="display:block;">
 </div>
@@ -909,11 +914,11 @@ Key Improvements in v3</h2>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00150">150</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00165">165</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
 
-<p class="reference">References <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00080">radio_stats</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00064">SLOT_DURATION_MS</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00067">SYNC_CORRECTION_THRESH</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00079">tdma_ctx</a>, <a class="el" href="../../de/d07/telemetry_8h_source.html#l00069">TDMA_RX_SLOT</a>, and <a class="el" href="../../df/d08/radio__thread_8h_source.html#l00052">TDMA_SYNCED</a>.</p>
+<p class="reference">References <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00095">radio_stats</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00079">SLOT_DURATION_MS</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00082">SYNC_CORRECTION_THRESH</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00094">tdma_ctx</a>, <a class="el" href="../../de/d07/telemetry_8h_source.html#l00069">TDMA_RX_SLOT</a>, and <a class="el" href="../../df/d08/radio__thread_8h_source.html#l00056">TDMA_SYNCED</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00264">process_command()</a>, and <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00293">process_sync()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00279">process_command()</a>, and <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00308">process_sync()</a>.</p>
 <div id="dynsection-19" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the caller graph for this function:</div>
 <div id="dynsection-19-summary" class="dynsummary" style="display:block;">
 </div>
@@ -946,11 +951,11 @@ Key Improvements in v3</h2>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00180">180</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00195">195</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
 
-<p class="reference">References <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00136">can_transmit()</a>, <a class="el" href="../../dd/d03/e22__uart__dma_8h_source.html#l00065">E22_OK</a>, <a class="el" href="../../dc/d0b/e22__uart__dma_8c_source.html#l00078">E22_Transmit()</a>, <a class="el" href="../../d4/d0d/flight__computer_8c_source.html#l00086">fsm_ctx</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00099">last_tx_tick</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00086">latest_baro</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00087">latest_bno</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00085">latest_imu</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00080">radio_stats</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00089">sensor_mutex</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00079">tdma_ctx</a>, <a class="el" href="../../d5/d0b/telemetry_8c_source.html#l00011">telemetry_build_fast()</a>, <a class="el" href="../../de/d07/telemetry_8h_source.html#l00130">telemetry_fast_t</a>, and <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00101">tx_done_this_slot</a>.</p>
+<p class="reference">References <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00151">can_transmit()</a>, <a class="el" href="../../dd/d03/e22__uart__dma_8h_source.html#l00064">E22_OK</a>, <a class="el" href="../../dc/d0b/e22__uart__dma_8c_source.html#l00084">E22_Transmit()</a>, <a class="el" href="../../d4/d0d/flight__computer_8c_source.html#l00086">fsm_ctx</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00114">last_tx_tick</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00101">latest_baro</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00102">latest_bno</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00100">latest_imu</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00095">radio_stats</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00104">sensor_mutex</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00094">tdma_ctx</a>, <a class="el" href="../../d5/d0b/telemetry_8c_source.html#l00011">telemetry_build_fast()</a>, <a class="el" href="../../de/d07/telemetry_8h_source.html#l00130">telemetry_fast_t</a>, and <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00116">tx_done_this_slot</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00358">handle_synced_mode()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00373">handle_synced_mode()</a>.</p>
 <div id="dynsection-20" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the call graph for this function:</div>
 <div id="dynsection-20-summary" class="dynsummary" style="display:block;">
 </div>
@@ -989,11 +994,11 @@ Key Improvements in v3</h2>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00229">229</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00244">244</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
 
-<p class="reference">References <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00136">can_transmit()</a>, <a class="el" href="../../d4/d0f/crc16_8c_source.html#l00010">crc16_calculate()</a>, <a class="el" href="../../dd/d03/e22__uart__dma_8h_source.html#l00065">E22_OK</a>, <a class="el" href="../../dc/d0b/e22__uart__dma_8c_source.html#l00078">E22_Transmit()</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00099">last_tx_tick</a>, <a class="el" href="../../d3/d02/create__threads_8c_source.html#l00078">queue_fsm_events</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00080">radio_stats</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00079">tdma_ctx</a>, and <a class="el" href="../../de/d07/telemetry_8h_source.html#l00192">telemetry_event_t</a>.</p>
+<p class="reference">References <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00151">can_transmit()</a>, <a class="el" href="../../d4/d0f/crc16_8c_source.html#l00010">crc16_calculate()</a>, <a class="el" href="../../dd/d03/e22__uart__dma_8h_source.html#l00064">E22_OK</a>, <a class="el" href="../../dc/d0b/e22__uart__dma_8c_source.html#l00084">E22_Transmit()</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00114">last_tx_tick</a>, <a class="el" href="../../d3/d02/create__threads_8c_source.html#l00078">queue_fsm_events</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00095">radio_stats</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00094">tdma_ctx</a>, and <a class="el" href="../../de/d07/telemetry_8h_source.html#l00192">telemetry_event_t</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00358">handle_synced_mode()</a>, and <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00422">handle_unsynced_mode()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00373">handle_synced_mode()</a>, and <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00437">handle_unsynced_mode()</a>.</p>
 <div id="dynsection-22" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the call graph for this function:</div>
 <div id="dynsection-22-summary" class="dynsummary" style="display:block;">
 </div>
@@ -1032,11 +1037,11 @@ Key Improvements in v3</h2>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00205">205</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00220">220</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
 
-<p class="reference">References <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00136">can_transmit()</a>, <a class="el" href="../../dd/d03/e22__uart__dma_8h_source.html#l00065">E22_OK</a>, <a class="el" href="../../dc/d0b/e22__uart__dma_8c_source.html#l00078">E22_Transmit()</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00099">last_tx_tick</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00086">latest_baro</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00088">latest_gps</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00080">radio_stats</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00089">sensor_mutex</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00079">tdma_ctx</a>, <a class="el" href="../../d5/d0b/telemetry_8c_source.html#l00071">telemetry_build_slow()</a>, <a class="el" href="../../de/d07/telemetry_8h_source.html#l00166">telemetry_slow_t</a>, and <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00101">tx_done_this_slot</a>.</p>
+<p class="reference">References <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00151">can_transmit()</a>, <a class="el" href="../../dd/d03/e22__uart__dma_8h_source.html#l00064">E22_OK</a>, <a class="el" href="../../dc/d0b/e22__uart__dma_8c_source.html#l00084">E22_Transmit()</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00114">last_tx_tick</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00101">latest_baro</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00103">latest_gps</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00095">radio_stats</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00104">sensor_mutex</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00094">tdma_ctx</a>, <a class="el" href="../../d5/d0b/telemetry_8c_source.html#l00071">telemetry_build_slow()</a>, <a class="el" href="../../de/d07/telemetry_8h_source.html#l00166">telemetry_slow_t</a>, and <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00116">tx_done_this_slot</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00358">handle_synced_mode()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00373">handle_synced_mode()</a>.</p>
 <div id="dynsection-24" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the call graph for this function:</div>
 <div id="dynsection-24-summary" class="dynsummary" style="display:block;">
 </div>
@@ -1073,9 +1078,9 @@ Key Improvements in v3</h2>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00099">99</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00114">114</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00136">can_transmit()</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00422">handle_unsynced_mode()</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00469">radio_thread_function()</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00180">tx_fast_telemetry()</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00229">tx_pending_events()</a>, and <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00205">tx_slow_telemetry()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00151">can_transmit()</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00437">handle_unsynced_mode()</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00484">radio_thread_function()</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00195">tx_fast_telemetry()</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00244">tx_pending_events()</a>, and <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00220">tx_slow_telemetry()</a>.</p>
 
 </div>
 </div>
@@ -1099,9 +1104,9 @@ Key Improvements in v3</h2>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00100">100</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00115">115</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00422">handle_unsynced_mode()</a>, and <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00469">radio_thread_function()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00437">handle_unsynced_mode()</a>, and <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00484">radio_thread_function()</a>.</p>
 
 </div>
 </div>
@@ -1125,9 +1130,9 @@ Key Improvements in v3</h2>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00086">86</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00101">101</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00422">handle_unsynced_mode()</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00106">radio_update_sensor_data()</a>, <a class="el" href="../../de/d0e/telemetry__thread_8c_source.html#l00057">telemetry_thread_function()</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00180">tx_fast_telemetry()</a>, and <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00205">tx_slow_telemetry()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00437">handle_unsynced_mode()</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00121">radio_update_sensor_data()</a>, <a class="el" href="../../de/d0e/telemetry__thread_8c_source.html#l00057">telemetry_thread_function()</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00195">tx_fast_telemetry()</a>, and <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00220">tx_slow_telemetry()</a>.</p>
 
 </div>
 </div>
@@ -1151,9 +1156,9 @@ Key Improvements in v3</h2>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00087">87</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00102">102</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00422">handle_unsynced_mode()</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00106">radio_update_sensor_data()</a>, <a class="el" href="../../de/d0e/telemetry__thread_8c_source.html#l00057">telemetry_thread_function()</a>, and <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00180">tx_fast_telemetry()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00437">handle_unsynced_mode()</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00121">radio_update_sensor_data()</a>, <a class="el" href="../../de/d0e/telemetry__thread_8c_source.html#l00057">telemetry_thread_function()</a>, and <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00195">tx_fast_telemetry()</a>.</p>
 
 </div>
 </div>
@@ -1177,9 +1182,9 @@ Key Improvements in v3</h2>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00088">88</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00103">103</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00106">radio_update_sensor_data()</a>, <a class="el" href="../../de/d0e/telemetry__thread_8c_source.html#l00057">telemetry_thread_function()</a>, and <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00205">tx_slow_telemetry()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00121">radio_update_sensor_data()</a>, <a class="el" href="../../de/d0e/telemetry__thread_8c_source.html#l00057">telemetry_thread_function()</a>, and <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00220">tx_slow_telemetry()</a>.</p>
 
 </div>
 </div>
@@ -1203,9 +1208,9 @@ Key Improvements in v3</h2>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00085">85</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00100">100</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00422">handle_unsynced_mode()</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00106">radio_update_sensor_data()</a>, <a class="el" href="../../de/d0e/telemetry__thread_8c_source.html#l00057">telemetry_thread_function()</a>, and <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00180">tx_fast_telemetry()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00437">handle_unsynced_mode()</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00121">radio_update_sensor_data()</a>, <a class="el" href="../../de/d0e/telemetry__thread_8c_source.html#l00057">telemetry_thread_function()</a>, and <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00195">tx_fast_telemetry()</a>.</p>
 
 </div>
 </div>
@@ -1229,9 +1234,9 @@ Key Improvements in v3</h2>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00093">93</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00108">108</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00304">process_rx_byte()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00319">process_rx_byte()</a>.</p>
 
 </div>
 </div>
@@ -1255,9 +1260,9 @@ Key Improvements in v3</h2>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00094">94</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00109">109</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00304">process_rx_byte()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00319">process_rx_byte()</a>.</p>
 
 </div>
 </div>
@@ -1281,9 +1286,9 @@ Key Improvements in v3</h2>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00095">95</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00110">110</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00304">process_rx_byte()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00319">process_rx_byte()</a>.</p>
 
 </div>
 </div>
@@ -1307,9 +1312,9 @@ Key Improvements in v3</h2>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00089">89</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00104">104</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00422">handle_unsynced_mode()</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00469">radio_thread_function()</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00106">radio_update_sensor_data()</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00180">tx_fast_telemetry()</a>, and <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00205">tx_slow_telemetry()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00437">handle_unsynced_mode()</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00484">radio_thread_function()</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00121">radio_update_sensor_data()</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00195">tx_fast_telemetry()</a>, and <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00220">tx_slow_telemetry()</a>.</p>
 
 </div>
 </div>
@@ -1333,9 +1338,9 @@ Key Improvements in v3</h2>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00101">101</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00116">116</a> of file <a class="el" href="../../de/d0c/radio__thread_8c_source.html">radio_thread.c</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00136">can_transmit()</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00358">handle_synced_mode()</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00469">radio_thread_function()</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00180">tx_fast_telemetry()</a>, and <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00205">tx_slow_telemetry()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00151">can_transmit()</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00373">handle_synced_mode()</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00484">radio_thread_function()</a>, <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00195">tx_fast_telemetry()</a>, and <a class="el" href="../../de/d0c/radio__thread_8c_source.html#l00220">tx_slow_telemetry()</a>.</p>
 
 </div>
 </div>

@@ -21,8 +21,8 @@
 <g id="Node000002" class="node">
 <title>Node2</title>
 <g id="a_Node000002"><a xlink:title=" ">
-<polygon fill="#e0e0e0" stroke="#999999" points="128.5,-23 35.25,-23 35.25,0 128.5,0 128.5,-23"/>
-<text xml:space="preserve" text-anchor="middle" x="81.88" y="-8.55" font-family="Segoe UI" font-size="11.00">stm32f4xx_hal.h</text>
+<polygon fill="#e0e0e0" stroke="#999999" points="106,-23 57.75,-23 57.75,0 106,0 106,-23"/>
+<text xml:space="preserve" text-anchor="middle" x="81.88" y="-8.55" font-family="Segoe UI" font-size="11.00">main.h</text>
 </a>
 </g>
 </g>

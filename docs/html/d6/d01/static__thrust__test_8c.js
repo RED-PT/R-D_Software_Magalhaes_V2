@@ -1,5 +1,6 @@
 var static__thrust__test_8c =
 [
+    [ "LOADCELL_SCALE_FACTOR", "d6/d01/static__thrust__test_8c.html#a7a4ce6e81dde6ca543d6c9658e21ce7a", null ],
     [ "save_test_data_to_sd", "d6/d01/static__thrust__test_8c.html#a2db4dd4bcbbcc3e094a0e8439f3012f1", null ],
     [ "StaticTest_Cancel", "d4/d07/group___static_test_a_p_i.html#ga333e97cbf4dc1a22245b69e191c91af6", null ],
     [ "StaticTest_GetContext", "d4/d07/group___static_test_a_p_i.html#ga05ce9f371fc3b790f2f82ed84cccd762", null ],

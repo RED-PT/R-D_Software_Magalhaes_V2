@@ -5,6 +5,7 @@ var struct_m_m_c5983_m_a__t =
     [ "mag_x_raw", "d0/d0b/struct_m_m_c5983_m_a__t.html#a0c0da11541662ea6bcb3ed13770de88c", null ],
     [ "mag_y_raw", "d0/d0b/struct_m_m_c5983_m_a__t.html#a8647d9a63ebb6d3bc14c24811455697e", null ],
     [ "mag_z_raw", "d0/d0b/struct_m_m_c5983_m_a__t.html#abbd5f3eafe98e604dc0f1697c1a28429", null ],
-    [ "read_buffer", "d0/d0b/struct_m_m_c5983_m_a__t.html#a29f726226335df5a6e264c5f757ce3cd", null ],
-    [ "temp_raw", "d0/d0b/struct_m_m_c5983_m_a__t.html#aac7a416ec6a89e2c600412d535758c7d", null ]
+    [ "read_buffer", "d0/d0b/struct_m_m_c5983_m_a__t.html#a333305e55fe91663393e213a51fc22f0", null ],
+    [ "temp_raw", "d0/d0b/struct_m_m_c5983_m_a__t.html#aac7a416ec6a89e2c600412d535758c7d", null ],
+    [ "tx_buffer", "d0/d0b/struct_m_m_c5983_m_a__t.html#ab21a9c3593f3a1bf0f6aa4d769881677", null ]
 ];

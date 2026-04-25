@@ -111,9 +111,8 @@ $(function() {
 <a href="#details">More...</a></p>
 <div class="textblock"><code>#include &lt;stdint.h&gt;</code><br />
 <code>#include &lt;stdbool.h&gt;</code><br />
-<code>#include &quot;stm32f4xx_hal.h&quot;</code><br />
+<code>#include &quot;<a class="el" href="../../df/d0c/_s_t_m32_f446_z_e___magalhaes_2_core_2_inc_2config_8h_source.html">config.h</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="../../d5/d04/defs_8h_source.html">defs.h</a>&quot;</code><br />
-<code>#include &quot;config.h&quot;</code><br />
 </div><div class="textblock"><div id="dynsection-0" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Include dependency graph for MMC5983MA.h:</div>
 <div id="dynsection-0-summary" class="dynsummary" style="display:block;">
 </div>
@@ -211,16 +210,17 @@ Features</h1>
 <li>3-axis magnetic field measurement</li>
 <li>18-bit resolution (0.0625 mGauss/LSB)</li>
 <li>Full scale range: +/-8 Gauss</li>
-<li>SPI interface up to 10 MHz</li>
+<li>SPI interface up to 10 MHz (connected via SPI_MAG; see config.h)</li>
 <li>Automatic SET/RESET for offset elimination</li>
 <li>DMA-based data transfer</li>
+<li>Supports multiple board targets (F446ZE Nucleo uses SPI3, H743ZI Buzz V4 uses SPI6)</li>
 </ul>
 <h1 class="doxsection"><a class="anchor" id="mmc_usage"></a>
 Usage</h1>
 <div class="fragment"><div class="line"><a class="code hl_struct" href="../../d0/d0b/struct_m_m_c5983_m_a__t.html">MMC5983MA_t</a> mag;</div>
 <div class="line"><a class="code hl_struct" href="../../db/d00/struct_m_a_g__t.html">MAG_t</a> data;</div>
 <div class="line"> </div>
-<div class="line"><a class="code hl_function" href="../../d7/d06/group___m_m_c_a_p_i.html#ga3b1d9ad4a701329993e5cf9410472877">MMC5983MA_Init</a>(&amp;mag, &amp;hspi1);</div>
+<div class="line"><a class="code hl_function" href="../../d7/d06/group___m_m_c_a_p_i.html#ga3b1d9ad4a701329993e5cf9410472877">MMC5983MA_Init</a>(&amp;mag, &amp;<a class="code hl_variable" href="../../df/d0c/_s_t_m32_f446_z_e___magalhaes_2_core_2_inc_2config_8h.html#a9c6222bae4d0328dd843ae099623b40b">hspi1</a>);</div>
 <div class="line"><a class="code hl_function" href="../../d7/d06/group___m_m_c_a_p_i.html#ga04a669c04a95b92be70651920d911732">MMC5983MA_Configure</a>(&amp;mag);</div>
 <div class="line"> </div>
 <div class="line"><span class="comment">// Triggered by data ready or timer</span></div>
@@ -229,11 +229,12 @@ Usage</h1>
 <div class="line"><span class="comment">// After DMA complete</span></div>
 <div class="line"><a class="code hl_function" href="../../d7/d06/group___m_m_c_a_p_i.html#gaa0de0066df1c9c8b3d6efaa1df7e63b9">MMC5983MA_ParseDMABuffer</a>(&amp;mag);</div>
 <div class="line"><a class="code hl_function" href="../../d7/d06/group___m_m_c_a_p_i.html#ga10b92b8a9c57116a839b6c023b0aef70">MMC5983MA_ProcessData</a>(&amp;mag, &amp;data);</div>
-<div class="ttc" id="agroup___m_m_c_a_p_i_html_ga04a669c04a95b92be70651920d911732"><div class="ttname"><a href="../../d7/d06/group___m_m_c_a_p_i.html#ga04a669c04a95b92be70651920d911732">MMC5983MA_Configure</a></div><div class="ttdeci">bool MMC5983MA_Configure(MMC5983MA_t *dev)</div><div class="ttdoc">Configure MMC5983MA operating parameters.</div><div class="ttdef"><b>Definition</b> <a href="../../d3/d01/_m_m_c5983_m_a_8c_source.html#l00052">MMC5983MA.c:52</a></div></div>
-<div class="ttc" id="agroup___m_m_c_a_p_i_html_ga10b92b8a9c57116a839b6c023b0aef70"><div class="ttname"><a href="../../d7/d06/group___m_m_c_a_p_i.html#ga10b92b8a9c57116a839b6c023b0aef70">MMC5983MA_ProcessData</a></div><div class="ttdeci">bool MMC5983MA_ProcessData(MMC5983MA_t *dev, MAG_t *output)</div><div class="ttdoc">Process raw data into engineering units.</div><div class="ttdef"><b>Definition</b> <a href="../../d3/d01/_m_m_c5983_m_a_8c_source.html#l00132">MMC5983MA.c:132</a></div></div>
-<div class="ttc" id="agroup___m_m_c_a_p_i_html_ga1da87a9cae19188faed6e2ad5e963a06"><div class="ttname"><a href="../../d7/d06/group___m_m_c_a_p_i.html#ga1da87a9cae19188faed6e2ad5e963a06">MMC5983MA_StartReadDMA</a></div><div class="ttdeci">bool MMC5983MA_StartReadDMA(MMC5983MA_t *dev)</div><div class="ttdoc">Start DMA read of magnetic field data.</div><div class="ttdef"><b>Definition</b> <a href="../../d3/d01/_m_m_c5983_m_a_8c_source.html#l00087">MMC5983MA.c:87</a></div></div>
-<div class="ttc" id="agroup___m_m_c_a_p_i_html_ga3b1d9ad4a701329993e5cf9410472877"><div class="ttname"><a href="../../d7/d06/group___m_m_c_a_p_i.html#ga3b1d9ad4a701329993e5cf9410472877">MMC5983MA_Init</a></div><div class="ttdeci">bool MMC5983MA_Init(MMC5983MA_t *dev, SPI_HandleTypeDef *hspi)</div><div class="ttdoc">Initialize MMC5983MA driver.</div><div class="ttdef"><b>Definition</b> <a href="../../d3/d01/_m_m_c5983_m_a_8c_source.html#l00017">MMC5983MA.c:17</a></div></div>
-<div class="ttc" id="agroup___m_m_c_a_p_i_html_gaa0de0066df1c9c8b3d6efaa1df7e63b9"><div class="ttname"><a href="../../d7/d06/group___m_m_c_a_p_i.html#gaa0de0066df1c9c8b3d6efaa1df7e63b9">MMC5983MA_ParseDMABuffer</a></div><div class="ttdeci">void MMC5983MA_ParseDMABuffer(MMC5983MA_t *dev)</div><div class="ttdoc">Parse DMA buffer into raw values.</div><div class="ttdef"><b>Definition</b> <a href="../../d3/d01/_m_m_c5983_m_a_8c_source.html#l00106">MMC5983MA.c:106</a></div></div>
+<div class="ttc" id="a_s_t_m32_f446_z_e___magalhaes_2_core_2_inc_2config_8h_html_a9c6222bae4d0328dd843ae099623b40b"><div class="ttname"><a href="../../df/d0c/_s_t_m32_f446_z_e___magalhaes_2_core_2_inc_2config_8h.html#a9c6222bae4d0328dd843ae099623b40b">hspi1</a></div><div class="ttdeci">SPI_HandleTypeDef hspi1</div></div>
+<div class="ttc" id="agroup___m_m_c_a_p_i_html_ga04a669c04a95b92be70651920d911732"><div class="ttname"><a href="../../d7/d06/group___m_m_c_a_p_i.html#ga04a669c04a95b92be70651920d911732">MMC5983MA_Configure</a></div><div class="ttdeci">bool MMC5983MA_Configure(MMC5983MA_t *dev)</div><div class="ttdoc">Configure MMC5983MA operating parameters.</div><div class="ttdef"><b>Definition</b> <a href="../../d3/d01/_m_m_c5983_m_a_8c_source.html#l00063">MMC5983MA.c:63</a></div></div>
+<div class="ttc" id="agroup___m_m_c_a_p_i_html_ga10b92b8a9c57116a839b6c023b0aef70"><div class="ttname"><a href="../../d7/d06/group___m_m_c_a_p_i.html#ga10b92b8a9c57116a839b6c023b0aef70">MMC5983MA_ProcessData</a></div><div class="ttdeci">bool MMC5983MA_ProcessData(MMC5983MA_t *dev, MAG_t *output)</div><div class="ttdoc">Process raw data into engineering units.</div><div class="ttdef"><b>Definition</b> <a href="../../d3/d01/_m_m_c5983_m_a_8c_source.html#l00142">MMC5983MA.c:142</a></div></div>
+<div class="ttc" id="agroup___m_m_c_a_p_i_html_ga1da87a9cae19188faed6e2ad5e963a06"><div class="ttname"><a href="../../d7/d06/group___m_m_c_a_p_i.html#ga1da87a9cae19188faed6e2ad5e963a06">MMC5983MA_StartReadDMA</a></div><div class="ttdeci">bool MMC5983MA_StartReadDMA(MMC5983MA_t *dev)</div><div class="ttdoc">Start DMA read of magnetic field data.</div><div class="ttdef"><b>Definition</b> <a href="../../d3/d01/_m_m_c5983_m_a_8c_source.html#l00098">MMC5983MA.c:98</a></div></div>
+<div class="ttc" id="agroup___m_m_c_a_p_i_html_ga3b1d9ad4a701329993e5cf9410472877"><div class="ttname"><a href="../../d7/d06/group___m_m_c_a_p_i.html#ga3b1d9ad4a701329993e5cf9410472877">MMC5983MA_Init</a></div><div class="ttdeci">bool MMC5983MA_Init(MMC5983MA_t *dev, SPI_HandleTypeDef *hspi)</div><div class="ttdoc">Initialize MMC5983MA driver.</div><div class="ttdef"><b>Definition</b> <a href="../../d3/d01/_m_m_c5983_m_a_8c_source.html#l00028">MMC5983MA.c:28</a></div></div>
+<div class="ttc" id="agroup___m_m_c_a_p_i_html_gaa0de0066df1c9c8b3d6efaa1df7e63b9"><div class="ttname"><a href="../../d7/d06/group___m_m_c_a_p_i.html#gaa0de0066df1c9c8b3d6efaa1df7e63b9">MMC5983MA_ParseDMABuffer</a></div><div class="ttdeci">void MMC5983MA_ParseDMABuffer(MMC5983MA_t *dev)</div><div class="ttdoc">Parse DMA buffer into raw values.</div><div class="ttdef"><b>Definition</b> <a href="../../d3/d01/_m_m_c5983_m_a_8c_source.html#l00116">MMC5983MA.c:116</a></div></div>
 <div class="ttc" id="astruct_m_a_g__t_html"><div class="ttname"><a href="../../db/d00/struct_m_a_g__t.html">MAG_t</a></div><div class="ttdoc">Magnetometer data structure (MMC5983MA 3-axis sensor).</div><div class="ttdef"><b>Definition</b> <a href="../../d5/d04/defs_8h_source.html#l00062">defs.h:62</a></div></div>
 <div class="ttc" id="astruct_m_m_c5983_m_a__t_html"><div class="ttname"><a href="../../d0/d0b/struct_m_m_c5983_m_a__t.html">MMC5983MA_t</a></div><div class="ttdoc">MMC5983MA driver context.</div><div class="ttdef"><b>Definition</b> <a href="../../d4/d0e/_m_m_c5983_m_a_8h_source.html#l00098">MMC5983MA.h:98</a></div></div>
 </div><!-- fragment --><dl class="section see"><dt>See also</dt><dd><a class="el" href="../../db/d00/struct_m_a_g__t.html" title="Magnetometer data structure (MMC5983MA 3-axis sensor).">MAG_t</a> for output data structure </dd></dl>

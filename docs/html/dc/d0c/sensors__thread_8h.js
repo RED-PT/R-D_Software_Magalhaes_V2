@@ -28,5 +28,5 @@ var sensors__thread_8h =
     [ "imu_device", "d5/d02/group___sensor_instances.html#ga5941fdf22f4e99839556fe1540a81232", null ],
     [ "mag_device", "d5/d02/group___sensor_instances.html#ga9bb445c821c8850eb07afc9c7a4ec717", null ],
     [ "spi1_active_sensor", "d7/d0c/group___sensor_bus_tracking.html#ga9341c303ff0629cc51ba13cdd7e0c21b", null ],
-    [ "spi3_active_sensor", "d7/d0c/group___sensor_bus_tracking.html#ga70b8d7beeada26526dc6ca712893863c", null ]
+    [ "spi_mag_active_sensor", "d7/d0c/group___sensor_bus_tracking.html#ga45603ab2dbaf4b2eb8d988b176304974", null ]
 ];

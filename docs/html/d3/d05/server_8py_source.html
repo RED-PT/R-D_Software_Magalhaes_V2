@@ -695,128 +695,150 @@ $(function() {
 <div class="line"><a id="l00545" name="l00545"></a><span class="lineno"><a class="line" href="../../d9/d01/namespaceserver.html#ad81539608721e4b8ffad6e7bb45dd34b">  545</a></span>app = FastAPI(lifespan=lifespan)</div>
 <div class="line"><a id="l00546" name="l00546"></a><span class="lineno"><a class="line" href="../../d9/d01/namespaceserver.html#a704886b5db3559c120141de6629f4fb7">  546</a></span>app.mount(<span class="stringliteral">&#39;/static&#39;</span>, StaticFiles(directory=<span class="stringliteral">&#39;web&#39;</span>, html=<span class="keyword">True</span>), name=<span class="stringliteral">&#39;static&#39;</span>)</div>
 <div class="line"><a id="l00547" name="l00547"></a><span class="lineno">  547</span> </div>
-<div class="line"><a id="l00548" name="l00548"></a><span class="lineno"><a class="line" href="../../d9/d01/namespaceserver.html#a5caf8f6b4231a6cd3e7f1023fce7bb02">  548</a></span>manager = <a class="code hl_class" href="../../dd/d06/classserver_1_1_connection_manager.html">ConnectionManager</a>()</div>
-<div class="line"><a id="l00549" name="l00549"></a><span class="lineno">  549</span> </div>
-<div class="line"><a id="l00550" name="l00550"></a><span class="lineno">  550</span> </div>
-<div class="line"><a id="l00551" name="l00551"></a><span class="lineno">  551</span><span class="preprocessor">@app.get(&#39;/&#39;)</span></div>
+<div class="line"><a id="l00548" name="l00548"></a><span class="lineno">  548</span><span class="comment"># Disable caching for development - forces browser to always get fresh files</span></div>
+<div class="line"><a id="l00549" name="l00549"></a><span class="lineno">  549</span><span class="keyword">from</span> starlette.middleware.base <span class="keyword">import</span> BaseHTTPMiddleware</div>
+<div class="line"><a id="l00550" name="l00550"></a><span class="lineno">  550</span><span class="keyword">from</span> starlette.responses <span class="keyword">import</span> Response</div>
+<div class="line"><a id="l00551" name="l00551"></a><span class="lineno">  551</span> </div>
 <div class="foldopen" id="foldopen00552" data-start="" data-end="">
-<div class="line"><a id="l00552" name="l00552"></a><span class="lineno"><a class="line" href="../../d9/d01/namespaceserver.html#a38e8b72e78d2cfa9a1a7f75fbc8acc67">  552</a></span><span class="keyword">def </span><a class="code hl_function" href="../../d9/d01/namespaceserver.html#a38e8b72e78d2cfa9a1a7f75fbc8acc67">index</a>():</div>
-<div class="line"><a id="l00553" name="l00553"></a><span class="lineno">  553</span>    <span class="keywordflow">return</span> FileResponse(<span class="stringliteral">&#39;web/index.html&#39;</span>)</div>
-<div class="line"><a id="l00554" name="l00554"></a><span class="lineno">  554</span> </div>
-<div class="line"><a id="l00555" name="l00555"></a><span class="lineno">  555</span> </div>
-<div class="line"><a id="l00556" name="l00556"></a><span class="lineno">  556</span><span class="preprocessor">@app.get(&#39;/api/ports&#39;)</span></div>
+<div class="line"><a id="l00552" name="l00552"></a><span class="lineno"><a class="line" href="../../d1/d0b/classserver_1_1_no_cache_middleware.html">  552</a></span><span class="keyword">class </span><a class="code hl_class" href="../../d1/d0b/classserver_1_1_no_cache_middleware.html">NoCacheMiddleware</a>(<a class="code hl_class" href="../../d9/d0d/class_base_h_t_t_p_middleware.html">BaseHTTPMiddleware</a>):</div>
+<div class="foldopen" id="foldopen00553" data-start="" data-end="">
+<div class="line"><a id="l00553" name="l00553"></a><span class="lineno"><a class="line" href="../../d1/d0b/classserver_1_1_no_cache_middleware.html#a14c3158d651c955a5c9962845a48efcb">  553</a></span>    <span class="keyword">async def </span><a class="code hl_function" href="../../d1/d0b/classserver_1_1_no_cache_middleware.html#a14c3158d651c955a5c9962845a48efcb">dispatch</a>(self, request, call_next):</div>
+<div class="line"><a id="l00554" name="l00554"></a><span class="lineno">  554</span>        response: Response = await call_next(request)</div>
+<div class="line"><a id="l00555" name="l00555"></a><span class="lineno">  555</span>        <span class="keywordflow">if</span> request.url.path.startswith(<span class="stringliteral">&#39;/static&#39;</span>):</div>
+<div class="line"><a id="l00556" name="l00556"></a><span class="lineno">  556</span>            response.headers[<span class="stringliteral">&#39;Cache-Control&#39;</span>] = <span class="stringliteral">&#39;no-cache, no-store, must-revalidate&#39;</span></div>
+<div class="line"><a id="l00557" name="l00557"></a><span class="lineno">  557</span>            response.headers[<span class="stringliteral">&#39;Pragma&#39;</span>] = <span class="stringliteral">&#39;no-cache&#39;</span></div>
+<div class="line"><a id="l00558" name="l00558"></a><span class="lineno">  558</span>            response.headers[<span class="stringliteral">&#39;Expires&#39;</span>] = <span class="stringliteral">&#39;0&#39;</span></div>
+<div class="line"><a id="l00559" name="l00559"></a><span class="lineno">  559</span>        <span class="keywordflow">return</span> response</div>
+<div class="line"><a id="l00560" name="l00560"></a><span class="lineno">  560</span> </div>
 </div>
-<div class="foldopen" id="foldopen00557" data-start="" data-end="">
-<div class="line"><a id="l00557" name="l00557"></a><span class="lineno"><a class="line" href="../../d9/d01/namespaceserver.html#a507bc54a6a6892bf91aa490f18ed9069">  557</a></span><span class="keyword">def </span><a class="code hl_function" href="../../d9/d01/namespaceserver.html#a507bc54a6a6892bf91aa490f18ed9069">list_ports</a>():</div>
-<div class="line"><a id="l00558" name="l00558"></a><span class="lineno">  558</span>    ports = []</div>
-<div class="line"><a id="l00559" name="l00559"></a><span class="lineno">  559</span>    <span class="keywordflow">for</span> port <span class="keywordflow">in</span> serial.tools.list_ports.comports():</div>
-<div class="line"><a id="l00560" name="l00560"></a><span class="lineno">  560</span>        ports.append({<span class="stringliteral">&#39;device&#39;</span>: port.device, <span class="stringliteral">&#39;description&#39;</span>: port.description})</div>
-<div class="line"><a id="l00561" name="l00561"></a><span class="lineno">  561</span>    <span class="keywordflow">return</span> {<span class="stringliteral">&#39;ports&#39;</span>: ports}</div>
+<div class="line"><a id="l00561" name="l00561"></a><span class="lineno">  561</span>app.add_middleware(NoCacheMiddleware)</div>
 <div class="line"><a id="l00562" name="l00562"></a><span class="lineno">  562</span> </div>
-<div class="line"><a id="l00563" name="l00563"></a><span class="lineno">  563</span><span class="preprocessor">@app.get(&#39;/api/status&#39;)</span></div>
 </div>
-<div class="foldopen" id="foldopen00564" data-start="" data-end="">
-<div class="line"><a id="l00564" name="l00564"></a><span class="lineno"><a class="line" href="../../d9/d01/namespaceserver.html#a26c8f3fe8c3057ec3becbfb1b69c9122">  564</a></span><span class="keyword">def </span><a class="code hl_function" href="../../d9/d01/namespaceserver.html#a26c8f3fe8c3057ec3becbfb1b69c9122">api_status</a>():</div>
-<div class="line"><a id="l00565" name="l00565"></a><span class="lineno">  565</span>    last_rx = <span class="keywordtype">None</span></div>
-<div class="line"><a id="l00566" name="l00566"></a><span class="lineno">  566</span>    last_error = <span class="keywordtype">None</span></div>
-<div class="line"><a id="l00567" name="l00567"></a><span class="lineno">  567</span>    <span class="keywordflow">if</span> app.state.reader:</div>
-<div class="line"><a id="l00568" name="l00568"></a><span class="lineno">  568</span>        last_rx = app.state.reader.last_rx_time</div>
-<div class="line"><a id="l00569" name="l00569"></a><span class="lineno">  569</span>        last_error = app.state.reader.last_error</div>
-<div class="line"><a id="l00570" name="l00570"></a><span class="lineno">  570</span>    <span class="keywordflow">return</span> {</div>
-<div class="line"><a id="l00571" name="l00571"></a><span class="lineno">  571</span>        <span class="stringliteral">&#39;connected&#39;</span>: bool(app.state.reader),</div>
-<div class="line"><a id="l00572" name="l00572"></a><span class="lineno">  572</span>        <span class="stringliteral">&#39;port&#39;</span>: app.state.connected_port,</div>
-<div class="line"><a id="l00573" name="l00573"></a><span class="lineno">  573</span>        <span class="stringliteral">&#39;last_rx&#39;</span>: last_rx,</div>
-<div class="line"><a id="l00574" name="l00574"></a><span class="lineno">  574</span>        <span class="stringliteral">&#39;last_error&#39;</span>: last_error,</div>
-<div class="line"><a id="l00575" name="l00575"></a><span class="lineno">  575</span>    }</div>
-<div class="line"><a id="l00576" name="l00576"></a><span class="lineno">  576</span> </div>
-<div class="line"><a id="l00577" name="l00577"></a><span class="lineno">  577</span><span class="preprocessor">@app.get(&#39;/api/help&#39;)</span></div>
+<div class="line"><a id="l00563" name="l00563"></a><span class="lineno"><a class="line" href="../../d9/d01/namespaceserver.html#a5caf8f6b4231a6cd3e7f1023fce7bb02">  563</a></span>manager = <a class="code hl_class" href="../../dd/d06/classserver_1_1_connection_manager.html">ConnectionManager</a>()</div>
+<div class="line"><a id="l00564" name="l00564"></a><span class="lineno">  564</span> </div>
+<div class="line"><a id="l00565" name="l00565"></a><span class="lineno">  565</span> </div>
+<div class="line"><a id="l00566" name="l00566"></a><span class="lineno">  566</span><span class="preprocessor">@app.get(&#39;/&#39;)</span></div>
+<div class="foldopen" id="foldopen00567" data-start="" data-end="">
+<div class="line"><a id="l00567" name="l00567"></a><span class="lineno"><a class="line" href="../../d9/d01/namespaceserver.html#a38e8b72e78d2cfa9a1a7f75fbc8acc67">  567</a></span><span class="keyword">def </span><a class="code hl_function" href="../../d9/d01/namespaceserver.html#a38e8b72e78d2cfa9a1a7f75fbc8acc67">index</a>():</div>
+<div class="line"><a id="l00568" name="l00568"></a><span class="lineno">  568</span>    <span class="keywordflow">return</span> FileResponse(<span class="stringliteral">&#39;web/index.html&#39;</span>)</div>
+<div class="line"><a id="l00569" name="l00569"></a><span class="lineno">  569</span> </div>
+<div class="line"><a id="l00570" name="l00570"></a><span class="lineno">  570</span> </div>
+<div class="line"><a id="l00571" name="l00571"></a><span class="lineno">  571</span><span class="preprocessor">@app.get(&#39;/api/ports&#39;)</span></div>
 </div>
-<div class="foldopen" id="foldopen00578" data-start="" data-end="">
-<div class="line"><a id="l00578" name="l00578"></a><span class="lineno"><a class="line" href="../../d9/d01/namespaceserver.html#aea1519a04b01e4880aff3dc7dd4943b3">  578</a></span><span class="keyword">def </span><a class="code hl_function" href="../../d9/d01/namespaceserver.html#aea1519a04b01e4880aff3dc7dd4943b3">api_help</a>():</div>
-<div class="line"><a id="l00579" name="l00579"></a><span class="lineno">  579</span>    profiles = []</div>
-<div class="line"><a id="l00580" name="l00580"></a><span class="lineno">  580</span>    <span class="keywordflow">for</span> key, value <span class="keywordflow">in</span> PROFILE_DETAILS.items():</div>
-<div class="line"><a id="l00581" name="l00581"></a><span class="lineno">  581</span>        profiles.append({<span class="stringliteral">&#39;id&#39;</span>: key, **value})</div>
-<div class="line"><a id="l00582" name="l00582"></a><span class="lineno">  582</span>    <span class="keywordflow">return</span> {</div>
-<div class="line"><a id="l00583" name="l00583"></a><span class="lineno">  583</span>        <span class="stringliteral">&#39;commands&#39;</span>: [{<span class="stringliteral">&#39;cmd&#39;</span>: c[0], <span class="stringliteral">&#39;name&#39;</span>: c[1], <span class="stringliteral">&#39;desc&#39;</span>: c[2]} <span class="keywordflow">for</span> c <span class="keywordflow">in</span> COMMANDS_DOC],</div>
-<div class="line"><a id="l00584" name="l00584"></a><span class="lineno">  584</span>        <span class="stringliteral">&#39;profiles&#39;</span>: profiles,</div>
-<div class="line"><a id="l00585" name="l00585"></a><span class="lineno">  585</span>    }</div>
-<div class="line"><a id="l00586" name="l00586"></a><span class="lineno">  586</span> </div>
-<div class="line"><a id="l00587" name="l00587"></a><span class="lineno">  587</span> </div>
-<div class="line"><a id="l00588" name="l00588"></a><span class="lineno">  588</span><span class="preprocessor">@app.post(&#39;/api/connect&#39;)</span></div>
+<div class="foldopen" id="foldopen00572" data-start="" data-end="">
+<div class="line"><a id="l00572" name="l00572"></a><span class="lineno"><a class="line" href="../../d9/d01/namespaceserver.html#a507bc54a6a6892bf91aa490f18ed9069">  572</a></span><span class="keyword">def </span><a class="code hl_function" href="../../d9/d01/namespaceserver.html#a507bc54a6a6892bf91aa490f18ed9069">list_ports</a>():</div>
+<div class="line"><a id="l00573" name="l00573"></a><span class="lineno">  573</span>    ports = []</div>
+<div class="line"><a id="l00574" name="l00574"></a><span class="lineno">  574</span>    <span class="keywordflow">for</span> port <span class="keywordflow">in</span> serial.tools.list_ports.comports():</div>
+<div class="line"><a id="l00575" name="l00575"></a><span class="lineno">  575</span>        ports.append({<span class="stringliteral">&#39;device&#39;</span>: port.device, <span class="stringliteral">&#39;description&#39;</span>: port.description})</div>
+<div class="line"><a id="l00576" name="l00576"></a><span class="lineno">  576</span>    <span class="keywordflow">return</span> {<span class="stringliteral">&#39;ports&#39;</span>: ports}</div>
+<div class="line"><a id="l00577" name="l00577"></a><span class="lineno">  577</span> </div>
+<div class="line"><a id="l00578" name="l00578"></a><span class="lineno">  578</span><span class="preprocessor">@app.get(&#39;/api/status&#39;)</span></div>
 </div>
-<div class="foldopen" id="foldopen00589" data-start="" data-end="">
-<div class="line"><a id="l00589" name="l00589"></a><span class="lineno"><a class="line" href="../../d9/d01/namespaceserver.html#aefa44a82a0b4eb6c737cf6b198c4d573">  589</a></span><span class="keyword">async def </span><a class="code hl_function" href="../../d9/d01/namespaceserver.html#aefa44a82a0b4eb6c737cf6b198c4d573">api_connect</a>(payload: dict):</div>
-<div class="line"><a id="l00590" name="l00590"></a><span class="lineno">  590</span>    port = payload.get(<span class="stringliteral">&#39;port&#39;</span>)</div>
-<div class="line"><a id="l00591" name="l00591"></a><span class="lineno">  591</span>    <span class="keywordflow">if</span> <span class="keywordflow">not</span> port:</div>
-<div class="line"><a id="l00592" name="l00592"></a><span class="lineno">  592</span>        <span class="keywordflow">return</span> {<span class="stringliteral">&#39;ok&#39;</span>: <span class="keyword">False</span>, <span class="stringliteral">&#39;error&#39;</span>: <span class="stringliteral">&#39;port required&#39;</span>}</div>
-<div class="line"><a id="l00593" name="l00593"></a><span class="lineno">  593</span>    <span class="keywordflow">if</span> app.state.reader:</div>
-<div class="line"><a id="l00594" name="l00594"></a><span class="lineno">  594</span>        app.state.reader.disconnect()</div>
-<div class="line"><a id="l00595" name="l00595"></a><span class="lineno">  595</span>    app.state.connected_port = <span class="keywordtype">None</span></div>
-<div class="line"><a id="l00596" name="l00596"></a><span class="lineno">  596</span>    <span class="keywordflow">try</span>:</div>
-<div class="line"><a id="l00597" name="l00597"></a><span class="lineno">  597</span>        app.state.reader = <a class="code hl_class" href="../../d5/d0f/classserver_1_1_serial_reader.html">SerialReader</a>(asyncio.get_event_loop(), app.state.queue)</div>
-<div class="line"><a id="l00598" name="l00598"></a><span class="lineno">  598</span>        app.state.reader.connect(port)</div>
-<div class="line"><a id="l00599" name="l00599"></a><span class="lineno">  599</span>        app.state.connected_port = port</div>
-<div class="line"><a id="l00600" name="l00600"></a><span class="lineno">  600</span>        <span class="keywordflow">return</span> {<span class="stringliteral">&#39;ok&#39;</span>: <span class="keyword">True</span>}</div>
-<div class="line"><a id="l00601" name="l00601"></a><span class="lineno">  601</span>    <span class="keywordflow">except</span> Exception <span class="keyword">as</span> exc:</div>
-<div class="line"><a id="l00602" name="l00602"></a><span class="lineno">  602</span>        <span class="keywordflow">return</span> {<span class="stringliteral">&#39;ok&#39;</span>: <span class="keyword">False</span>, <span class="stringliteral">&#39;error&#39;</span>: str(exc)}</div>
-<div class="line"><a id="l00603" name="l00603"></a><span class="lineno">  603</span> </div>
-<div class="line"><a id="l00604" name="l00604"></a><span class="lineno">  604</span> </div>
-<div class="line"><a id="l00605" name="l00605"></a><span class="lineno">  605</span><span class="preprocessor">@app.post(&#39;/api/disconnect&#39;)</span></div>
+<div class="foldopen" id="foldopen00579" data-start="" data-end="">
+<div class="line"><a id="l00579" name="l00579"></a><span class="lineno"><a class="line" href="../../d9/d01/namespaceserver.html#a26c8f3fe8c3057ec3becbfb1b69c9122">  579</a></span><span class="keyword">def </span><a class="code hl_function" href="../../d9/d01/namespaceserver.html#a26c8f3fe8c3057ec3becbfb1b69c9122">api_status</a>():</div>
+<div class="line"><a id="l00580" name="l00580"></a><span class="lineno">  580</span>    last_rx = <span class="keywordtype">None</span></div>
+<div class="line"><a id="l00581" name="l00581"></a><span class="lineno">  581</span>    last_error = <span class="keywordtype">None</span></div>
+<div class="line"><a id="l00582" name="l00582"></a><span class="lineno">  582</span>    <span class="keywordflow">if</span> app.state.reader:</div>
+<div class="line"><a id="l00583" name="l00583"></a><span class="lineno">  583</span>        last_rx = app.state.reader.last_rx_time</div>
+<div class="line"><a id="l00584" name="l00584"></a><span class="lineno">  584</span>        last_error = app.state.reader.last_error</div>
+<div class="line"><a id="l00585" name="l00585"></a><span class="lineno">  585</span>    <span class="keywordflow">return</span> {</div>
+<div class="line"><a id="l00586" name="l00586"></a><span class="lineno">  586</span>        <span class="stringliteral">&#39;connected&#39;</span>: bool(app.state.reader),</div>
+<div class="line"><a id="l00587" name="l00587"></a><span class="lineno">  587</span>        <span class="stringliteral">&#39;port&#39;</span>: app.state.connected_port,</div>
+<div class="line"><a id="l00588" name="l00588"></a><span class="lineno">  588</span>        <span class="stringliteral">&#39;last_rx&#39;</span>: last_rx,</div>
+<div class="line"><a id="l00589" name="l00589"></a><span class="lineno">  589</span>        <span class="stringliteral">&#39;last_error&#39;</span>: last_error,</div>
+<div class="line"><a id="l00590" name="l00590"></a><span class="lineno">  590</span>    }</div>
+<div class="line"><a id="l00591" name="l00591"></a><span class="lineno">  591</span> </div>
+<div class="line"><a id="l00592" name="l00592"></a><span class="lineno">  592</span><span class="preprocessor">@app.get(&#39;/api/help&#39;)</span></div>
 </div>
-<div class="foldopen" id="foldopen00606" data-start="" data-end="">
-<div class="line"><a id="l00606" name="l00606"></a><span class="lineno"><a class="line" href="../../d9/d01/namespaceserver.html#a52876e9f764190107383c74b03454865">  606</a></span><span class="keyword">async def </span><a class="code hl_function" href="../../d9/d01/namespaceserver.html#a52876e9f764190107383c74b03454865">api_disconnect</a>():</div>
-<div class="line"><a id="l00607" name="l00607"></a><span class="lineno">  607</span>    <span class="keywordflow">if</span> app.state.reader:</div>
-<div class="line"><a id="l00608" name="l00608"></a><span class="lineno">  608</span>        app.state.reader.disconnect()</div>
-<div class="line"><a id="l00609" name="l00609"></a><span class="lineno">  609</span>    app.state.reader = <span class="keywordtype">None</span></div>
+<div class="foldopen" id="foldopen00593" data-start="" data-end="">
+<div class="line"><a id="l00593" name="l00593"></a><span class="lineno"><a class="line" href="../../d9/d01/namespaceserver.html#aea1519a04b01e4880aff3dc7dd4943b3">  593</a></span><span class="keyword">def </span><a class="code hl_function" href="../../d9/d01/namespaceserver.html#aea1519a04b01e4880aff3dc7dd4943b3">api_help</a>():</div>
+<div class="line"><a id="l00594" name="l00594"></a><span class="lineno">  594</span>    profiles = []</div>
+<div class="line"><a id="l00595" name="l00595"></a><span class="lineno">  595</span>    <span class="keywordflow">for</span> key, value <span class="keywordflow">in</span> PROFILE_DETAILS.items():</div>
+<div class="line"><a id="l00596" name="l00596"></a><span class="lineno">  596</span>        profiles.append({<span class="stringliteral">&#39;id&#39;</span>: key, **value})</div>
+<div class="line"><a id="l00597" name="l00597"></a><span class="lineno">  597</span>    <span class="keywordflow">return</span> {</div>
+<div class="line"><a id="l00598" name="l00598"></a><span class="lineno">  598</span>        <span class="stringliteral">&#39;commands&#39;</span>: [{<span class="stringliteral">&#39;cmd&#39;</span>: c[0], <span class="stringliteral">&#39;name&#39;</span>: c[1], <span class="stringliteral">&#39;desc&#39;</span>: c[2]} <span class="keywordflow">for</span> c <span class="keywordflow">in</span> COMMANDS_DOC],</div>
+<div class="line"><a id="l00599" name="l00599"></a><span class="lineno">  599</span>        <span class="stringliteral">&#39;profiles&#39;</span>: profiles,</div>
+<div class="line"><a id="l00600" name="l00600"></a><span class="lineno">  600</span>    }</div>
+<div class="line"><a id="l00601" name="l00601"></a><span class="lineno">  601</span> </div>
+<div class="line"><a id="l00602" name="l00602"></a><span class="lineno">  602</span> </div>
+<div class="line"><a id="l00603" name="l00603"></a><span class="lineno">  603</span><span class="preprocessor">@app.post(&#39;/api/connect&#39;)</span></div>
+</div>
+<div class="foldopen" id="foldopen00604" data-start="" data-end="">
+<div class="line"><a id="l00604" name="l00604"></a><span class="lineno"><a class="line" href="../../d9/d01/namespaceserver.html#aefa44a82a0b4eb6c737cf6b198c4d573">  604</a></span><span class="keyword">async def </span><a class="code hl_function" href="../../d9/d01/namespaceserver.html#aefa44a82a0b4eb6c737cf6b198c4d573">api_connect</a>(payload: dict):</div>
+<div class="line"><a id="l00605" name="l00605"></a><span class="lineno">  605</span>    port = payload.get(<span class="stringliteral">&#39;port&#39;</span>)</div>
+<div class="line"><a id="l00606" name="l00606"></a><span class="lineno">  606</span>    <span class="keywordflow">if</span> <span class="keywordflow">not</span> port:</div>
+<div class="line"><a id="l00607" name="l00607"></a><span class="lineno">  607</span>        <span class="keywordflow">return</span> {<span class="stringliteral">&#39;ok&#39;</span>: <span class="keyword">False</span>, <span class="stringliteral">&#39;error&#39;</span>: <span class="stringliteral">&#39;port required&#39;</span>}</div>
+<div class="line"><a id="l00608" name="l00608"></a><span class="lineno">  608</span>    <span class="keywordflow">if</span> app.state.reader:</div>
+<div class="line"><a id="l00609" name="l00609"></a><span class="lineno">  609</span>        app.state.reader.disconnect()</div>
 <div class="line"><a id="l00610" name="l00610"></a><span class="lineno">  610</span>    app.state.connected_port = <span class="keywordtype">None</span></div>
-<div class="line"><a id="l00611" name="l00611"></a><span class="lineno">  611</span>    <span class="keywordflow">return</span> {<span class="stringliteral">&#39;ok&#39;</span>: <span class="keyword">True</span>}</div>
-<div class="line"><a id="l00612" name="l00612"></a><span class="lineno">  612</span> </div>
-<div class="line"><a id="l00613" name="l00613"></a><span class="lineno">  613</span> </div>
-<div class="line"><a id="l00614" name="l00614"></a><span class="lineno">  614</span><span class="preprocessor">@app.websocket(&#39;/ws&#39;)</span></div>
+<div class="line"><a id="l00611" name="l00611"></a><span class="lineno">  611</span>    <span class="keywordflow">try</span>:</div>
+<div class="line"><a id="l00612" name="l00612"></a><span class="lineno">  612</span>        app.state.reader = <a class="code hl_class" href="../../d5/d0f/classserver_1_1_serial_reader.html">SerialReader</a>(asyncio.get_event_loop(), app.state.queue)</div>
+<div class="line"><a id="l00613" name="l00613"></a><span class="lineno">  613</span>        app.state.reader.connect(port)</div>
+<div class="line"><a id="l00614" name="l00614"></a><span class="lineno">  614</span>        app.state.connected_port = port</div>
+<div class="line"><a id="l00615" name="l00615"></a><span class="lineno">  615</span>        <span class="keywordflow">return</span> {<span class="stringliteral">&#39;ok&#39;</span>: <span class="keyword">True</span>}</div>
+<div class="line"><a id="l00616" name="l00616"></a><span class="lineno">  616</span>    <span class="keywordflow">except</span> Exception <span class="keyword">as</span> exc:</div>
+<div class="line"><a id="l00617" name="l00617"></a><span class="lineno">  617</span>        <span class="keywordflow">return</span> {<span class="stringliteral">&#39;ok&#39;</span>: <span class="keyword">False</span>, <span class="stringliteral">&#39;error&#39;</span>: str(exc)}</div>
+<div class="line"><a id="l00618" name="l00618"></a><span class="lineno">  618</span> </div>
+<div class="line"><a id="l00619" name="l00619"></a><span class="lineno">  619</span> </div>
+<div class="line"><a id="l00620" name="l00620"></a><span class="lineno">  620</span><span class="preprocessor">@app.post(&#39;/api/disconnect&#39;)</span></div>
 </div>
-<div class="foldopen" id="foldopen00615" data-start="" data-end="">
-<div class="line"><a id="l00615" name="l00615"></a><span class="lineno"><a class="line" href="../../d9/d01/namespaceserver.html#ad77e0aa2f77da7d27379fe93b64c6cff">  615</a></span><span class="keyword">async def </span><a class="code hl_function" href="../../d9/d01/namespaceserver.html#ad77e0aa2f77da7d27379fe93b64c6cff">websocket_endpoint</a>(websocket: WebSocket):</div>
-<div class="line"><a id="l00616" name="l00616"></a><span class="lineno">  616</span>    await manager.connect(websocket)</div>
-<div class="line"><a id="l00617" name="l00617"></a><span class="lineno">  617</span>    <span class="keywordflow">try</span>:</div>
-<div class="line"><a id="l00618" name="l00618"></a><span class="lineno">  618</span>        <span class="keywordflow">while</span> <span class="keyword">True</span>:</div>
-<div class="line"><a id="l00619" name="l00619"></a><span class="lineno">  619</span>            data = await websocket.receive_text()</div>
-<div class="line"><a id="l00620" name="l00620"></a><span class="lineno">  620</span>            <span class="keywordflow">try</span>:</div>
-<div class="line"><a id="l00621" name="l00621"></a><span class="lineno">  621</span>                msg = json.loads(data)</div>
-<div class="line"><a id="l00622" name="l00622"></a><span class="lineno">  622</span>            <span class="keywordflow">except</span> Exception:</div>
-<div class="line"><a id="l00623" name="l00623"></a><span class="lineno">  623</span>                <span class="keywordflow">continue</span></div>
-<div class="line"><a id="l00624" name="l00624"></a><span class="lineno">  624</span>            <span class="keywordflow">if</span> msg.get(<span class="stringliteral">&#39;type&#39;</span>) == <span class="stringliteral">&#39;cmd&#39;</span> <span class="keywordflow">and</span> app.state.reader:</div>
-<div class="line"><a id="l00625" name="l00625"></a><span class="lineno">  625</span>                app.state.reader.send_command(msg.get(<span class="stringliteral">&#39;cmd&#39;</span>))</div>
-<div class="line"><a id="l00626" name="l00626"></a><span class="lineno">  626</span>    <span class="keywordflow">except</span> WebSocketDisconnect:</div>
-<div class="line"><a id="l00627" name="l00627"></a><span class="lineno">  627</span>        manager.disconnect(websocket)</div>
+<div class="foldopen" id="foldopen00621" data-start="" data-end="">
+<div class="line"><a id="l00621" name="l00621"></a><span class="lineno"><a class="line" href="../../d9/d01/namespaceserver.html#a52876e9f764190107383c74b03454865">  621</a></span><span class="keyword">async def </span><a class="code hl_function" href="../../d9/d01/namespaceserver.html#a52876e9f764190107383c74b03454865">api_disconnect</a>():</div>
+<div class="line"><a id="l00622" name="l00622"></a><span class="lineno">  622</span>    <span class="keywordflow">if</span> app.state.reader:</div>
+<div class="line"><a id="l00623" name="l00623"></a><span class="lineno">  623</span>        app.state.reader.disconnect()</div>
+<div class="line"><a id="l00624" name="l00624"></a><span class="lineno">  624</span>    app.state.reader = <span class="keywordtype">None</span></div>
+<div class="line"><a id="l00625" name="l00625"></a><span class="lineno">  625</span>    app.state.connected_port = <span class="keywordtype">None</span></div>
+<div class="line"><a id="l00626" name="l00626"></a><span class="lineno">  626</span>    <span class="keywordflow">return</span> {<span class="stringliteral">&#39;ok&#39;</span>: <span class="keyword">True</span>}</div>
+<div class="line"><a id="l00627" name="l00627"></a><span class="lineno">  627</span> </div>
 <div class="line"><a id="l00628" name="l00628"></a><span class="lineno">  628</span> </div>
-<div class="line"><a id="l00629" name="l00629"></a><span class="lineno">  629</span> </div>
-<div class="line"><a id="l00630" name="l00630"></a><span class="lineno">  630</span> </div>
+<div class="line"><a id="l00629" name="l00629"></a><span class="lineno">  629</span><span class="preprocessor">@app.websocket(&#39;/ws&#39;)</span></div>
 </div>
-<div class="foldopen" id="foldopen00631" data-start="" data-end="">
-<div class="line"><a id="l00631" name="l00631"></a><span class="lineno"><a class="line" href="../../d9/d01/namespaceserver.html#aa29596aedd8d3d43ac3689e0905aaa29">  631</a></span><span class="keyword">def </span><a class="code hl_function" href="../../d9/d01/namespaceserver.html#aa29596aedd8d3d43ac3689e0905aaa29">main</a>():</div>
-<div class="line"><a id="l00632" name="l00632"></a><span class="lineno">  632</span>    parser = argparse.ArgumentParser(description=<span class="stringliteral">&#39;Web Dashboard Server&#39;</span>)</div>
-<div class="line"><a id="l00633" name="l00633"></a><span class="lineno">  633</span>    parser.add_argument(<span class="stringliteral">&#39;--port&#39;</span>, type=str, help=<span class="stringliteral">&#39;Serial port to open&#39;</span>)</div>
-<div class="line"><a id="l00634" name="l00634"></a><span class="lineno">  634</span>    parser.add_argument(<span class="stringliteral">&#39;--demo&#39;</span>, action=<span class="stringliteral">&#39;store_true&#39;</span>, help=<span class="stringliteral">&#39;Run with demo data&#39;</span>)</div>
-<div class="line"><a id="l00635" name="l00635"></a><span class="lineno">  635</span>    parser.add_argument(<span class="stringliteral">&#39;--host&#39;</span>, default=<span class="stringliteral">&#39;127.0.0.1&#39;</span>)</div>
-<div class="line"><a id="l00636" name="l00636"></a><span class="lineno">  636</span>    parser.add_argument(<span class="stringliteral">&#39;--http-port&#39;</span>, default=8000, type=int)</div>
-<div class="line"><a id="l00637" name="l00637"></a><span class="lineno">  637</span>    args = parser.parse_args()</div>
-<div class="line"><a id="l00638" name="l00638"></a><span class="lineno">  638</span> </div>
-<div class="line"><a id="l00639" name="l00639"></a><span class="lineno">  639</span>    app.state.demo_mode = args.demo</div>
-<div class="line"><a id="l00640" name="l00640"></a><span class="lineno">  640</span>    app.state.pending_port = args.port</div>
-<div class="line"><a id="l00641" name="l00641"></a><span class="lineno">  641</span> </div>
-<div class="line"><a id="l00642" name="l00642"></a><span class="lineno">  642</span>    <span class="keyword">import</span> uvicorn</div>
-<div class="line"><a id="l00643" name="l00643"></a><span class="lineno">  643</span>    uvicorn.run(app, host=args.host, port=args.http_port)</div>
+<div class="foldopen" id="foldopen00630" data-start="" data-end="">
+<div class="line"><a id="l00630" name="l00630"></a><span class="lineno"><a class="line" href="../../d9/d01/namespaceserver.html#ad77e0aa2f77da7d27379fe93b64c6cff">  630</a></span><span class="keyword">async def </span><a class="code hl_function" href="../../d9/d01/namespaceserver.html#ad77e0aa2f77da7d27379fe93b64c6cff">websocket_endpoint</a>(websocket: WebSocket):</div>
+<div class="line"><a id="l00631" name="l00631"></a><span class="lineno">  631</span>    await manager.connect(websocket)</div>
+<div class="line"><a id="l00632" name="l00632"></a><span class="lineno">  632</span>    <span class="keywordflow">try</span>:</div>
+<div class="line"><a id="l00633" name="l00633"></a><span class="lineno">  633</span>        <span class="keywordflow">while</span> <span class="keyword">True</span>:</div>
+<div class="line"><a id="l00634" name="l00634"></a><span class="lineno">  634</span>            data = await websocket.receive_text()</div>
+<div class="line"><a id="l00635" name="l00635"></a><span class="lineno">  635</span>            <span class="keywordflow">try</span>:</div>
+<div class="line"><a id="l00636" name="l00636"></a><span class="lineno">  636</span>                msg = json.loads(data)</div>
+<div class="line"><a id="l00637" name="l00637"></a><span class="lineno">  637</span>            <span class="keywordflow">except</span> Exception:</div>
+<div class="line"><a id="l00638" name="l00638"></a><span class="lineno">  638</span>                <span class="keywordflow">continue</span></div>
+<div class="line"><a id="l00639" name="l00639"></a><span class="lineno">  639</span>            <span class="keywordflow">if</span> msg.get(<span class="stringliteral">&#39;type&#39;</span>) == <span class="stringliteral">&#39;cmd&#39;</span> <span class="keywordflow">and</span> app.state.reader:</div>
+<div class="line"><a id="l00640" name="l00640"></a><span class="lineno">  640</span>                app.state.reader.send_command(msg.get(<span class="stringliteral">&#39;cmd&#39;</span>))</div>
+<div class="line"><a id="l00641" name="l00641"></a><span class="lineno">  641</span>    <span class="keywordflow">except</span> WebSocketDisconnect:</div>
+<div class="line"><a id="l00642" name="l00642"></a><span class="lineno">  642</span>        manager.disconnect(websocket)</div>
+<div class="line"><a id="l00643" name="l00643"></a><span class="lineno">  643</span> </div>
 <div class="line"><a id="l00644" name="l00644"></a><span class="lineno">  644</span> </div>
 <div class="line"><a id="l00645" name="l00645"></a><span class="lineno">  645</span> </div>
 </div>
-<div class="line"><a id="l00646" name="l00646"></a><span class="lineno">  646</span><span class="keywordflow">if</span> __name__ == <span class="stringliteral">&#39;__main__&#39;</span>:</div>
-<div class="line"><a id="l00647" name="l00647"></a><span class="lineno">  647</span>    <a class="code hl_function" href="../../d9/d01/namespaceserver.html#aa29596aedd8d3d43ac3689e0905aaa29">main</a>()</div>
+<div class="foldopen" id="foldopen00646" data-start="" data-end="">
+<div class="line"><a id="l00646" name="l00646"></a><span class="lineno"><a class="line" href="../../d9/d01/namespaceserver.html#aa29596aedd8d3d43ac3689e0905aaa29">  646</a></span><span class="keyword">def </span><a class="code hl_function" href="../../d9/d01/namespaceserver.html#aa29596aedd8d3d43ac3689e0905aaa29">main</a>():</div>
+<div class="line"><a id="l00647" name="l00647"></a><span class="lineno">  647</span>    parser = argparse.ArgumentParser(description=<span class="stringliteral">&#39;Web Dashboard Server&#39;</span>)</div>
+<div class="line"><a id="l00648" name="l00648"></a><span class="lineno">  648</span>    parser.add_argument(<span class="stringliteral">&#39;--port&#39;</span>, type=str, help=<span class="stringliteral">&#39;Serial port to open&#39;</span>)</div>
+<div class="line"><a id="l00649" name="l00649"></a><span class="lineno">  649</span>    parser.add_argument(<span class="stringliteral">&#39;--demo&#39;</span>, action=<span class="stringliteral">&#39;store_true&#39;</span>, help=<span class="stringliteral">&#39;Run with demo data&#39;</span>)</div>
+<div class="line"><a id="l00650" name="l00650"></a><span class="lineno">  650</span>    parser.add_argument(<span class="stringliteral">&#39;--host&#39;</span>, default=<span class="stringliteral">&#39;127.0.0.1&#39;</span>)</div>
+<div class="line"><a id="l00651" name="l00651"></a><span class="lineno">  651</span>    parser.add_argument(<span class="stringliteral">&#39;--http-port&#39;</span>, default=8000, type=int)</div>
+<div class="line"><a id="l00652" name="l00652"></a><span class="lineno">  652</span>    args = parser.parse_args()</div>
+<div class="line"><a id="l00653" name="l00653"></a><span class="lineno">  653</span> </div>
+<div class="line"><a id="l00654" name="l00654"></a><span class="lineno">  654</span>    app.state.demo_mode = args.demo</div>
+<div class="line"><a id="l00655" name="l00655"></a><span class="lineno">  655</span>    app.state.pending_port = args.port</div>
+<div class="line"><a id="l00656" name="l00656"></a><span class="lineno">  656</span> </div>
+<div class="line"><a id="l00657" name="l00657"></a><span class="lineno">  657</span>    <span class="keyword">import</span> uvicorn</div>
+<div class="line"><a id="l00658" name="l00658"></a><span class="lineno">  658</span>    uvicorn.run(app, host=args.host, port=args.http_port)</div>
+<div class="line"><a id="l00659" name="l00659"></a><span class="lineno">  659</span> </div>
+<div class="line"><a id="l00660" name="l00660"></a><span class="lineno">  660</span> </div>
+</div>
+<div class="line"><a id="l00661" name="l00661"></a><span class="lineno">  661</span><span class="keywordflow">if</span> __name__ == <span class="stringliteral">&#39;__main__&#39;</span>:</div>
+<div class="line"><a id="l00662" name="l00662"></a><span class="lineno">  662</span>    <a class="code hl_function" href="../../d9/d01/namespaceserver.html#aa29596aedd8d3d43ac3689e0905aaa29">main</a>()</div>
+<div class="ttc" id="aclass_base_h_t_t_p_middleware_html"><div class="ttname"><a href="../../d9/d0d/class_base_h_t_t_p_middleware.html">BaseHTTPMiddleware</a></div></div>
 <div class="ttc" id="aclassserver_1_1_connection_manager_html"><div class="ttname"><a href="../../dd/d06/classserver_1_1_connection_manager.html">server.ConnectionManager</a></div><div class="ttdef"><b>Definition</b> <a href="#l00278">server.py:278</a></div></div>
 <div class="ttc" id="aclassserver_1_1_connection_manager_html_a76c20974cee58ae3e81eb7baad14fa40"><div class="ttname"><a href="../../dd/d06/classserver_1_1_connection_manager.html#a76c20974cee58ae3e81eb7baad14fa40">server.ConnectionManager.active</a></div><div class="ttdeci">active</div><div class="ttdef"><b>Definition</b> <a href="#l00290">server.py:290</a></div></div>
 <div class="ttc" id="aclassserver_1_1_connection_manager_html_a96bd86a34ee0e5a46af20c3016a32aa8"><div class="ttname"><a href="../../dd/d06/classserver_1_1_connection_manager.html#a96bd86a34ee0e5a46af20c3016a32aa8">server.ConnectionManager.connect</a></div><div class="ttdeci">connect(self, WebSocket websocket)</div><div class="ttdef"><b>Definition</b> <a href="#l00292">server.py:292</a></div></div>
 <div class="ttc" id="aclassserver_1_1_connection_manager_html_ab5dd585b6723d9e833c54204187fac6b"><div class="ttname"><a href="../../dd/d06/classserver_1_1_connection_manager.html#ab5dd585b6723d9e833c54204187fac6b">server.ConnectionManager.disconnect</a></div><div class="ttdeci">disconnect(self, WebSocket websocket)</div><div class="ttdef"><b>Definition</b> <a href="#l00301">server.py:301</a></div></div>
 <div class="ttc" id="aclassserver_1_1_connection_manager_html_adacea35a0835d0405d45d8bc97cb7151"><div class="ttname"><a href="../../dd/d06/classserver_1_1_connection_manager.html#adacea35a0835d0405d45d8bc97cb7151">server.ConnectionManager.__init__</a></div><div class="ttdeci">__init__(self)</div><div class="ttdef"><b>Definition</b> <a href="#l00288">server.py:288</a></div></div>
 <div class="ttc" id="aclassserver_1_1_connection_manager_html_adb7250b5c0d9b85c62b652c44c5e4fae"><div class="ttname"><a href="../../dd/d06/classserver_1_1_connection_manager.html#adb7250b5c0d9b85c62b652c44c5e4fae">server.ConnectionManager.broadcast</a></div><div class="ttdeci">broadcast(self, dict message)</div><div class="ttdef"><b>Definition</b> <a href="#l00309">server.py:309</a></div></div>
+<div class="ttc" id="aclassserver_1_1_no_cache_middleware_html"><div class="ttname"><a href="../../d1/d0b/classserver_1_1_no_cache_middleware.html">server.NoCacheMiddleware</a></div><div class="ttdef"><b>Definition</b> <a href="#l00552">server.py:552</a></div></div>
+<div class="ttc" id="aclassserver_1_1_no_cache_middleware_html_a14c3158d651c955a5c9962845a48efcb"><div class="ttname"><a href="../../d1/d0b/classserver_1_1_no_cache_middleware.html#a14c3158d651c955a5c9962845a48efcb">server.NoCacheMiddleware.dispatch</a></div><div class="ttdeci">dispatch(self, request, call_next)</div><div class="ttdef"><b>Definition</b> <a href="#l00553">server.py:553</a></div></div>
 <div class="ttc" id="aclassserver_1_1_serial_reader_html"><div class="ttname"><a href="../../d5/d0f/classserver_1_1_serial_reader.html">server.SerialReader</a></div><div class="ttdef"><b>Definition</b> <a href="#l00333">server.py:333</a></div></div>
 <div class="ttc" id="aclassserver_1_1_serial_reader_html_a1a1751b747953605fca0fa2c27b9b160"><div class="ttname"><a href="../../d5/d0f/classserver_1_1_serial_reader.html#a1a1751b747953605fca0fa2c27b9b160">server.SerialReader.run</a></div><div class="ttdeci">run(self)</div><div class="ttdef"><b>Definition</b> <a href="#l00392">server.py:392</a></div></div>
 <div class="ttc" id="aclassserver_1_1_serial_reader_html_a3873f560fd135d7a8e9a2d6be62ec5df"><div class="ttname"><a href="../../d5/d0f/classserver_1_1_serial_reader.html#a3873f560fd135d7a8e9a2d6be62ec5df">server.SerialReader.last_error</a></div><div class="ttdeci">str last_error</div><div class="ttdef"><b>Definition</b> <a href="#l00364">server.py:364</a></div></div>
@@ -834,21 +856,21 @@ $(function() {
 <div class="ttc" id="aclassserver_1_1_serial_reader_html_acb67408d28d4c9078600dc467263aef6"><div class="ttname"><a href="../../d5/d0f/classserver_1_1_serial_reader.html#acb67408d28d4c9078600dc467263aef6">server.SerialReader.running</a></div><div class="ttdeci">bool running</div><div class="ttdef"><b>Definition</b> <a href="#l00359">server.py:359</a></div></div>
 <div class="ttc" id="aclassserver_1_1_serial_reader_html_ae2a15f02bf948c54c670827aaf05a001"><div class="ttname"><a href="../../d5/d0f/classserver_1_1_serial_reader.html#ae2a15f02bf948c54c670827aaf05a001">server.SerialReader.parse_message</a></div><div class="ttdeci">parse_message(self, msg_type, payload)</div><div class="ttdef"><b>Definition</b> <a href="#l00434">server.py:434</a></div></div>
 <div class="ttc" id="aclassserver_1_1_serial_reader_html_afb799312f238914e7acd7f174570adce"><div class="ttname"><a href="../../d5/d0f/classserver_1_1_serial_reader.html#afb799312f238914e7acd7f174570adce">server.SerialReader.process_buffer</a></div><div class="ttdeci">process_buffer(self)</div><div class="ttdef"><b>Definition</b> <a href="#l00410">server.py:410</a></div></div>
-<div class="ttc" id="anamespaceserver_html_a26c8f3fe8c3057ec3becbfb1b69c9122"><div class="ttname"><a href="../../d9/d01/namespaceserver.html#a26c8f3fe8c3057ec3becbfb1b69c9122">server.api_status</a></div><div class="ttdeci">api_status()</div><div class="ttdef"><b>Definition</b> <a href="#l00564">server.py:564</a></div></div>
+<div class="ttc" id="anamespaceserver_html_a26c8f3fe8c3057ec3becbfb1b69c9122"><div class="ttname"><a href="../../d9/d01/namespaceserver.html#a26c8f3fe8c3057ec3becbfb1b69c9122">server.api_status</a></div><div class="ttdeci">api_status()</div><div class="ttdef"><b>Definition</b> <a href="#l00579">server.py:579</a></div></div>
 <div class="ttc" id="anamespaceserver_html_a2ef6f410b89541f6ced78a6a162a3fc5"><div class="ttname"><a href="../../d9/d01/namespaceserver.html#a2ef6f410b89541f6ced78a6a162a3fc5">server.parse_slow_packet</a></div><div class="ttdeci">parse_slow_packet(data)</div><div class="ttdef"><b>Definition</b> <a href="#l00208">server.py:208</a></div></div>
-<div class="ttc" id="anamespaceserver_html_a38e8b72e78d2cfa9a1a7f75fbc8acc67"><div class="ttname"><a href="../../d9/d01/namespaceserver.html#a38e8b72e78d2cfa9a1a7f75fbc8acc67">server.index</a></div><div class="ttdeci">index()</div><div class="ttdef"><b>Definition</b> <a href="#l00552">server.py:552</a></div></div>
-<div class="ttc" id="anamespaceserver_html_a507bc54a6a6892bf91aa490f18ed9069"><div class="ttname"><a href="../../d9/d01/namespaceserver.html#a507bc54a6a6892bf91aa490f18ed9069">server.list_ports</a></div><div class="ttdeci">list_ports()</div><div class="ttdef"><b>Definition</b> <a href="#l00557">server.py:557</a></div></div>
-<div class="ttc" id="anamespaceserver_html_a52876e9f764190107383c74b03454865"><div class="ttname"><a href="../../d9/d01/namespaceserver.html#a52876e9f764190107383c74b03454865">server.api_disconnect</a></div><div class="ttdeci">api_disconnect()</div><div class="ttdef"><b>Definition</b> <a href="#l00606">server.py:606</a></div></div>
+<div class="ttc" id="anamespaceserver_html_a38e8b72e78d2cfa9a1a7f75fbc8acc67"><div class="ttname"><a href="../../d9/d01/namespaceserver.html#a38e8b72e78d2cfa9a1a7f75fbc8acc67">server.index</a></div><div class="ttdeci">index()</div><div class="ttdef"><b>Definition</b> <a href="#l00567">server.py:567</a></div></div>
+<div class="ttc" id="anamespaceserver_html_a507bc54a6a6892bf91aa490f18ed9069"><div class="ttname"><a href="../../d9/d01/namespaceserver.html#a507bc54a6a6892bf91aa490f18ed9069">server.list_ports</a></div><div class="ttdeci">list_ports()</div><div class="ttdef"><b>Definition</b> <a href="#l00572">server.py:572</a></div></div>
+<div class="ttc" id="anamespaceserver_html_a52876e9f764190107383c74b03454865"><div class="ttname"><a href="../../d9/d01/namespaceserver.html#a52876e9f764190107383c74b03454865">server.api_disconnect</a></div><div class="ttdeci">api_disconnect()</div><div class="ttdef"><b>Definition</b> <a href="#l00621">server.py:621</a></div></div>
 <div class="ttc" id="anamespaceserver_html_a5ed233a9e19e1cd2a36d20d090b2c0ad"><div class="ttname"><a href="../../d9/d01/namespaceserver.html#a5ed233a9e19e1cd2a36d20d090b2c0ad">server.parse_gs_status</a></div><div class="ttdeci">parse_gs_status(data)</div><div class="ttdef"><b>Definition</b> <a href="#l00236">server.py:236</a></div></div>
 <div class="ttc" id="anamespaceserver_html_a7ddad49c2a63c8d1e546b0945f28c091"><div class="ttname"><a href="../../d9/d01/namespaceserver.html#a7ddad49c2a63c8d1e546b0945f28c091">server.parse_gs_stats</a></div><div class="ttdeci">parse_gs_stats(data)</div><div class="ttdef"><b>Definition</b> <a href="#l00261">server.py:261</a></div></div>
-<div class="ttc" id="anamespaceserver_html_aa29596aedd8d3d43ac3689e0905aaa29"><div class="ttname"><a href="../../d9/d01/namespaceserver.html#aa29596aedd8d3d43ac3689e0905aaa29">server.main</a></div><div class="ttdeci">main()</div><div class="ttdef"><b>Definition</b> <a href="#l00631">server.py:631</a></div></div>
+<div class="ttc" id="anamespaceserver_html_aa29596aedd8d3d43ac3689e0905aaa29"><div class="ttname"><a href="../../d9/d01/namespaceserver.html#aa29596aedd8d3d43ac3689e0905aaa29">server.main</a></div><div class="ttdeci">main()</div><div class="ttdef"><b>Definition</b> <a href="#l00646">server.py:646</a></div></div>
 <div class="ttc" id="anamespaceserver_html_accb68fc8e2ab82cf1c57c55823693648"><div class="ttname"><a href="../../d9/d01/namespaceserver.html#accb68fc8e2ab82cf1c57c55823693648">server.lifespan</a></div><div class="ttdeci">lifespan(FastAPI app)</div><div class="ttdef"><b>Definition</b> <a href="#l00506">server.py:506</a></div></div>
-<div class="ttc" id="anamespaceserver_html_ad77e0aa2f77da7d27379fe93b64c6cff"><div class="ttname"><a href="../../d9/d01/namespaceserver.html#ad77e0aa2f77da7d27379fe93b64c6cff">server.websocket_endpoint</a></div><div class="ttdeci">websocket_endpoint(WebSocket websocket)</div><div class="ttdef"><b>Definition</b> <a href="#l00615">server.py:615</a></div></div>
+<div class="ttc" id="anamespaceserver_html_ad77e0aa2f77da7d27379fe93b64c6cff"><div class="ttname"><a href="../../d9/d01/namespaceserver.html#ad77e0aa2f77da7d27379fe93b64c6cff">server.websocket_endpoint</a></div><div class="ttdeci">websocket_endpoint(WebSocket websocket)</div><div class="ttdef"><b>Definition</b> <a href="#l00630">server.py:630</a></div></div>
 <div class="ttc" id="anamespaceserver_html_ae3e81347d0e7bdc2435a6cd654ad2c24"><div class="ttname"><a href="../../d9/d01/namespaceserver.html#ae3e81347d0e7bdc2435a6cd654ad2c24">server.demo_stream</a></div><div class="ttdeci">demo_stream(queue)</div><div class="ttdef"><b>Definition</b> <a href="#l00454">server.py:454</a></div></div>
 <div class="ttc" id="anamespaceserver_html_ae6696cdafbf42e443fb656f5e4c7b5f9"><div class="ttname"><a href="../../d9/d01/namespaceserver.html#ae6696cdafbf42e443fb656f5e4c7b5f9">server.parse_fast_packet</a></div><div class="ttdeci">parse_fast_packet(data)</div><div class="ttdef"><b>Definition</b> <a href="#l00158">server.py:158</a></div></div>
-<div class="ttc" id="anamespaceserver_html_aea1519a04b01e4880aff3dc7dd4943b3"><div class="ttname"><a href="../../d9/d01/namespaceserver.html#aea1519a04b01e4880aff3dc7dd4943b3">server.api_help</a></div><div class="ttdeci">api_help()</div><div class="ttdef"><b>Definition</b> <a href="#l00578">server.py:578</a></div></div>
+<div class="ttc" id="anamespaceserver_html_aea1519a04b01e4880aff3dc7dd4943b3"><div class="ttname"><a href="../../d9/d01/namespaceserver.html#aea1519a04b01e4880aff3dc7dd4943b3">server.api_help</a></div><div class="ttdeci">api_help()</div><div class="ttdef"><b>Definition</b> <a href="#l00593">server.py:593</a></div></div>
 <div class="ttc" id="anamespaceserver_html_aebc753fc936e29b93bb1953db17ede99"><div class="ttname"><a href="../../d9/d01/namespaceserver.html#aebc753fc936e29b93bb1953db17ede99">server.parse_gs_pong</a></div><div class="ttdeci">parse_gs_pong(data)</div><div class="ttdef"><b>Definition</b> <a href="#l00250">server.py:250</a></div></div>
-<div class="ttc" id="anamespaceserver_html_aefa44a82a0b4eb6c737cf6b198c4d573"><div class="ttname"><a href="../../d9/d01/namespaceserver.html#aefa44a82a0b4eb6c737cf6b198c4d573">server.api_connect</a></div><div class="ttdeci">api_connect(dict payload)</div><div class="ttdef"><b>Definition</b> <a href="#l00589">server.py:589</a></div></div>
+<div class="ttc" id="anamespaceserver_html_aefa44a82a0b4eb6c737cf6b198c4d573"><div class="ttname"><a href="../../d9/d01/namespaceserver.html#aefa44a82a0b4eb6c737cf6b198c4d573">server.api_connect</a></div><div class="ttdeci">api_connect(dict payload)</div><div class="ttdef"><b>Definition</b> <a href="#l00604">server.py:604</a></div></div>
 <div class="ttc" id="anamespaceserver_html_af70d5ea85210382afdd2f681ad915f45"><div class="ttname"><a href="../../d9/d01/namespaceserver.html#af70d5ea85210382afdd2f681ad915f45">server.parse_event_packet</a></div><div class="ttdeci">parse_event_packet(data)</div><div class="ttdef"><b>Definition</b> <a href="#l00223">server.py:223</a></div></div>
 </div><!-- fragment --></div><!-- contents -->
 </div><!-- doc-content -->

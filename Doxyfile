@@ -96,8 +96,12 @@ WARN_FORMAT            = "$file:$line: $text"
 #---------------------------------------------------------------------------
 
 INPUT                  = Codigo \
-                         arduino_gs_fixed_2 \
+                         STM32F446ZE_Magalhaes/Core/Inc/config.h \
+                         STM32F413ZH_Magalhaes/Core/Inc/config.h \
+                         STM32H743ZIT6_Magalhaes/Core/Inc/config.h \
+                         arduino_gs_software \
                          "Dashboard Python" \
+                         docs_pages \
                          mainpage.md
 INPUT_ENCODING         = UTF-8
 FILE_PATTERNS          = *.c \
@@ -105,14 +109,21 @@ FILE_PATTERNS          = *.c \
                          *.ino \
                          *.py \
                          *.js \
-                         *.md
+                         *.md \
+                         *.dox
 RECURSIVE              = YES
 USE_MDFILE_AS_MAINPAGE = mainpage.md
 EXCLUDE                =
 EXCLUDE_SYMLINKS       = NO
 EXCLUDE_PATTERNS       = */Drivers/* \
                          */Middlewares/* \
-                         */CMSIS/*
+                         */CMSIS/* \
+                         */FATFS/* \
+                         */Debug/* \
+                         */build/* \
+                         */node_modules/* \
+                         */.history/* \
+                         */backups/*
 EXCLUDE_SYMBOLS        =
 EXAMPLE_PATH           =
 EXAMPLE_PATTERNS       = *
@@ -230,9 +241,16 @@ ENABLE_PREPROCESSING   = YES
 MACRO_EXPANSION        = NO
 EXPAND_ONLY_PREDEF     = NO
 SEARCH_INCLUDES        = YES
-INCLUDE_PATH           = Codigo
+INCLUDE_PATH           = Codigo \
+                         STM32F446ZE_Magalhaes/Core/Inc \
+                         STM32F413ZH_Magalhaes/Core/Inc \
+                         STM32H743ZIT6_Magalhaes/Core/Inc
 INCLUDE_FILE_PATTERNS  =
-PREDEFINED             = __attribute__(x)=
+PREDEFINED             = __attribute__(x)= \
+                         RADIO_INTERFACE_SPI \
+                         RADIO_INTERFACE_UART \
+                         DMA_BUFFER= \
+                         BDMA_BUFFER=
 EXPAND_AS_DEFINED      =
 SKIP_FUNCTION_MACROS   = YES
 

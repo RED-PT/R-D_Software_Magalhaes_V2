@@ -111,13 +111,12 @@ $(function() {
 <a href="#details">More...</a></p>
 <div class="textblock"><code>#include &lt;stdint.h&gt;</code><br />
 <code>#include &lt;stdbool.h&gt;</code><br />
-<code>#include &quot;stm32f4xx_hal.h&quot;</code><br />
-<code>#include &quot;config.h&quot;</code><br />
+<code>#include &quot;<a class="el" href="../../df/d0c/_s_t_m32_f446_z_e___magalhaes_2_core_2_inc_2config_8h_source.html">config.h</a>&quot;</code><br />
 </div><div class="textblock"><div id="dynsection-0" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Include dependency graph for e22_uart_dma.h:</div>
 <div id="dynsection-0-summary" class="dynsummary" style="display:block;">
 </div>
 <div id="dynsection-0-content" class="dyncontent" style="display:none;">
-<div class="center"><iframe scrolling="no" loading="lazy" frameborder="0" src="../../dd/d0a/e22__uart__dma_8h__incl.svg" width="435" height="140"><p><b>This browser is not able to show SVG: try Firefox, Chrome, Safari, or Opera instead.</b></p></iframe></div>
+<div class="center"><iframe scrolling="no" loading="lazy" frameborder="0" src="../../dd/d0a/e22__uart__dma_8h__incl.svg" width="286" height="219"><p><b>This browser is not able to show SVG: try Firefox, Chrome, Safari, or Opera instead.</b></p></iframe></div>
 </div>
 </div><div class="textblock"><div id="dynsection-1" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>This graph shows which files directly or indirectly include this file:</div>
 <div id="dynsection-1-summary" class="dynsummary" style="display:block;">
@@ -219,7 +218,7 @@ Operating Modes</h1>
 <h1 class="doxsection"><a class="anchor" id="e22_usage"></a>
 Usage</h1>
 <div class="fragment"><div class="line"><span class="comment">// Initialize</span></div>
-<div class="line"><a class="code hl_function" href="../../d6/d0e/group___e22_a_p_i.html#ga89ff89b6da89f1aa83c5b45a49ef3239">E22_Init</a>(&amp;huart1);</div>
+<div class="line"><a class="code hl_function" href="../../d6/d0e/group___e22_a_p_i.html#ga89ff89b6da89f1aa83c5b45a49ef3239">E22_Init</a>(&amp;<a class="code hl_variable" href="../../df/d0c/_s_t_m32_f446_z_e___magalhaes_2_core_2_inc_2config_8h.html#a2cf715bef37f7e8ef385a30974a5f0d5">huart1</a>);</div>
 <div class="line"><a class="code hl_function" href="../../d6/d0e/group___e22_a_p_i.html#gaaf7b1d11d286a21e3eec3d9ae1d8121c">E22_SetMode</a>(<a class="code hl_define" href="../../d2/d0f/group___e22_modes.html#gab687faef800adf55e5d43aacd42c26f1">E22_MODE_NORMAL</a>);</div>
 <div class="line"> </div>
 <div class="line"><span class="comment">// Transmit</span></div>
@@ -231,12 +230,13 @@ Usage</h1>
 <div class="line">    uint8_t buf[64];</div>
 <div class="line">    <span class="keywordtype">int</span> len = <a class="code hl_function" href="../../d6/d0e/group___e22_a_p_i.html#ga4ce7c41f09ba99bfd274fa794e5a0230">E22_Receive</a>(buf, <span class="keyword">sizeof</span>(buf));</div>
 <div class="line">}</div>
-<div class="ttc" id="agroup___e22_a_p_i_html_ga045c8ce7bada5ef6601e2a0de25fb543"><div class="ttname"><a href="../../d6/d0e/group___e22_a_p_i.html#ga045c8ce7bada5ef6601e2a0de25fb543">E22_Available</a></div><div class="ttdeci">uint16_t E22_Available(void)</div><div class="ttdoc">Get number of bytes available to read.</div><div class="ttdef"><b>Definition</b> <a href="../../dc/d0b/e22__uart__dma_8c_source.html#l00116">e22_uart_dma.c:116</a></div></div>
-<div class="ttc" id="agroup___e22_a_p_i_html_ga4ce7c41f09ba99bfd274fa794e5a0230"><div class="ttname"><a href="../../d6/d0e/group___e22_a_p_i.html#ga4ce7c41f09ba99bfd274fa794e5a0230">E22_Receive</a></div><div class="ttdeci">int E22_Receive(uint8_t *buffer, uint16_t max_length)</div><div class="ttdoc">Receive data.</div><div class="ttdef"><b>Definition</b> <a href="../../dc/d0b/e22__uart__dma_8c_source.html#l00133">e22_uart_dma.c:133</a></div></div>
-<div class="ttc" id="agroup___e22_a_p_i_html_ga89ff89b6da89f1aa83c5b45a49ef3239"><div class="ttname"><a href="../../d6/d0e/group___e22_a_p_i.html#ga89ff89b6da89f1aa83c5b45a49ef3239">E22_Init</a></div><div class="ttdeci">bool E22_Init(UART_HandleTypeDef *huart)</div><div class="ttdoc">Initialize E22 driver.</div><div class="ttdef"><b>Definition</b> <a href="../../dc/d0b/e22__uart__dma_8c_source.html#l00045">e22_uart_dma.c:45</a></div></div>
-<div class="ttc" id="agroup___e22_a_p_i_html_gaa4764e9854d45de8b9346a0789a33cd0"><div class="ttname"><a href="../../d6/d0e/group___e22_a_p_i.html#gaa4764e9854d45de8b9346a0789a33cd0">E22_Transmit</a></div><div class="ttdeci">E22_Status_t E22_Transmit(uint8_t *data, uint16_t length)</div><div class="ttdoc">Transmit data.</div><div class="ttdef"><b>Definition</b> <a href="../../dc/d0b/e22__uart__dma_8c_source.html#l00078">e22_uart_dma.c:78</a></div></div>
-<div class="ttc" id="agroup___e22_a_p_i_html_gaaf7b1d11d286a21e3eec3d9ae1d8121c"><div class="ttname"><a href="../../d6/d0e/group___e22_a_p_i.html#gaaf7b1d11d286a21e3eec3d9ae1d8121c">E22_SetMode</a></div><div class="ttdeci">void E22_SetMode(uint8_t mode)</div><div class="ttdoc">Set E22 operating mode.</div><div class="ttdef"><b>Definition</b> <a href="../../dc/d0b/e22__uart__dma_8c_source.html#l00035">e22_uart_dma.c:35</a></div></div>
-<div class="ttc" id="agroup___e22_modes_html_gab687faef800adf55e5d43aacd42c26f1"><div class="ttname"><a href="../../d2/d0f/group___e22_modes.html#gab687faef800adf55e5d43aacd42c26f1">E22_MODE_NORMAL</a></div><div class="ttdeci">#define E22_MODE_NORMAL</div><div class="ttdoc">M0=0, M1=0: Normal TX/RX operation.</div><div class="ttdef"><b>Definition</b> <a href="../../dd/d03/e22__uart__dma_8h_source.html#l00055">e22_uart_dma.h:55</a></div></div>
+<div class="ttc" id="a_s_t_m32_f446_z_e___magalhaes_2_core_2_inc_2config_8h_html_a2cf715bef37f7e8ef385a30974a5f0d5"><div class="ttname"><a href="../../df/d0c/_s_t_m32_f446_z_e___magalhaes_2_core_2_inc_2config_8h.html#a2cf715bef37f7e8ef385a30974a5f0d5">huart1</a></div><div class="ttdeci">UART_HandleTypeDef huart1</div></div>
+<div class="ttc" id="agroup___e22_a_p_i_html_ga045c8ce7bada5ef6601e2a0de25fb543"><div class="ttname"><a href="../../d6/d0e/group___e22_a_p_i.html#ga045c8ce7bada5ef6601e2a0de25fb543">E22_Available</a></div><div class="ttdeci">uint16_t E22_Available(void)</div><div class="ttdoc">Get number of bytes available to read.</div><div class="ttdef"><b>Definition</b> <a href="../../dc/d0b/e22__uart__dma_8c_source.html#l00122">e22_uart_dma.c:122</a></div></div>
+<div class="ttc" id="agroup___e22_a_p_i_html_ga4ce7c41f09ba99bfd274fa794e5a0230"><div class="ttname"><a href="../../d6/d0e/group___e22_a_p_i.html#ga4ce7c41f09ba99bfd274fa794e5a0230">E22_Receive</a></div><div class="ttdeci">int E22_Receive(uint8_t *buffer, uint16_t max_length)</div><div class="ttdoc">Receive data.</div><div class="ttdef"><b>Definition</b> <a href="../../dc/d0b/e22__uart__dma_8c_source.html#l00139">e22_uart_dma.c:139</a></div></div>
+<div class="ttc" id="agroup___e22_a_p_i_html_ga89ff89b6da89f1aa83c5b45a49ef3239"><div class="ttname"><a href="../../d6/d0e/group___e22_a_p_i.html#ga89ff89b6da89f1aa83c5b45a49ef3239">E22_Init</a></div><div class="ttdeci">bool E22_Init(UART_HandleTypeDef *huart)</div><div class="ttdoc">Initialize E22 driver.</div><div class="ttdef"><b>Definition</b> <a href="../../dc/d0b/e22__uart__dma_8c_source.html#l00051">e22_uart_dma.c:51</a></div></div>
+<div class="ttc" id="agroup___e22_a_p_i_html_gaa4764e9854d45de8b9346a0789a33cd0"><div class="ttname"><a href="../../d6/d0e/group___e22_a_p_i.html#gaa4764e9854d45de8b9346a0789a33cd0">E22_Transmit</a></div><div class="ttdeci">E22_Status_t E22_Transmit(uint8_t *data, uint16_t length)</div><div class="ttdoc">Transmit data.</div><div class="ttdef"><b>Definition</b> <a href="../../dc/d0b/e22__uart__dma_8c_source.html#l00084">e22_uart_dma.c:84</a></div></div>
+<div class="ttc" id="agroup___e22_a_p_i_html_gaaf7b1d11d286a21e3eec3d9ae1d8121c"><div class="ttname"><a href="../../d6/d0e/group___e22_a_p_i.html#gaaf7b1d11d286a21e3eec3d9ae1d8121c">E22_SetMode</a></div><div class="ttdeci">void E22_SetMode(uint8_t mode)</div><div class="ttdoc">Set E22 operating mode.</div><div class="ttdef"><b>Definition</b> <a href="../../dc/d0b/e22__uart__dma_8c_source.html#l00041">e22_uart_dma.c:41</a></div></div>
+<div class="ttc" id="agroup___e22_modes_html_gab687faef800adf55e5d43aacd42c26f1"><div class="ttname"><a href="../../d2/d0f/group___e22_modes.html#gab687faef800adf55e5d43aacd42c26f1">E22_MODE_NORMAL</a></div><div class="ttdeci">#define E22_MODE_NORMAL</div><div class="ttdoc">M0=0, M1=0: Normal TX/RX operation.</div><div class="ttdef"><b>Definition</b> <a href="../../dd/d03/e22__uart__dma_8h_source.html#l00054">e22_uart_dma.h:54</a></div></div>
 </div><!-- fragment --> 
 <p class="definition">Definition in file <a class="el" href="../../dd/d03/e22__uart__dma_8h_source.html">e22_uart_dma.h</a>.</p>
 </div><a name="doc-enum-members" id="doc-enum-members"></a><h2 id="header-doc-enum-members" class="groupheader">Enumeration Type Documentation</h2>
@@ -266,7 +266,7 @@ Usage</h1>
 </td></tr>
 </table>
 
-<p class="definition">Definition at line <a class="el" href="../../dd/d03/e22__uart__dma_8h_source.html#l00064">64</a> of file <a class="el" href="../../dd/d03/e22__uart__dma_8h_source.html">e22_uart_dma.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../dd/d03/e22__uart__dma_8h_source.html#l00063">63</a> of file <a class="el" href="../../dd/d03/e22__uart__dma_8h_source.html">e22_uart_dma.h</a>.</p>
 
 </div>
 </div>

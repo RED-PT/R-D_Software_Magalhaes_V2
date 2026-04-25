@@ -47,9 +47,11 @@ var searchData=
   ['ctrl8_5fxl_44',['ctrl8_xl',['../de/d0b/unionasm330lhhx__reg__t.html#a82263ce0086889239fb14e0c6361630d',1,'asm330lhhx_reg_t']]],
   ['ctrl9_5fxl_45',['ctrl9_xl',['../de/d0b/unionasm330lhhx__reg__t.html#a7c6328ef46542b9a01a1e793c2f07ed7',1,'asm330lhhx_reg_t']]],
   ['ctrl_5fstate_46',['ctrl_state',['../dc/d0a/controller__thread_8c.html#ab6989215c5a5d74bd6179f575e749c59',1,'ctrl_state:&#160;controller_thread.c'],['../d2/d04/controller__thread_8h.html#ab6989215c5a5d74bd6179f575e749c59',1,'ctrl_state:&#160;controller_thread.c']]],
-  ['current_5faltitude_5fm_47',['current_altitude_m',['../d7/d05/structcontroller__state__t.html#a20178fbda879a0ac17c26507b1226dea',1,'controller_state_t']]],
-  ['current_5fthrottle_48',['current_throttle',['../dd/d09/structstatic__test__ctx__t.html#a68a369d819a2d59f38f1172327856f5b',1,'static_test_ctx_t']]],
-  ['current_5fthrust_49',['current_thrust',['../dd/d09/structstatic__test__ctx__t.html#a7c59a8cb16cc19e7ec8ae5d2e5e558d5',1,'static_test_ctx_t']]],
-  ['current_5fvelocity_5fms_50',['current_velocity_ms',['../d7/d05/structcontroller__state__t.html#a8962e27ec33a0a5c8006554a40a58ad4',1,'controller_state_t']]],
-  ['currentthrottle_51',['currentThrottle',['../d4/d0f/_p_w_m___f_u_n_c_t_i_o_n_s_8c.html#abc5b3e4fce0c55f99aed41df3a731896',1,'currentThrottle:&#160;PWM_FUNCTIONS.c'],['../de/d08/_p_w_m___f_u_n_c_t_i_o_n_s_8h.html#abc5b3e4fce0c55f99aed41df3a731896',1,'currentThrottle:&#160;PWM_FUNCTIONS.c']]]
+  ['current_5fa_47',['current_a',['../d8/d0f/struct_i_n_a219__t.html#a96c35c8c46deec03f0a9cf2fead4df00',1,'INA219_t']]],
+  ['current_5faltitude_5fm_48',['current_altitude_m',['../d7/d05/structcontroller__state__t.html#a20178fbda879a0ac17c26507b1226dea',1,'controller_state_t']]],
+  ['current_5flsb_49',['current_lsb',['../d8/d0f/struct_i_n_a219__t.html#aca3e2d203af1283d5d97768172d67823',1,'INA219_t']]],
+  ['current_5fthrottle_50',['current_throttle',['../dd/d09/structstatic__test__ctx__t.html#a68a369d819a2d59f38f1172327856f5b',1,'static_test_ctx_t']]],
+  ['current_5fthrust_51',['current_thrust',['../dd/d09/structstatic__test__ctx__t.html#a7c59a8cb16cc19e7ec8ae5d2e5e558d5',1,'static_test_ctx_t']]],
+  ['current_5fvelocity_5fms_52',['current_velocity_ms',['../d7/d05/structcontroller__state__t.html#a8962e27ec33a0a5c8006554a40a58ad4',1,'controller_state_t']]],
+  ['currentthrottle_53',['currentThrottle',['../d4/d0f/_p_w_m___f_u_n_c_t_i_o_n_s_8c.html#abc5b3e4fce0c55f99aed41df3a731896',1,'currentThrottle:&#160;PWM_FUNCTIONS.c'],['../de/d08/_p_w_m___f_u_n_c_t_i_o_n_s_8h.html#abc5b3e4fce0c55f99aed41df3a731896',1,'currentThrottle:&#160;PWM_FUNCTIONS.c']]]
 ];

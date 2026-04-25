@@ -129,9 +129,9 @@ Enumerations</h2></td></tr>
 <tr class="heading"><td colspan="2"><h2 id="header-var-members" class="groupheader"><a id="var-members" name="var-members"></a>
 Variables</h2></td></tr>
 <tr class="memitem:ga9341c303ff0629cc51ba13cdd7e0c21b" id="r_ga9341c303ff0629cc51ba13cdd7e0c21b"><td class="memItemLeft">volatile <a class="el" href="#ga236ff5c902af3e544b7e5ec44224769d">active_sensor_t</a>&#160;</td><td class="memItemRight"><a class="el" href="#ga9341c303ff0629cc51ba13cdd7e0c21b">spi1_active_sensor</a></td></tr>
-<tr class="memdesc:ga9341c303ff0629cc51ba13cdd7e0c21b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Current active sensor on SPI1 bus.  <br /></td></tr>
-<tr class="memitem:ga70b8d7beeada26526dc6ca712893863c" id="r_ga70b8d7beeada26526dc6ca712893863c"><td class="memItemLeft">volatile <a class="el" href="#ga236ff5c902af3e544b7e5ec44224769d">active_sensor_t</a>&#160;</td><td class="memItemRight"><a class="el" href="#ga70b8d7beeada26526dc6ca712893863c">spi3_active_sensor</a></td></tr>
-<tr class="memdesc:ga70b8d7beeada26526dc6ca712893863c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Current active sensor on SPI3 bus.  <br /></td></tr>
+<tr class="memdesc:ga9341c303ff0629cc51ba13cdd7e0c21b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Current active sensor on SPI_IMU_BARO bus (IMU or barometer).  <br /></td></tr>
+<tr class="memitem:ga45603ab2dbaf4b2eb8d988b176304974" id="r_ga45603ab2dbaf4b2eb8d988b176304974"><td class="memItemLeft">volatile <a class="el" href="#ga236ff5c902af3e544b7e5ec44224769d">active_sensor_t</a>&#160;</td><td class="memItemRight"><a class="el" href="#ga45603ab2dbaf4b2eb8d988b176304974">spi_mag_active_sensor</a></td></tr>
+<tr class="memdesc:ga45603ab2dbaf4b2eb8d988b176304974"><td class="mdescLeft">&#160;</td><td class="mdescRight">Current active sensor on SPI_MAG bus (magnetometer; SPI3 on F446ZE, SPI6 on H743ZI).  <br /></td></tr>
 <tr class="memitem:gaaf76c2387a5b632544ba92b873ec1d7a" id="r_gaaf76c2387a5b632544ba92b873ec1d7a"><td class="memItemLeft">volatile <a class="el" href="#ga236ff5c902af3e544b7e5ec44224769d">active_sensor_t</a>&#160;</td><td class="memItemRight"><a class="el" href="#gaaf76c2387a5b632544ba92b873ec1d7a">i2c1_active_sensor</a></td></tr>
 <tr class="memdesc:gaaf76c2387a5b632544ba92b873ec1d7a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Current active sensor on I2C1 bus.  <br /></td></tr>
 </table><table class="memberdecls">
@@ -139,10 +139,10 @@ Variables</h2></td></tr>
 Bus Tracking Variables</h2></td></tr>
 <tr><td class="ititle" colspan="2"><p>Track which sensor is currently using each bus (for DMA routing) </p>
 </td></tr>
-<tr class="memitem:ga70b8d7beeada26526dc6ca712893863c" id="r_ga70b8d7beeada26526dc6ca712893863c"><td class="memItemLeft">volatile <a class="el" href="#ga236ff5c902af3e544b7e5ec44224769d">active_sensor_t</a>&#160;</td><td class="memItemRight"><a class="el" href="#ga70b8d7beeada26526dc6ca712893863c">spi3_active_sensor</a> = <a class="el" href="#gga236ff5c902af3e544b7e5ec44224769dae0d1754b4c95d8ee3b3a13e8d4d2b60b">ACTIVE_SENSOR_NONE</a></td></tr>
-<tr class="memdesc:ga70b8d7beeada26526dc6ca712893863c"><td class="mdescLeft">&#160;</td><td class="mdescRight">SPI3: MAG.  <br /></td></tr>
+<tr class="memitem:ga45603ab2dbaf4b2eb8d988b176304974" id="r_ga45603ab2dbaf4b2eb8d988b176304974"><td class="memItemLeft">volatile <a class="el" href="#ga236ff5c902af3e544b7e5ec44224769d">active_sensor_t</a>&#160;</td><td class="memItemRight"><a class="el" href="#ga45603ab2dbaf4b2eb8d988b176304974">spi_mag_active_sensor</a> = <a class="el" href="#gga236ff5c902af3e544b7e5ec44224769dae0d1754b4c95d8ee3b3a13e8d4d2b60b">ACTIVE_SENSOR_NONE</a></td></tr>
+<tr class="memdesc:ga45603ab2dbaf4b2eb8d988b176304974"><td class="mdescLeft">&#160;</td><td class="mdescRight">SPI_MAG bus: magnetometer.  <br /></td></tr>
 <tr class="memitem:gaaf76c2387a5b632544ba92b873ec1d7a" id="r_gaaf76c2387a5b632544ba92b873ec1d7a"><td class="memItemLeft">volatile <a class="el" href="#ga236ff5c902af3e544b7e5ec44224769d">active_sensor_t</a>&#160;</td><td class="memItemRight"><a class="el" href="#gaaf76c2387a5b632544ba92b873ec1d7a">i2c1_active_sensor</a> = <a class="el" href="#gga236ff5c902af3e544b7e5ec44224769dae0d1754b4c95d8ee3b3a13e8d4d2b60b">ACTIVE_SENSOR_NONE</a></td></tr>
-<tr class="memdesc:gaaf76c2387a5b632544ba92b873ec1d7a"><td class="mdescLeft">&#160;</td><td class="mdescRight">I2C1: BNO055.  <br /></td></tr>
+<tr class="memdesc:gaaf76c2387a5b632544ba92b873ec1d7a"><td class="mdescLeft">&#160;</td><td class="mdescRight">I2C_BNO bus: BNO055.  <br /></td></tr>
 </table>
 <a name="details" id="details"></a><h2 id="header-details" class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Tracks which sensor is currently using each bus. </p>
@@ -174,7 +174,7 @@ Bus Tracking Variables</h2></td></tr>
 </td></tr>
 </table>
 
-<p class="definition">Definition at line <a class="el" href="../../dc/d0c/sensors__thread_8h_source.html#l00084">84</a> of file <a class="el" href="../../dc/d0c/sensors__thread_8h_source.html">sensors_thread.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../dc/d0c/sensors__thread_8h_source.html#l00086">86</a> of file <a class="el" href="../../dc/d0c/sensors__thread_8h_source.html">sensors_thread.h</a>.</p>
 
 </div>
 </div>
@@ -191,13 +191,13 @@ Bus Tracking Variables</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p>I2C1: BNO055. </p>
+<p>I2C_BNO bus: BNO055. </p>
 <p>Current active sensor on I2C1 bus.</p>
 <p>Currently active sensor on I2C1 bus. </p>
 
-<p class="definition">Definition at line <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00070">70</a> of file <a class="el" href="../../d3/d05/sensors__thread_8c_source.html">sensors_thread.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00073">73</a> of file <a class="el" href="../../d3/d05/sensors__thread_8c_source.html">sensors_thread.c</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00227">sensors_thread_function()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00230">sensors_thread_function()</a>.</p>
 
 </div>
 </div>
@@ -225,7 +225,7 @@ Bus Tracking Variables</h2></td></tr>
 <p>Current active sensor on I2C1 bus.</p>
 <p>Currently active sensor on I2C1 bus. </p>
 
-<p class="definition">Definition at line <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00070">70</a> of file <a class="el" href="../../d3/d05/sensors__thread_8c_source.html">sensors_thread.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00073">73</a> of file <a class="el" href="../../d3/d05/sensors__thread_8c_source.html">sensors_thread.c</a>.</p>
 
 </div>
 </div>
@@ -249,38 +249,38 @@ Bus Tracking Variables</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p>Current active sensor on SPI1 bus. </p>
-<p>Current active sensor on SPI1 bus.</p>
+<p>Current active sensor on SPI_IMU_BARO bus (IMU or barometer). </p>
+<p>Current active sensor on SPI_IMU_BARO bus (IMU or barometer).</p>
 <p>Currently active sensor on SPI1 bus. </p>
 
-<p class="definition">Definition at line <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00068">68</a> of file <a class="el" href="../../d3/d05/sensors__thread_8c_source.html">sensors_thread.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00071">71</a> of file <a class="el" href="../../d3/d05/sensors__thread_8c_source.html">sensors_thread.c</a>.</p>
 
 </div>
 </div>
-<a id="ga70b8d7beeada26526dc6ca712893863c" name="ga70b8d7beeada26526dc6ca712893863c"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ga70b8d7beeada26526dc6ca712893863c">&#9670;&#160;</a></span>spi3_active_sensor <span class="overload">[1/2]</span></h2>
+<a id="ga45603ab2dbaf4b2eb8d988b176304974" name="ga45603ab2dbaf4b2eb8d988b176304974"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ga45603ab2dbaf4b2eb8d988b176304974">&#9670;&#160;</a></span>spi_mag_active_sensor <span class="overload">[1/2]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">volatile <a class="el" href="#ga236ff5c902af3e544b7e5ec44224769d">active_sensor_t</a> spi3_active_sensor = <a class="el" href="#gga236ff5c902af3e544b7e5ec44224769dae0d1754b4c95d8ee3b3a13e8d4d2b60b">ACTIVE_SENSOR_NONE</a></td>
+          <td class="memname">volatile <a class="el" href="#ga236ff5c902af3e544b7e5ec44224769d">active_sensor_t</a> spi_mag_active_sensor = <a class="el" href="#gga236ff5c902af3e544b7e5ec44224769dae0d1754b4c95d8ee3b3a13e8d4d2b60b">ACTIVE_SENSOR_NONE</a></td>
         </tr>
       </table>
 </div><div class="memdoc">
 
-<p>SPI3: MAG. </p>
-<p>Current active sensor on SPI3 bus.</p>
-<p>Currently active sensor on SPI3 bus. </p>
+<p>SPI_MAG bus: magnetometer. </p>
+<p>Current active sensor on SPI_MAG bus (magnetometer; SPI3 on F446ZE, SPI6 on H743ZI).</p>
+<p>Currently active sensor on MAG SPI bus. </p>
 
-<p class="definition">Definition at line <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00069">69</a> of file <a class="el" href="../../d3/d05/sensors__thread_8c_source.html">sensors_thread.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00072">72</a> of file <a class="el" href="../../d3/d05/sensors__thread_8c_source.html">sensors_thread.c</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html#l00149">HAL_SPI_TxRxCpltCallback()</a>, and <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00227">sensors_thread_function()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html#l00158">HAL_SPI_TxRxCpltCallback()</a>, and <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00230">sensors_thread_function()</a>.</p>
 
 </div>
 </div>
-<a id="ga70b8d7beeada26526dc6ca712893863c" name="ga70b8d7beeada26526dc6ca712893863c"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ga70b8d7beeada26526dc6ca712893863c">&#9670;&#160;</a></span>spi3_active_sensor <span class="overload">[2/2]</span></h2>
+<a id="ga45603ab2dbaf4b2eb8d988b176304974" name="ga45603ab2dbaf4b2eb8d988b176304974"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ga45603ab2dbaf4b2eb8d988b176304974">&#9670;&#160;</a></span>spi_mag_active_sensor <span class="overload">[2/2]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -289,7 +289,7 @@ Bus Tracking Variables</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">volatile <a class="el" href="#ga236ff5c902af3e544b7e5ec44224769d">active_sensor_t</a> spi3_active_sensor</td>
+          <td class="memname">volatile <a class="el" href="#ga236ff5c902af3e544b7e5ec44224769d">active_sensor_t</a> spi_mag_active_sensor</td>
         </tr>
       </table>
   </td>
@@ -299,11 +299,11 @@ Bus Tracking Variables</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p>Current active sensor on SPI3 bus. </p>
-<p>Current active sensor on SPI3 bus.</p>
-<p>Currently active sensor on SPI3 bus. </p>
+<p>Current active sensor on SPI_MAG bus (magnetometer; SPI3 on F446ZE, SPI6 on H743ZI). </p>
+<p>Current active sensor on SPI_MAG bus (magnetometer; SPI3 on F446ZE, SPI6 on H743ZI).</p>
+<p>Currently active sensor on MAG SPI bus. </p>
 
-<p class="definition">Definition at line <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00069">69</a> of file <a class="el" href="../../d3/d05/sensors__thread_8c_source.html">sensors_thread.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00072">72</a> of file <a class="el" href="../../d3/d05/sensors__thread_8c_source.html">sensors_thread.c</a>.</p>
 
 </div>
 </div>

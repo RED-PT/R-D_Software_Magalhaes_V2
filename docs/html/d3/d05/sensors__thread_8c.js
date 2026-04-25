@@ -9,11 +9,11 @@ var sensors__thread_8c =
     [ "baro_device", "d5/d02/group___sensor_instances.html#ga830ee068f58337e1f2d76e1e307fda6f", null ],
     [ "baro_errors", "d3/d05/sensors__thread_8c.html#a604e7bb6fc7d44aa144f717798f390d0", null ],
     [ "baro_samples", "d3/d05/sensors__thread_8c.html#a5dbfafa88090348da0897535ba558baa", null ],
-    [ "bno_device", "d5/d02/group___sensor_instances.html#ga2b12a45ed39404d58674cd4f03c98b67", null ],
+    [ "bno_device", "d5/d02/group___sensor_instances.html#ga81bf5dbfc3b57fca6bf874a69b506254", null ],
     [ "bno_errors", "d3/d05/sensors__thread_8c.html#adfd371c99b97f670967b49650f77a330", null ],
     [ "bno_samples", "d3/d05/sensors__thread_8c.html#a7096cccd3ec54f57c94ccf73abb584dd", null ],
     [ "dma_errors", "d3/d05/sensors__thread_8c.html#a6917f362b5aab3b8e4d5730d214fcd7e", null ],
-    [ "gps_device", "d5/d02/group___sensor_instances.html#ga00e36748cb36d619521181907dc231fd", null ],
+    [ "gps_device", "d5/d02/group___sensor_instances.html#ga4f384dcc1ec1ef30bc13e555fa49343f", null ],
     [ "gps_errors", "d3/d05/sensors__thread_8c.html#a320b405eeb108d4792b250d257c0dbbd", null ],
     [ "gps_samples", "d3/d05/sensors__thread_8c.html#a9a19c7ab54f84f3d455ae0027c83fd88", null ],
     [ "i2c1_active_sensor", "d7/d0c/group___sensor_bus_tracking.html#gaaf76c2387a5b632544ba92b873ec1d7a", null ],
@@ -23,10 +23,10 @@ var sensors__thread_8c =
     [ "imu_device", "d5/d02/group___sensor_instances.html#ga5941fdf22f4e99839556fe1540a81232", null ],
     [ "imu_errors", "d3/d05/sensors__thread_8c.html#affbd781ad20fd6d36fce738da2eac4f2", null ],
     [ "imu_samples", "d3/d05/sensors__thread_8c.html#ad251ec63411a3bc8c11952a948e40501", null ],
-    [ "mag_device", "d5/d02/group___sensor_instances.html#ga9bb445c821c8850eb07afc9c7a4ec717", null ],
+    [ "mag_device", "d5/d02/group___sensor_instances.html#gaa0d3123b6874344a82a840b00af4c62a", null ],
     [ "mag_errors", "d3/d05/sensors__thread_8c.html#abf68830add5757a433d328703cbc4238", null ],
     [ "mag_samples", "d3/d05/sensors__thread_8c.html#abb3e74c65c09d8f2bf0683719e3b0ffe", null ],
     [ "sensor_stats", "d3/d05/sensors__thread_8c.html#aa25fd61c4115860b63b612d285bf887a", null ],
     [ "spi1_active_sensor", "d7/d0c/group___sensor_bus_tracking.html#ga9341c303ff0629cc51ba13cdd7e0c21b", null ],
-    [ "spi3_active_sensor", "d7/d0c/group___sensor_bus_tracking.html#ga70b8d7beeada26526dc6ca712893863c", null ]
+    [ "spi_mag_active_sensor", "d7/d0c/group___sensor_bus_tracking.html#ga45603ab2dbaf4b2eb8d988b176304974", null ]
 ];

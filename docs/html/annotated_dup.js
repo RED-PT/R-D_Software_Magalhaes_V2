@@ -2,7 +2,8 @@ var annotated_dup =
 [
     [ "server", "d9/d01/namespaceserver.html", [
       [ "ConnectionManager", "dd/d06/classserver_1_1_connection_manager.html", "dd/d06/classserver_1_1_connection_manager" ],
-      [ "SerialReader", "d5/d0f/classserver_1_1_serial_reader.html", "d5/d0f/classserver_1_1_serial_reader" ]
+      [ "SerialReader", "d5/d0f/classserver_1_1_serial_reader.html", "d5/d0f/classserver_1_1_serial_reader" ],
+      [ "NoCacheMiddleware", "d1/d0b/classserver_1_1_no_cache_middleware.html", "d1/d0b/classserver_1_1_no_cache_middleware" ]
     ] ],
     [ "asm330lhhx_all_int_src_t", "d2/d03/structasm330lhhx__all__int__src__t.html", "d2/d03/structasm330lhhx__all__int__src__t" ],
     [ "asm330lhhx_all_sources_t", "d8/d04/structasm330lhhx__all__sources__t.html", "d8/d04/structasm330lhhx__all__sources__t" ],
@@ -132,6 +133,7 @@ var annotated_dup =
     [ "asm330lhhx_wake_up_ths_t", "d9/d0e/structasm330lhhx__wake__up__ths__t.html", "d9/d0e/structasm330lhhx__wake__up__ths__t" ],
     [ "baro_calibration_t", "d2/d00/structbaro__calibration__t.html", "d2/d00/structbaro__calibration__t" ],
     [ "BARO_t", "d5/d0d/struct_b_a_r_o__t.html", "d5/d0d/struct_b_a_r_o__t" ],
+    [ "BaseHTTPMiddleware", "d9/d0d/class_base_h_t_t_p_middleware.html", null ],
     [ "bitwise_t", "d2/d0f/structbitwise__t.html", "d2/d0f/structbitwise__t" ],
     [ "BNO055_t", "d6/d09/struct_b_n_o055__t.html", "d6/d09/struct_b_n_o055__t" ],
     [ "BNO_t", "dd/d00/struct_b_n_o__t.html", "dd/d00/struct_b_n_o__t" ],
@@ -148,6 +150,7 @@ var annotated_dup =
     [ "FX29_t", "d7/d0f/struct_f_x29__t.html", "d7/d0f/struct_f_x29__t" ],
     [ "GPS_t", "d1/d0a/struct_g_p_s__t.html", "d1/d0a/struct_g_p_s__t" ],
     [ "IMU_t", "dc/d0f/struct_i_m_u__t.html", "dc/d0f/struct_i_m_u__t" ],
+    [ "INA219_t", "d8/d0f/struct_i_n_a219__t.html", "d8/d0f/struct_i_n_a219__t" ],
     [ "LOADCELL_t", "db/d0a/struct_l_o_a_d_c_e_l_l__t.html", "db/d0a/struct_l_o_a_d_c_e_l_l__t" ],
     [ "LoRa_Config_t", "d2/d01/struct_lo_ra___config__t.html", "d2/d01/struct_lo_ra___config__t" ],
     [ "LoRa_DMA_t", "d3/d0a/struct_lo_ra___d_m_a__t.html", "d3/d0a/struct_lo_ra___d_m_a__t" ],

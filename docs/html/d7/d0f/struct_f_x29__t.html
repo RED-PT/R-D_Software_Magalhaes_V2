@@ -115,7 +115,7 @@ $(function() {
 <div id="dynsection-0-summary" class="dynsummary" style="display:block;">
 </div>
 <div id="dynsection-0-content" class="dyncontent" style="display:none;">
-<div class="center"><iframe scrolling="no" loading="lazy" frameborder="0" src="../../df/d0e/struct_f_x29__t__coll__graph.svg" width="622" height="250"><p><b>This browser is not able to show SVG: try Firefox, Chrome, Safari, or Opera instead.</b></p></iframe></div>
+<div class="center"><div class="zoom"><iframe scrolling="no" loading="lazy" frameborder="0" src="../../df/d0e/struct_f_x29__t__coll__graph.svg" width="100%" height="506"><p><b>This browser is not able to show SVG: try Firefox, Chrome, Safari, or Opera instead.</b></p></iframe></div></div>
 </div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 id="header-pub-attribs" class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
@@ -130,6 +130,10 @@ Data Fields</h2></td></tr>
 <tr class="memdesc:ae3de90b3221252b741e530e55c39d7fc"><td class="mdescLeft">&#160;</td><td class="mdescRight">Raw counts offset for zeroing.  <br /></td></tr>
 <tr class="memitem:a91e073228081175b0e74dd59f487c897" id="r_a91e073228081175b0e74dd59f487c897"><td class="memItemLeft"><a class="el" href="../../d3/d00/fatfs__sd_8c.html#abb452686968e48b67397da5f97445f5b">bool</a>&#160;</td><td class="memItemRight"><a class="el" href="#a91e073228081175b0e74dd59f487c897">is_tared</a></td></tr>
 <tr class="memdesc:a91e073228081175b0e74dd59f487c897"><td class="mdescLeft">&#160;</td><td class="mdescRight">true if tare calibration applied  <br /></td></tr>
+<tr class="memitem:a1de845cd496ed98e50a53cf8340f982b" id="r_a1de845cd496ed98e50a53cf8340f982b"><td class="memItemLeft">float&#160;</td><td class="memItemRight"><a class="el" href="#a1de845cd496ed98e50a53cf8340f982b">scale_factor</a></td></tr>
+<tr class="memdesc:a1de845cd496ed98e50a53cf8340f982b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Calibration scale factor (default 1.0).  <br /></td></tr>
+<tr class="memitem:a8f9485d8502f461276f3f866d2f9e69f" id="r_a8f9485d8502f461276f3f866d2f9e69f"><td class="memItemLeft"><a class="el" href="../../d3/d00/fatfs__sd_8c.html#abb452686968e48b67397da5f97445f5b">bool</a>&#160;</td><td class="memItemRight"><a class="el" href="#a8f9485d8502f461276f3f866d2f9e69f">is_calibrated</a></td></tr>
+<tr class="memdesc:a8f9485d8502f461276f3f866d2f9e69f"><td class="mdescLeft">&#160;</td><td class="mdescRight">true if two-point calibration applied  <br /></td></tr>
 </table>
 <a name="details" id="details"></a><h2 id="header-details" class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>FX29 driver context. </p>
@@ -153,7 +157,7 @@ Data Fields</h2></td></tr>
 
 <p class="definition">Definition at line <a class="el" href="../../df/d0e/_f_x29_8h_source.html#l00132">132</a> of file <a class="el" href="../../df/d0e/_f_x29_8h_source.html">FX29.h</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00173">FX29_CountsToForce()</a>, <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00029">FX29_Init()</a>, and <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00073">FX29_ReadWithPWM()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00226">FX29_CountsToForce()</a>, <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00029">FX29_Init()</a>, and <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00075">FX29_ReadWithPWM()</a>.</p>
 
 </div>
 </div>
@@ -173,7 +177,7 @@ Data Fields</h2></td></tr>
 
 <p class="definition">Definition at line <a class="el" href="../../df/d0e/_f_x29_8h_source.html#l00130">130</a> of file <a class="el" href="../../df/d0e/_f_x29_8h_source.html">FX29.h</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00029">FX29_Init()</a>, <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00053">FX29_IsConnected()</a>, and <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00073">FX29_ReadWithPWM()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00029">FX29_Init()</a>, <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00055">FX29_IsConnected()</a>, and <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00075">FX29_ReadWithPWM()</a>.</p>
 
 </div>
 </div>
@@ -193,7 +197,27 @@ Data Fields</h2></td></tr>
 
 <p class="definition">Definition at line <a class="el" href="../../df/d0e/_f_x29_8h_source.html#l00131">131</a> of file <a class="el" href="../../df/d0e/_f_x29_8h_source.html">FX29.h</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00029">FX29_Init()</a>, <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00053">FX29_IsConnected()</a>, and <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00073">FX29_ReadWithPWM()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00029">FX29_Init()</a>, <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00055">FX29_IsConnected()</a>, and <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00075">FX29_ReadWithPWM()</a>.</p>
+
+</div>
+</div>
+<a id="a8f9485d8502f461276f3f866d2f9e69f" name="a8f9485d8502f461276f3f866d2f9e69f"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a8f9485d8502f461276f3f866d2f9e69f">&#9670;&#160;</a></span>is_calibrated</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="../../d3/d00/fatfs__sd_8c.html#abb452686968e48b67397da5f97445f5b">bool</a> FX29_t::is_calibrated</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>true if two-point calibration applied </p>
+
+<p class="definition">Definition at line <a class="el" href="../../df/d0e/_f_x29_8h_source.html#l00136">136</a> of file <a class="el" href="../../df/d0e/_f_x29_8h_source.html">FX29.h</a>.</p>
+
+<p class="reference">Referenced by <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00180">FX29_Calibrate()</a>, <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00218">FX29_ClearCalibration()</a>, <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00029">FX29_Init()</a>, <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00075">FX29_ReadWithPWM()</a>, and <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00205">FX29_SetScaleFactor()</a>.</p>
 
 </div>
 </div>
@@ -213,7 +237,27 @@ Data Fields</h2></td></tr>
 
 <p class="definition">Definition at line <a class="el" href="../../df/d0e/_f_x29_8h_source.html#l00134">134</a> of file <a class="el" href="../../df/d0e/_f_x29_8h_source.html">FX29.h</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00165">FX29_ClearTare()</a>, <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00029">FX29_Init()</a>, <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00073">FX29_ReadWithPWM()</a>, <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00122">FX29_StartTare()</a>, and <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00129">FX29_Tare()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00172">FX29_ClearTare()</a>, <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00029">FX29_Init()</a>, <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00075">FX29_ReadWithPWM()</a>, <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00129">FX29_StartTare()</a>, and <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00136">FX29_Tare()</a>.</p>
+
+</div>
+</div>
+<a id="a1de845cd496ed98e50a53cf8340f982b" name="a1de845cd496ed98e50a53cf8340f982b"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a1de845cd496ed98e50a53cf8340f982b">&#9670;&#160;</a></span>scale_factor</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">float FX29_t::scale_factor</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Calibration scale factor (default 1.0). </p>
+
+<p class="definition">Definition at line <a class="el" href="../../df/d0e/_f_x29_8h_source.html#l00135">135</a> of file <a class="el" href="../../df/d0e/_f_x29_8h_source.html">FX29.h</a>.</p>
+
+<p class="reference">Referenced by <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00180">FX29_Calibrate()</a>, <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00218">FX29_ClearCalibration()</a>, <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00213">FX29_GetScaleFactor()</a>, <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00029">FX29_Init()</a>, <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00075">FX29_ReadWithPWM()</a>, and <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00205">FX29_SetScaleFactor()</a>.</p>
 
 </div>
 </div>
@@ -233,7 +277,7 @@ Data Fields</h2></td></tr>
 
 <p class="definition">Definition at line <a class="el" href="../../df/d0e/_f_x29_8h_source.html#l00133">133</a> of file <a class="el" href="../../df/d0e/_f_x29_8h_source.html">FX29.h</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00165">FX29_ClearTare()</a>, <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00029">FX29_Init()</a>, <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00073">FX29_ReadWithPWM()</a>, <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00122">FX29_StartTare()</a>, and <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00129">FX29_Tare()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00172">FX29_ClearTare()</a>, <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00029">FX29_Init()</a>, <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00075">FX29_ReadWithPWM()</a>, <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00129">FX29_StartTare()</a>, and <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00136">FX29_Tare()</a>.</p>
 
 </div>
 </div>

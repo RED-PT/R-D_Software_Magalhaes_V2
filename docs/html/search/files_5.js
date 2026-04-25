@@ -10,7 +10,8 @@ var searchData=
   ['flight_5fcomputer_2eh_7',['flight_computer.h',['../d4/d0f/flight__computer_8h.html',1,'']]],
   ['flight_5fcomputer_5fthread_2ec_8',['flight_computer_thread.c',['../de/d09/flight__computer__thread_8c.html',1,'']]],
   ['flight_5fcomputer_5fthread_2eh_9',['flight_computer_thread.h',['../d5/d02/flight__computer__thread_8h.html',1,'']]],
-  ['freertosconfig_2eh_10',['FreeRTOSConfig.h',['../de/d03/_free_r_t_o_s_config_8h.html',1,'']]],
-  ['fx29_2ec_11',['FX29.c',['../db/d0c/_f_x29_8c.html',1,'']]],
-  ['fx29_2eh_12',['FX29.h',['../df/d0e/_f_x29_8h.html',1,'']]]
+  ['flight_5flifecycle_2emd_10',['flight_lifecycle.md',['../d4/d0d/flight__lifecycle_8md.html',1,'']]],
+  ['freertosconfig_2eh_11',['FreeRTOSConfig.h',['../de/d03/_free_r_t_o_s_config_8h.html',1,'']]],
+  ['fx29_2ec_12',['FX29.c',['../db/d0c/_f_x29_8c.html',1,'']]],
+  ['fx29_2eh_13',['FX29.h',['../df/d0e/_f_x29_8h.html',1,'']]]
 ];

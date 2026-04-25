@@ -2,7 +2,7 @@ var searchData=
 [
   ['i2c1_5factive_5fsensor_0',['i2c1_active_sensor',['../d0/d00/hal__callbacks_8c.html#aaf76c2387a5b632544ba92b873ec1d7a',1,'i2c1_active_sensor:&#160;sensors_thread.c'],['../d7/d0c/group___sensor_bus_tracking.html#gaaf76c2387a5b632544ba92b873ec1d7a',1,'i2c1_active_sensor:&#160;sensors_thread.c'],['../d7/d0c/group___sensor_bus_tracking.html#gaaf76c2387a5b632544ba92b873ec1d7a',1,'i2c1_active_sensor:&#160;sensors_thread.c']]],
   ['i2c1_5fdma_5fstart_5ftick_1',['i2c1_dma_start_tick',['../d3/d05/sensors__thread_8c.html#a2ff2ba84b57933e0cc5996d34cc9986c',1,'sensors_thread.c']]],
-  ['i2c_5faddr_2',['i2c_addr',['../d6/d09/struct_b_n_o055__t.html#a1c7ca7c025898805cac2dfd2b5c152be',1,'BNO055_t::i2c_addr'],['../d7/d0f/struct_f_x29__t.html#a93d76d6a6251da6c9eb4851e0791e359',1,'FX29_t::i2c_addr']]],
+  ['i2c_5faddr_2',['i2c_addr',['../d6/d09/struct_b_n_o055__t.html#a1c7ca7c025898805cac2dfd2b5c152be',1,'BNO055_t::i2c_addr'],['../d7/d0f/struct_f_x29__t.html#a93d76d6a6251da6c9eb4851e0791e359',1,'FX29_t::i2c_addr'],['../d8/d0f/struct_i_n_a219__t.html#a17cf8d013a25803b3c6e0b184c052156',1,'INA219_t::i2c_addr']]],
   ['i2c_5fdisable_3',['i2c_disable',['../d4/d01/structasm330lhhx__ctrl4__c__t.html#a81b3cbf5b6724998783c418277f6db79',1,'asm330lhhx_ctrl4_c_t']]],
   ['i2c_5frecoveries_4',['i2c_recoveries',['../d3/d05/sensors__thread_8c.html#a29b06d153f8ad7b8f4288160cb863bb1',1,'sensors_thread.c']]],
   ['i2c_5ftimeouts_5',['i2c_timeouts',['../d3/d05/sensors__thread_8c.html#a15a61a82bcf95a2d7f7a8a5c1eec4779',1,'sensors_thread.c']]],
@@ -106,7 +106,7 @@ var searchData=
   ['internal_5ffreq_5ffine_103',['internal_freq_fine',['../de/d0b/unionasm330lhhx__reg__t.html#aa850b310d268289514715e121b6e0f6d',1,'asm330lhhx_reg_t']]],
   ['interrupts_5fenable_104',['interrupts_enable',['../dd/d06/structasm330lhhx__int__cfg1__t.html#a445b1c3c01e89b1718f084cd8bad9b89',1,'asm330lhhx_int_cfg1_t']]],
   ['invert_5fiq_105',['invert_iq',['../d1/d07/struct_s_x126x___lo_ra_config__t.html#aa9405f714cebcd53e4e5cf33348e2095',1,'SX126x_LoRaConfig_t']]],
-  ['is_5fcalibrated_106',['is_calibrated',['../d2/d00/structbaro__calibration__t.html#a7625e10dec32731c61b3eed8b3758ad1',1,'baro_calibration_t']]],
+  ['is_5fcalibrated_106',['is_calibrated',['../d7/d0f/struct_f_x29__t.html#a8f9485d8502f461276f3f866d2f9e69f',1,'FX29_t::is_calibrated'],['../d2/d00/structbaro__calibration__t.html#a7625e10dec32731c61b3eed8b3758ad1',1,'baro_calibration_t::is_calibrated']]],
   ['is_5ffsm1_107',['is_fsm1',['../d1/d0f/structasm330lhhx__fsm__status__a__mainpage__t.html#a5ffb0fb47dfd98be313389df309bedad',1,'asm330lhhx_fsm_status_a_mainpage_t::is_fsm1'],['../dd/d07/structasm330lhhx__fsm__status__a__t.html#a3de830bf5ffb50fae6bf92599d7dc892',1,'asm330lhhx_fsm_status_a_t::is_fsm1']]],
   ['is_5ffsm10_108',['is_fsm10',['../d4/d0d/structasm330lhhx__fsm__status__b__mainpage__t.html#a698e53aa29f720c83cb01732371b0195',1,'asm330lhhx_fsm_status_b_mainpage_t::is_fsm10'],['../d7/d00/structasm330lhhx__fsm__status__b__t.html#af444d64b11f7636dd7091f68cbd7363d',1,'asm330lhhx_fsm_status_b_t::is_fsm10']]],
   ['is_5ffsm11_109',['is_fsm11',['../d4/d0d/structasm330lhhx__fsm__status__b__mainpage__t.html#a2348a0960f7ae99418cb0fb03b37faf4',1,'asm330lhhx_fsm_status_b_mainpage_t::is_fsm11'],['../d7/d00/structasm330lhhx__fsm__status__b__t.html#a13dbb4d49c7e312f3c5c6d915f6c4305',1,'asm330lhhx_fsm_status_b_t::is_fsm11']]],

@@ -12,6 +12,7 @@ var searchData=
   ['rates_9',['Sensor Update Rates',['../d3/d0d/group___sensor_timing_config.html',1,'']]],
   ['readings_10',['Temperature Readings',['../d1/d06/group___temperature_data.html',1,'']]],
   ['register_20addresses_11',['Register Addresses',['../da/d00/group___b_n_o_registers.html',1,'Register Addresses'],['../d6/d02/group___m_m_c_registers.html',1,'Register Addresses']]],
-  ['register_20bits_12',['Control Register Bits',['../d4/d05/group___m_m_c_control.html',1,'']]],
-  ['resume_20functions_13',['Pause/Resume Functions',['../d0/d00/group___s_d_card_pause.html',1,'']]]
+  ['register_20bits_12',['Register Bits',['../d4/d05/group___m_m_c_control.html',1,'Control Register Bits'],['../db/d01/group___i_n_a219___config_bits.html',1,'INA219 Configuration Register Bits']]],
+  ['register_20map_13',['INA219 Register Map',['../d3/d0f/group___i_n_a219___reg_map.html',1,'']]],
+  ['resume_20functions_14',['Pause/Resume Functions',['../d0/d00/group___s_d_card_pause.html',1,'']]]
 ];

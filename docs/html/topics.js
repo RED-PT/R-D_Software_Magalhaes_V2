@@ -1,5 +1,6 @@
 var topics =
 [
+    [ "ESC Pulse Width Limits", "dc/d0b/group___e_s_c_pulse_limits.html", "dc/d0b/group___e_s_c_pulse_limits" ],
     [ "ESC PWM Duty Cycle Limits", "d9/d02/group___p_w_m_limits.html", "d9/d02/group___p_w_m_limits" ],
     [ "Throttle Percentage Limits", "de/d0c/group___throttle_limits.html", "de/d0c/group___throttle_limits" ],
     [ "Ramp Rate Constants", "d0/d06/group___ramp_rates.html", "d0/d06/group___ramp_rates" ],
@@ -45,6 +46,10 @@ var topics =
     [ "NMEA Message IDs for UBX CFG-MSG", "df/d02/group___u_b_x_n_m_e_a_i_ds.html", "df/d02/group___u_b_x_n_m_e_a_i_ds" ],
     [ "Legacy NMEA Parsing Functions", "d8/d06/group___g_p_s_parsing.html", "d8/d06/group___g_p_s_parsing" ],
     [ "U-Blox GPS Public API", "df/d04/group___g_p_s_a_p_i.html", "df/d04/group___g_p_s_a_p_i" ],
+    [ "INA219 Register Map", "d3/d0f/group___i_n_a219___reg_map.html", "d3/d0f/group___i_n_a219___reg_map" ],
+    [ "INA219 Configuration Register Bits", "db/d01/group___i_n_a219___config_bits.html", "db/d01/group___i_n_a219___config_bits" ],
+    [ "INA219 Device Constants", "df/d0f/group___i_n_a219___constants.html", "df/d0f/group___i_n_a219___constants" ],
+    [ "INA219 Driver API", "d4/d06/group___i_n_a219___a_p_i.html", "d4/d06/group___i_n_a219___a_p_i" ],
     [ "Register Addresses", "d6/d02/group___m_m_c_registers.html", "d6/d02/group___m_m_c_registers" ],
     [ "Control Register Bits", "d4/d05/group___m_m_c_control.html", "d4/d05/group___m_m_c_control" ],
     [ "Calibration Constants", "d6/d08/group___m_m_c_calibration.html", "d6/d08/group___m_m_c_calibration" ],
@@ -71,5 +76,15 @@ var topics =
     [ "Telemetry System", "db/d04/group___telemetry.html", "db/d04/group___telemetry" ],
     [ "Test Configuration", "d8/d0d/group___static_test_config.html", "d8/d0d/group___static_test_config" ],
     [ "Static Test API", "d4/d07/group___static_test_a_p_i.html", "d4/d07/group___static_test_a_p_i" ],
-    [ "Thread Management", "df/d08/group___thread___management.html", "df/d08/group___thread___management" ]
+    [ "Thread Management", "df/d08/group___thread___management.html", "df/d08/group___thread___management" ],
+    [ "across the source tree) are attached", "d6/d07/group__declarations.html", null ],
+    [ "Hardware Abstraction", "d3/d09/group___hardware_abstraction.html", null ],
+    [ "Sensors", "d3/d07/group___sensors.html", "d3/d07/group___sensors" ],
+    [ "State Estimation", "d9/d04/group___estimation.html", null ],
+    [ "Control", "d3/d0b/group___control.html", null ],
+    [ "Communications", "d9/d02/group___comms.html", null ],
+    [ "Data Pipeline", "da/d0e/group___data_pipeline.html", null ],
+    [ "Flight Core", "d9/d0d/group___flight_core.html", null ],
+    [ "Tests &amp; Bench", "df/d04/group___tests.html", null ],
+    [ "Infrastructure", "d7/d08/group___infrastructure.html", null ]
 ];

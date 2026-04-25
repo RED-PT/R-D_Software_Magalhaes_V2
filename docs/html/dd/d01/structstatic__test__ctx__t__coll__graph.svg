@@ -47,7 +47,7 @@
   </g>
 </defs>
 <script type="application/ecmascript">
-var viewWidth = 1240;
+var viewWidth = 1427;
 var viewHeight = 360;
 var sectionId = 'dynsection-0';
 </script>
@@ -59,13 +59,13 @@ var sectionId = 'dynsection-0';
 <g id="Node000001" class="node">
 <title>Node1</title>
 <g id="a_Node000001"><a xlink:title="Static test context.">
-<polygon fill="#999999" stroke="none" points="772,-61 689,-61 689,0 772,0 772,-61"/>
-<text xml:space="preserve" text-anchor="start" x="693" y="-46.55" font-family="Segoe UI" font-size="11.00">static_test_ctx_t</text>
-<text xml:space="preserve" text-anchor="start" x="729" y="-27.55" font-family="Segoe UI" font-size="11.00"> </text>
-<text xml:space="preserve" text-anchor="start" x="729" y="-8.55" font-family="Segoe UI" font-size="11.00"> </text>
-<polygon fill="#666666" stroke="#666666" points="689,-40 689,-40 772,-40 772,-40 689,-40"/>
-<polygon fill="#666666" stroke="#666666" points="689,-21 689,-21 772,-21 772,-21 689,-21"/>
-<polygon fill="none" stroke="#666666" points="689,0 689,-61 772,-61 772,0 689,0"/>
+<polygon fill="#999999" stroke="none" points="853.5,-61 770.5,-61 770.5,0 853.5,0 853.5,-61"/>
+<text xml:space="preserve" text-anchor="start" x="774.5" y="-46.55" font-family="Segoe UI" font-size="11.00">static_test_ctx_t</text>
+<text xml:space="preserve" text-anchor="start" x="810.5" y="-27.55" font-family="Segoe UI" font-size="11.00"> </text>
+<text xml:space="preserve" text-anchor="start" x="810.5" y="-8.55" font-family="Segoe UI" font-size="11.00"> </text>
+<polygon fill="#666666" stroke="#666666" points="770.5,-40 770.5,-40 853.5,-40 853.5,-40 770.5,-40"/>
+<polygon fill="#666666" stroke="#666666" points="770.5,-21 770.5,-21 853.5,-21 853.5,-21 770.5,-21"/>
+<polygon fill="none" stroke="#666666" points="770.5,0 770.5,-61 853.5,-61 853.5,0 770.5,0"/>
 </a>
 </g>
 </g>
@@ -73,13 +73,13 @@ var sectionId = 'dynsection-0';
 <g id="Node000002" class="node">
 <title>Node2</title>
 <g id="a_Node000002"><a xlink:title=" ">
-<polygon fill="white" stroke="none" points="221.5,-187.5 129.5,-187.5 129.5,-126.5 221.5,-126.5 221.5,-187.5"/>
-<text xml:space="preserve" text-anchor="start" x="133.5" y="-173.05" font-family="Segoe UI" font-size="11.00">static_test_state_t</text>
-<text xml:space="preserve" text-anchor="start" x="174" y="-154.05" font-family="Segoe UI" font-size="11.00"> </text>
-<text xml:space="preserve" text-anchor="start" x="174" y="-135.05" font-family="Segoe UI" font-size="11.00"> </text>
-<polygon fill="#666666" stroke="#666666" points="129.5,-166.5 129.5,-166.5 221.5,-166.5 221.5,-166.5 129.5,-166.5"/>
-<polygon fill="#666666" stroke="#666666" points="129.5,-147.5 129.5,-147.5 221.5,-147.5 221.5,-147.5 129.5,-147.5"/>
-<polygon fill="none" stroke="#666666" points="129.5,-126.5 129.5,-187.5 221.5,-187.5 221.5,-126.5 129.5,-126.5"/>
+<polygon fill="white" stroke="none" points="92,-187.5 0,-187.5 0,-126.5 92,-126.5 92,-187.5"/>
+<text xml:space="preserve" text-anchor="start" x="4" y="-173.05" font-family="Segoe UI" font-size="11.00">static_test_state_t</text>
+<text xml:space="preserve" text-anchor="start" x="44.5" y="-154.05" font-family="Segoe UI" font-size="11.00"> </text>
+<text xml:space="preserve" text-anchor="start" x="44.5" y="-135.05" font-family="Segoe UI" font-size="11.00"> </text>
+<polygon fill="#666666" stroke="#666666" points="0,-166.5 0,-166.5 92,-166.5 92,-166.5 0,-166.5"/>
+<polygon fill="#666666" stroke="#666666" points="0,-147.5 0,-147.5 92,-147.5 92,-147.5 0,-147.5"/>
+<polygon fill="none" stroke="#666666" points="0,-126.5 0,-187.5 92,-187.5 92,-126.5 0,-126.5"/>
 </a>
 </g>
 </g>
@@ -87,23 +87,23 @@ var sectionId = 'dynsection-0';
 <g id="edge1_Node000001_Node000002" class="edge">
 <title>Node2&#45;&gt;Node1</title>
 <g id="a_edge1_Node000001_Node000002"><a xlink:title=" ">
-<path fill="none" stroke="#63b8ff" d="M189.52,-126.52C199.19,-109.63 213.74,-89.72 232.75,-79 307.41,-36.91 563.06,-31.49 676.05,-31.21"/>
-<polygon fill="none" stroke="#63b8ff" points="676.2,-31.21 682.2,-27.21 688.2,-31.2 682.21,-35.21 676.2,-31.21"/>
+<path fill="none" stroke="#63b8ff" d="M50.11,-126.76C54.1,-109.96 61.92,-90.06 77.25,-79 132.05,-39.47 597.51,-32.84 757.93,-31.72"/>
+<polygon fill="none" stroke="#63b8ff" points="757.82,-31.72 763.79,-27.69 769.81,-31.65 763.84,-35.69 757.82,-31.72"/>
 </a>
 </g>
-<text xml:space="preserve" text-anchor="start" x="235.75" y="-86.55" font-family="Segoe UI" font-size="11.00" fill="grey">+state</text>
+<text xml:space="preserve" text-anchor="start" x="80.25" y="-86.55" font-family="Segoe UI" font-size="11.00" fill="grey">+state</text>
 </g>
 <!-- Node3 -->
 <g id="Node000003" class="node">
 <title>Node3</title>
 <g id="a_Node000003"><a xlink:href="../../d3/d05/structstatic__test__config__t.html" target="_top" xlink:title="Test configuration parameters.">
-<polygon fill="white" stroke="none" points="657.62,-187.5 557.38,-187.5 557.38,-126.5 657.62,-126.5 657.62,-187.5"/>
-<text xml:space="preserve" text-anchor="start" x="561.38" y="-173.05" font-family="Segoe UI" font-size="11.00">static_test_config_t</text>
-<text xml:space="preserve" text-anchor="start" x="606" y="-154.05" font-family="Segoe UI" font-size="11.00"> </text>
-<text xml:space="preserve" text-anchor="start" x="606" y="-135.05" font-family="Segoe UI" font-size="11.00"> </text>
-<polygon fill="#666666" stroke="#666666" points="557.38,-166.5 557.38,-166.5 657.62,-166.5 657.62,-166.5 557.38,-166.5"/>
-<polygon fill="#666666" stroke="#666666" points="557.38,-147.5 557.38,-147.5 657.62,-147.5 657.62,-147.5 557.38,-147.5"/>
-<polygon fill="none" stroke="#666666" points="557.38,-126.5 557.38,-187.5 657.62,-187.5 657.62,-126.5 557.38,-126.5"/>
+<polygon fill="white" stroke="none" points="776.12,-187.5 675.88,-187.5 675.88,-126.5 776.12,-126.5 776.12,-187.5"/>
+<text xml:space="preserve" text-anchor="start" x="679.88" y="-173.05" font-family="Segoe UI" font-size="11.00">static_test_config_t</text>
+<text xml:space="preserve" text-anchor="start" x="724.5" y="-154.05" font-family="Segoe UI" font-size="11.00"> </text>
+<text xml:space="preserve" text-anchor="start" x="724.5" y="-135.05" font-family="Segoe UI" font-size="11.00"> </text>
+<polygon fill="#666666" stroke="#666666" points="675.88,-166.5 675.88,-166.5 776.12,-166.5 776.12,-166.5 675.88,-166.5"/>
+<polygon fill="#666666" stroke="#666666" points="675.88,-147.5 675.88,-147.5 776.12,-147.5 776.12,-147.5 675.88,-147.5"/>
+<polygon fill="none" stroke="#666666" points="675.88,-126.5 675.88,-187.5 776.12,-187.5 776.12,-126.5 675.88,-126.5"/>
 </a>
 </g>
 </g>
@@ -111,23 +111,23 @@ var sectionId = 'dynsection-0';
 <g id="edge2_Node000001_Node000003" class="edge">
 <title>Node3&#45;&gt;Node1</title>
 <g id="a_edge2_Node000001_Node000003"><a xlink:title=" ">
-<path fill="none" stroke="#63b8ff" d="M629.62,-126.66C641.39,-111.77 656.51,-93.76 671.5,-79 674.84,-75.72 678.38,-72.43 682.02,-69.2"/>
-<polygon fill="none" stroke="#63b8ff" points="681.98,-69.23 683.93,-62.29 691.09,-61.42 689.14,-68.36 681.98,-69.23"/>
+<path fill="none" stroke="#63b8ff" d="M732.15,-126.77C736.32,-111.56 742.95,-93.23 753,-79 755.54,-75.4 758.43,-71.93 761.53,-68.61"/>
+<polygon fill="none" stroke="#63b8ff" points="761.45,-68.69 762.98,-61.64 770.07,-60.34 768.55,-67.39 761.45,-68.69"/>
 </a>
 </g>
-<text xml:space="preserve" text-anchor="start" x="674.5" y="-86.55" font-family="Segoe UI" font-size="11.00" fill="grey">+config</text>
+<text xml:space="preserve" text-anchor="start" x="756" y="-86.55" font-family="Segoe UI" font-size="11.00" fill="grey">+config</text>
 </g>
 <!-- Node4 -->
 <g id="Node000004" class="node">
 <title>Node4</title>
 <g id="a_Node000004"><a xlink:title=" ">
-<polygon fill="white" stroke="none" points="449,-352 408,-352 408,-291 449,-291 449,-352"/>
-<text xml:space="preserve" text-anchor="start" x="412" y="-337.55" font-family="Segoe UI" font-size="11.00">uint8_t</text>
-<text xml:space="preserve" text-anchor="start" x="427" y="-318.55" font-family="Segoe UI" font-size="11.00"> </text>
-<text xml:space="preserve" text-anchor="start" x="427" y="-299.55" font-family="Segoe UI" font-size="11.00"> </text>
-<polygon fill="#666666" stroke="#666666" points="408,-331 408,-331 449,-331 449,-331 408,-331"/>
-<polygon fill="#666666" stroke="#666666" points="408,-312 408,-312 449,-312 449,-312 408,-312"/>
-<polygon fill="none" stroke="#666666" points="408,-291 408,-352 449,-352 449,-291 408,-291"/>
+<polygon fill="white" stroke="none" points="586.5,-352 545.5,-352 545.5,-291 586.5,-291 586.5,-352"/>
+<text xml:space="preserve" text-anchor="start" x="549.5" y="-337.55" font-family="Segoe UI" font-size="11.00">uint8_t</text>
+<text xml:space="preserve" text-anchor="start" x="564.5" y="-318.55" font-family="Segoe UI" font-size="11.00"> </text>
+<text xml:space="preserve" text-anchor="start" x="564.5" y="-299.55" font-family="Segoe UI" font-size="11.00"> </text>
+<polygon fill="#666666" stroke="#666666" points="545.5,-331 545.5,-331 586.5,-331 586.5,-331 545.5,-331"/>
+<polygon fill="#666666" stroke="#666666" points="545.5,-312 545.5,-312 586.5,-312 586.5,-312 545.5,-312"/>
+<polygon fill="none" stroke="#666666" points="545.5,-291 545.5,-352 586.5,-352 586.5,-291 545.5,-291"/>
 </a>
 </g>
 </g>
@@ -135,23 +135,23 @@ var sectionId = 'dynsection-0';
 <g id="edge3_Node000003_Node000004" class="edge">
 <title>Node4&#45;&gt;Node3</title>
 <g id="a_edge3_Node000003_Node000004"><a xlink:title=" ">
-<path fill="none" stroke="#63b8ff" d="M439.89,-291.1C451.51,-261.63 468.65,-219.79 474.5,-214 493.84,-194.84 520.71,-181.86 545.25,-173.26"/>
-<polygon fill="none" stroke="#63b8ff" points="545.18,-173.28 549.63,-167.61 556.58,-169.55 552.12,-175.22 545.18,-173.28"/>
+<path fill="none" stroke="#63b8ff" d="M564.57,-291.1C564.98,-267.73 569.22,-235.49 587,-214 606.2,-190.79 636.46,-177.12 663.85,-169.11"/>
+<polygon fill="none" stroke="#63b8ff" points="663.72,-169.15 668.49,-163.73 675.32,-166.05 670.55,-171.46 663.72,-169.15"/>
 </a>
 </g>
-<text xml:space="preserve" text-anchor="start" x="477.5" y="-240.55" font-family="Segoe UI" font-size="11.00" fill="grey">+max_throttle_percent</text>
+<text xml:space="preserve" text-anchor="start" x="590" y="-240.55" font-family="Segoe UI" font-size="11.00" fill="grey">+max_throttle_percent</text>
 </g>
 <!-- Node6 -->
 <g id="Node000006" class="node">
 <title>Node6</title>
 <g id="a_Node000006"><a xlink:href="../../d7/d0f/struct_f_x29__t.html" target="_top" xlink:title="FX29 driver context.">
-<polygon fill="white" stroke="none" points="279.62,-187.5 239.38,-187.5 239.38,-126.5 279.62,-126.5 279.62,-187.5"/>
-<text xml:space="preserve" text-anchor="start" x="243.38" y="-173.05" font-family="Segoe UI" font-size="11.00">FX29_t</text>
-<text xml:space="preserve" text-anchor="start" x="258" y="-154.05" font-family="Segoe UI" font-size="11.00"> </text>
-<text xml:space="preserve" text-anchor="start" x="258" y="-135.05" font-family="Segoe UI" font-size="11.00"> </text>
-<polygon fill="#666666" stroke="#666666" points="239.38,-166.5 239.38,-166.5 279.62,-166.5 279.62,-166.5 239.38,-166.5"/>
-<polygon fill="#666666" stroke="#666666" points="239.38,-147.5 239.38,-147.5 279.62,-147.5 279.62,-147.5 239.38,-147.5"/>
-<polygon fill="none" stroke="#666666" points="239.38,-126.5 239.38,-187.5 279.62,-187.5 279.62,-126.5 239.38,-126.5"/>
+<polygon fill="white" stroke="none" points="471.12,-187.5 430.88,-187.5 430.88,-126.5 471.12,-126.5 471.12,-187.5"/>
+<text xml:space="preserve" text-anchor="start" x="434.88" y="-173.05" font-family="Segoe UI" font-size="11.00">FX29_t</text>
+<text xml:space="preserve" text-anchor="start" x="449.5" y="-154.05" font-family="Segoe UI" font-size="11.00"> </text>
+<text xml:space="preserve" text-anchor="start" x="449.5" y="-135.05" font-family="Segoe UI" font-size="11.00"> </text>
+<polygon fill="#666666" stroke="#666666" points="430.88,-166.5 430.88,-166.5 471.12,-166.5 471.12,-166.5 430.88,-166.5"/>
+<polygon fill="#666666" stroke="#666666" points="430.88,-147.5 430.88,-147.5 471.12,-147.5 471.12,-147.5 430.88,-147.5"/>
+<polygon fill="none" stroke="#666666" points="430.88,-126.5 430.88,-187.5 471.12,-187.5 471.12,-126.5 430.88,-126.5"/>
 </a>
 </g>
 </g>
@@ -159,23 +159,23 @@ var sectionId = 'dynsection-0';
 <g id="edge8_Node000006_Node000004" class="edge">
 <title>Node4&#45;&gt;Node6</title>
 <g id="a_edge8_Node000006_Node000004"><a xlink:title=" ">
-<path fill="none" stroke="#63b8ff" d="M408.27,-296.32C402.41,-288.98 396.14,-280.8 390.75,-273 373.38,-247.88 377.21,-235.49 355.5,-214 336.99,-195.68 311.31,-181.11 291.16,-171.43"/>
-<polygon fill="none" stroke="#63b8ff" points="291.17,-171.43 284.05,-172.56 280.27,-166.42 287.39,-165.29 291.17,-171.43"/>
+<path fill="none" stroke="#63b8ff" d="M545.66,-307.35C533.72,-298.77 519.09,-286.65 509.25,-273 492.77,-250.14 498.69,-239.17 486,-214 483.4,-208.85 480.48,-203.56 477.45,-198.39"/>
+<polygon fill="none" stroke="#63b8ff" points="477.44,-198.38 470.91,-195.32 471.22,-188.12 477.75,-191.17 477.44,-198.38"/>
 </a>
 </g>
-<text xml:space="preserve" text-anchor="start" x="393.75" y="-240.55" font-family="Segoe UI" font-size="11.00" fill="grey">+i2c_addr</text>
+<text xml:space="preserve" text-anchor="start" x="512.25" y="-240.55" font-family="Segoe UI" font-size="11.00" fill="grey">+i2c_addr</text>
 </g>
 <!-- Node5 -->
 <g id="Node000005" class="node">
 <title>Node5</title>
 <g id="a_Node000005"><a xlink:title=" ">
-<polygon fill="white" stroke="none" points="754,-352 707,-352 707,-291 754,-291 754,-352"/>
-<text xml:space="preserve" text-anchor="start" x="711" y="-337.55" font-family="Segoe UI" font-size="11.00">uint32_t</text>
-<text xml:space="preserve" text-anchor="start" x="729" y="-318.55" font-family="Segoe UI" font-size="11.00"> </text>
-<text xml:space="preserve" text-anchor="start" x="729" y="-299.55" font-family="Segoe UI" font-size="11.00"> </text>
-<polygon fill="#666666" stroke="#666666" points="707,-331 707,-331 754,-331 754,-331 707,-331"/>
-<polygon fill="#666666" stroke="#666666" points="707,-312 707,-312 754,-312 754,-312 707,-312"/>
-<polygon fill="none" stroke="#666666" points="707,-291 707,-352 754,-352 754,-291 707,-291"/>
+<polygon fill="white" stroke="none" points="1094.5,-352 1047.5,-352 1047.5,-291 1094.5,-291 1094.5,-352"/>
+<text xml:space="preserve" text-anchor="start" x="1051.5" y="-337.55" font-family="Segoe UI" font-size="11.00">uint32_t</text>
+<text xml:space="preserve" text-anchor="start" x="1069.5" y="-318.55" font-family="Segoe UI" font-size="11.00"> </text>
+<text xml:space="preserve" text-anchor="start" x="1069.5" y="-299.55" font-family="Segoe UI" font-size="11.00"> </text>
+<polygon fill="#666666" stroke="#666666" points="1047.5,-331 1047.5,-331 1094.5,-331 1094.5,-331 1047.5,-331"/>
+<polygon fill="#666666" stroke="#666666" points="1047.5,-312 1047.5,-312 1094.5,-312 1094.5,-312 1047.5,-312"/>
+<polygon fill="none" stroke="#666666" points="1047.5,-291 1047.5,-352 1094.5,-352 1094.5,-291 1047.5,-291"/>
 </a>
 </g>
 </g>
@@ -183,71 +183,71 @@ var sectionId = 'dynsection-0';
 <g id="edge5_Node000001_Node000005" class="edge">
 <title>Node5&#45;&gt;Node1</title>
 <g id="a_edge5_Node000001_Node000005"><a xlink:title=" ">
-<path fill="none" stroke="#63b8ff" d="M730.5,-291.2C730.5,-239.81 730.5,-133.26 730.5,-73.86"/>
-<polygon fill="none" stroke="#63b8ff" points="730.5,-73.78 726.5,-67.78 730.5,-61.78 734.5,-67.78 730.5,-73.78"/>
+<path fill="none" stroke="#63b8ff" d="M1073.1,-291.42C1073.4,-268.82 1070.78,-237.48 1057,-214 1012.3,-137.82 922.08,-83.53 864.48,-54.88"/>
+<polygon fill="none" stroke="#63b8ff" points="864.67,-54.97 857.52,-55.94 853.88,-49.72 861.02,-48.75 864.67,-54.97"/>
 </a>
 </g>
-<text xml:space="preserve" text-anchor="start" x="733.5" y="-173.05" font-family="Segoe UI" font-size="11.00" fill="grey">+last_sample_tick</text>
-<text xml:space="preserve" text-anchor="start" x="733.5" y="-154.05" font-family="Segoe UI" font-size="11.00" fill="grey">+phase_start_tick</text>
-<text xml:space="preserve" text-anchor="start" x="733.5" y="-135.05" font-family="Segoe UI" font-size="11.00" fill="grey">+test_start_tick</text>
+<text xml:space="preserve" text-anchor="start" x="1047.6" y="-173.05" font-family="Segoe UI" font-size="11.00" fill="grey">+last_sample_tick</text>
+<text xml:space="preserve" text-anchor="start" x="1047.6" y="-154.05" font-family="Segoe UI" font-size="11.00" fill="grey">+phase_start_tick</text>
+<text xml:space="preserve" text-anchor="start" x="1047.6" y="-135.05" font-family="Segoe UI" font-size="11.00" fill="grey">+test_start_tick</text>
 </g>
 <!-- Node5&#45;&gt;Node3 -->
 <g id="edge4_Node000003_Node000005" class="edge">
 <title>Node5&#45;&gt;Node3</title>
 <g id="a_edge4_Node000003_Node000005"><a xlink:title=" ">
-<path fill="none" stroke="#63b8ff" d="M707.39,-318.96C678.7,-315.68 630.84,-305.36 608.5,-273 594.02,-252.02 593.73,-223.37 597.09,-199.91"/>
-<polygon fill="none" stroke="#63b8ff" points="597.1,-199.86 594.19,-193.26 599.17,-188.04 602.07,-194.64 597.1,-199.86"/>
+<path fill="none" stroke="#63b8ff" d="M1047.7,-320.69C1004.58,-319.99 910.84,-313.5 846,-273 817.8,-255.39 823.68,-237.34 800,-214 793.45,-207.55 786.15,-201.19 778.75,-195.2"/>
+<polygon fill="none" stroke="#63b8ff" points="778.81,-195.25 771.62,-194.7 769.37,-187.85 776.56,-188.4 778.81,-195.25"/>
 </a>
 </g>
-<text xml:space="preserve" text-anchor="start" x="611.5" y="-259.55" font-family="Segoe UI" font-size="11.00" fill="grey">+hold_duration_ms</text>
-<text xml:space="preserve" text-anchor="start" x="611.5" y="-240.55" font-family="Segoe UI" font-size="11.00" fill="grey">+ramp_duration_ms</text>
-<text xml:space="preserve" text-anchor="start" x="611.5" y="-221.55" font-family="Segoe UI" font-size="11.00" fill="grey">+sample_interval_ms</text>
+<text xml:space="preserve" text-anchor="start" x="849" y="-259.55" font-family="Segoe UI" font-size="11.00" fill="grey">+hold_duration_ms</text>
+<text xml:space="preserve" text-anchor="start" x="849" y="-240.55" font-family="Segoe UI" font-size="11.00" fill="grey">+ramp_duration_ms</text>
+<text xml:space="preserve" text-anchor="start" x="849" y="-221.55" font-family="Segoe UI" font-size="11.00" fill="grey">+sample_interval_ms</text>
 </g>
-<!-- Node11 -->
-<g id="Node000011" class="node">
-<title>Node11</title>
-<g id="a_Node000011"><a xlink:href="../../d4/d09/structthrust__data__point__t.html" target="_top" xlink:title="Single thrust data point.">
-<polygon fill="white" stroke="none" points="1071.62,-187.5 971.38,-187.5 971.38,-126.5 1071.62,-126.5 1071.62,-187.5"/>
-<text xml:space="preserve" text-anchor="start" x="975.38" y="-173.05" font-family="Segoe UI" font-size="11.00">thrust_data_point_t</text>
-<text xml:space="preserve" text-anchor="start" x="1020" y="-154.05" font-family="Segoe UI" font-size="11.00"> </text>
-<text xml:space="preserve" text-anchor="start" x="1020" y="-135.05" font-family="Segoe UI" font-size="11.00"> </text>
-<polygon fill="#666666" stroke="#666666" points="971.38,-166.5 971.38,-166.5 1071.62,-166.5 1071.62,-166.5 971.38,-166.5"/>
-<polygon fill="#666666" stroke="#666666" points="971.38,-147.5 971.38,-147.5 1071.62,-147.5 1071.62,-147.5 971.38,-147.5"/>
-<polygon fill="none" stroke="#666666" points="971.38,-126.5 971.38,-187.5 1071.62,-187.5 1071.62,-126.5 971.38,-126.5"/>
+<!-- Node12 -->
+<g id="Node000012" class="node">
+<title>Node12</title>
+<g id="a_Node000012"><a xlink:href="../../d4/d09/structthrust__data__point__t.html" target="_top" xlink:title="Single thrust data point.">
+<polygon fill="white" stroke="none" points="1259.12,-187.5 1158.88,-187.5 1158.88,-126.5 1259.12,-126.5 1259.12,-187.5"/>
+<text xml:space="preserve" text-anchor="start" x="1162.88" y="-173.05" font-family="Segoe UI" font-size="11.00">thrust_data_point_t</text>
+<text xml:space="preserve" text-anchor="start" x="1207.5" y="-154.05" font-family="Segoe UI" font-size="11.00"> </text>
+<text xml:space="preserve" text-anchor="start" x="1207.5" y="-135.05" font-family="Segoe UI" font-size="11.00"> </text>
+<polygon fill="#666666" stroke="#666666" points="1158.88,-166.5 1158.88,-166.5 1259.12,-166.5 1259.12,-166.5 1158.88,-166.5"/>
+<polygon fill="#666666" stroke="#666666" points="1158.88,-147.5 1158.88,-147.5 1259.12,-147.5 1259.12,-147.5 1158.88,-147.5"/>
+<polygon fill="none" stroke="#666666" points="1158.88,-126.5 1158.88,-187.5 1259.12,-187.5 1259.12,-126.5 1158.88,-126.5"/>
 </a>
 </g>
 </g>
-<!-- Node5&#45;&gt;Node11 -->
-<g id="edge14_Node000011_Node000005" class="edge">
-<title>Node5&#45;&gt;Node11</title>
-<g id="a_edge14_Node000011_Node000005"><a xlink:title=" ">
-<path fill="none" stroke="#63b8ff" d="M744.39,-291.25C757.89,-266.29 780.89,-231.71 811.75,-214 868.36,-181.51 895.74,-217.11 957.5,-196 960.18,-195.08 962.88,-194.04 965.56,-192.91"/>
-<polygon fill="none" stroke="#63b8ff" points="965.51,-192.93 969.23,-186.76 976.36,-187.81 972.64,-193.99 965.51,-192.93"/>
+<!-- Node5&#45;&gt;Node12 -->
+<g id="edge15_Node000012_Node000005" class="edge">
+<title>Node5&#45;&gt;Node12</title>
+<g id="a_edge15_Node000012_Node000005"><a xlink:title=" ">
+<path fill="none" stroke="#63b8ff" d="M1077.76,-291.13C1084.26,-268.07 1096,-236.26 1115.25,-214 1115.65,-213.54 1130.59,-204.57 1148.43,-193.94"/>
+<polygon fill="none" stroke="#63b8ff" points="1148.41,-193.95 1151.52,-187.45 1158.72,-187.82 1155.61,-194.32 1148.41,-193.95"/>
 </a>
 </g>
-<text xml:space="preserve" text-anchor="start" x="814.75" y="-240.55" font-family="Segoe UI" font-size="11.00" fill="grey">+timestamp_ms</text>
+<text xml:space="preserve" text-anchor="start" x="1118.25" y="-240.55" font-family="Segoe UI" font-size="11.00" fill="grey">+timestamp_ms</text>
 </g>
 <!-- Node6&#45;&gt;Node1 -->
 <g id="edge6_Node000001_Node000006" class="edge">
 <title>Node6&#45;&gt;Node1</title>
 <g id="a_edge6_Node000001_Node000006"><a xlink:title=" ">
-<path fill="none" stroke="#63b8ff" d="M263.58,-126.63C267.49,-110 275.13,-90.32 290,-79 320.18,-56.03 565.33,-40.26 676.29,-34.23"/>
-<polygon fill="none" stroke="#63b8ff" points="676.25,-34.23 682.03,-29.92 688.23,-33.59 682.45,-37.9 676.25,-34.23"/>
+<path fill="none" stroke="#63b8ff" d="M470.92,-149.13C525.14,-130.43 676.71,-78.16 758.33,-50.01"/>
+<polygon fill="none" stroke="#63b8ff" points="758.37,-50 762.74,-44.26 769.71,-46.08 765.34,-51.82 758.37,-50"/>
 </a>
 </g>
-<text xml:space="preserve" text-anchor="start" x="293" y="-86.55" font-family="Segoe UI" font-size="11.00" fill="grey">+loadcell</text>
+<text xml:space="preserve" text-anchor="start" x="666.83" y="-86.55" font-family="Segoe UI" font-size="11.00" fill="grey">+loadcell</text>
 </g>
 <!-- Node7 -->
 <g id="Node000007" class="node">
 <title>Node7</title>
 <g id="a_Node000007"><a xlink:title=" ">
-<polygon fill="white" stroke="none" points="169.88,-352 59.12,-352 59.12,-291 169.88,-291 169.88,-352"/>
-<text xml:space="preserve" text-anchor="start" x="63.12" y="-337.55" font-family="Segoe UI" font-size="11.00">I2C_HandleTypeDef *</text>
-<text xml:space="preserve" text-anchor="start" x="113" y="-318.55" font-family="Segoe UI" font-size="11.00"> </text>
-<text xml:space="preserve" text-anchor="start" x="113" y="-299.55" font-family="Segoe UI" font-size="11.00"> </text>
-<polygon fill="#666666" stroke="#666666" points="59.12,-331 59.12,-331 169.88,-331 169.88,-331 59.12,-331"/>
-<polygon fill="#666666" stroke="#666666" points="59.12,-312 59.12,-312 169.88,-312 169.88,-312 59.12,-312"/>
-<polygon fill="none" stroke="#666666" points="59.12,-291 59.12,-352 169.88,-352 169.88,-291 59.12,-291"/>
+<polygon fill="white" stroke="none" points="509.38,-352 398.62,-352 398.62,-291 509.38,-291 509.38,-352"/>
+<text xml:space="preserve" text-anchor="start" x="402.62" y="-337.55" font-family="Segoe UI" font-size="11.00">I2C_HandleTypeDef *</text>
+<text xml:space="preserve" text-anchor="start" x="452.5" y="-318.55" font-family="Segoe UI" font-size="11.00"> </text>
+<text xml:space="preserve" text-anchor="start" x="452.5" y="-299.55" font-family="Segoe UI" font-size="11.00"> </text>
+<polygon fill="#666666" stroke="#666666" points="398.62,-331 398.62,-331 509.38,-331 509.38,-331 398.62,-331"/>
+<polygon fill="#666666" stroke="#666666" points="398.62,-312 398.62,-312 509.38,-312 509.38,-312 398.62,-312"/>
+<polygon fill="none" stroke="#666666" points="398.62,-291 398.62,-352 509.38,-352 509.38,-291 398.62,-291"/>
 </a>
 </g>
 </g>
@@ -255,23 +255,23 @@ var sectionId = 'dynsection-0';
 <g id="edge7_Node000006_Node000007" class="edge">
 <title>Node7&#45;&gt;Node6</title>
 <g id="a_edge7_Node000006_Node000007"><a xlink:title=" ">
-<path fill="none" stroke="#63b8ff" d="M119.78,-291.42C125.67,-267.27 137.6,-233.77 160.75,-214 185.1,-193.21 203.82,-213.7 230.5,-196 230.61,-195.93 230.72,-195.85 230.84,-195.77"/>
-<polygon fill="none" stroke="#63b8ff" points="230.73,-195.87 232.62,-188.91 239.77,-187.98 237.88,-194.94 230.73,-195.87"/>
+<path fill="none" stroke="#63b8ff" d="M452.8,-291.11C452.59,-285.12 452.39,-278.86 452.25,-273 451.67,-248.87 451.36,-221.88 451.2,-200.11"/>
+<polygon fill="none" stroke="#63b8ff" points="451.2,-200.21 447.16,-194.24 451.12,-188.21 455.16,-194.18 451.2,-200.21"/>
 </a>
 </g>
-<text xml:space="preserve" text-anchor="start" x="163.75" y="-240.55" font-family="Segoe UI" font-size="11.00" fill="grey">+hi2c</text>
+<text xml:space="preserve" text-anchor="start" x="455.25" y="-240.55" font-family="Segoe UI" font-size="11.00" fill="grey">+hi2c</text>
 </g>
 <!-- Node8 -->
 <g id="Node000008" class="node">
 <title>Node8</title>
 <g id="a_Node000008"><a xlink:title=" ">
-<polygon fill="white" stroke="none" points="312.25,-352 236.75,-352 236.75,-291 312.25,-291 312.25,-352"/>
-<text xml:space="preserve" text-anchor="start" x="240.75" y="-337.55" font-family="Segoe UI" font-size="11.00">FX29_Range_t</text>
-<text xml:space="preserve" text-anchor="start" x="273" y="-318.55" font-family="Segoe UI" font-size="11.00"> </text>
-<text xml:space="preserve" text-anchor="start" x="273" y="-299.55" font-family="Segoe UI" font-size="11.00"> </text>
-<polygon fill="#666666" stroke="#666666" points="236.75,-331 236.75,-331 312.25,-331 312.25,-331 236.75,-331"/>
-<polygon fill="#666666" stroke="#666666" points="236.75,-312 236.75,-312 312.25,-312 312.25,-312 236.75,-312"/>
-<polygon fill="none" stroke="#666666" points="236.75,-291 236.75,-352 312.25,-352 312.25,-291 236.75,-291"/>
+<polygon fill="white" stroke="none" points="295.75,-352 220.25,-352 220.25,-291 295.75,-291 295.75,-352"/>
+<text xml:space="preserve" text-anchor="start" x="224.25" y="-337.55" font-family="Segoe UI" font-size="11.00">FX29_Range_t</text>
+<text xml:space="preserve" text-anchor="start" x="256.5" y="-318.55" font-family="Segoe UI" font-size="11.00"> </text>
+<text xml:space="preserve" text-anchor="start" x="256.5" y="-299.55" font-family="Segoe UI" font-size="11.00"> </text>
+<polygon fill="#666666" stroke="#666666" points="220.25,-331 220.25,-331 295.75,-331 295.75,-331 220.25,-331"/>
+<polygon fill="#666666" stroke="#666666" points="220.25,-312 220.25,-312 295.75,-312 295.75,-312 220.25,-312"/>
+<polygon fill="none" stroke="#666666" points="220.25,-291 220.25,-352 295.75,-352 295.75,-291 220.25,-291"/>
 </a>
 </g>
 </g>
@@ -279,23 +279,23 @@ var sectionId = 'dynsection-0';
 <g id="edge9_Node000006_Node000008" class="edge">
 <title>Node8&#45;&gt;Node6</title>
 <g id="a_edge9_Node000006_Node000008"><a xlink:title=" ">
-<path fill="none" stroke="#63b8ff" d="M271.78,-291.07C269.44,-265.73 266.04,-228.84 263.41,-200.32"/>
-<polygon fill="none" stroke="#63b8ff" points="263.41,-200.33 258.87,-194.72 262.3,-188.38 266.84,-193.99 263.41,-200.33"/>
+<path fill="none" stroke="#63b8ff" d="M255.61,-291.28C255.32,-267.69 258.81,-235.07 277.25,-214 313,-173.14 378.71,-161.89 418.27,-158.92"/>
+<polygon fill="none" stroke="#63b8ff" points="418.2,-158.92 423.96,-154.58 430.18,-158.23 424.42,-162.57 418.2,-158.92"/>
 </a>
 </g>
-<text xml:space="preserve" text-anchor="start" x="273.07" y="-240.55" font-family="Segoe UI" font-size="11.00" fill="grey">+force_range_n</text>
+<text xml:space="preserve" text-anchor="start" x="280.25" y="-240.55" font-family="Segoe UI" font-size="11.00" fill="grey">+force_range_n</text>
 </g>
 <!-- Node9 -->
 <g id="Node000009" class="node">
 <title>Node9</title>
 <g id="a_Node000009"><a xlink:title=" ">
-<polygon fill="white" stroke="none" points="41,-352 0,-352 0,-291 41,-291 41,-352"/>
-<text xml:space="preserve" text-anchor="start" x="4" y="-337.55" font-family="Segoe UI" font-size="11.00">int32_t</text>
-<text xml:space="preserve" text-anchor="start" x="19" y="-318.55" font-family="Segoe UI" font-size="11.00"> </text>
-<text xml:space="preserve" text-anchor="start" x="19" y="-299.55" font-family="Segoe UI" font-size="11.00"> </text>
-<polygon fill="#666666" stroke="#666666" points="0,-331 0,-331 41,-331 41,-331 0,-331"/>
-<polygon fill="#666666" stroke="#666666" points="0,-312 0,-312 41,-312 41,-312 0,-312"/>
-<polygon fill="none" stroke="#666666" points="0,-291 0,-352 41,-352 41,-291 0,-291"/>
+<polygon fill="white" stroke="none" points="380.5,-352 339.5,-352 339.5,-291 380.5,-291 380.5,-352"/>
+<text xml:space="preserve" text-anchor="start" x="343.5" y="-337.55" font-family="Segoe UI" font-size="11.00">int32_t</text>
+<text xml:space="preserve" text-anchor="start" x="358.5" y="-318.55" font-family="Segoe UI" font-size="11.00"> </text>
+<text xml:space="preserve" text-anchor="start" x="358.5" y="-299.55" font-family="Segoe UI" font-size="11.00"> </text>
+<polygon fill="#666666" stroke="#666666" points="339.5,-331 339.5,-331 380.5,-331 380.5,-331 339.5,-331"/>
+<polygon fill="#666666" stroke="#666666" points="339.5,-312 339.5,-312 380.5,-312 380.5,-312 339.5,-312"/>
+<polygon fill="none" stroke="#666666" points="339.5,-291 339.5,-352 380.5,-352 380.5,-291 339.5,-291"/>
 </a>
 </g>
 </g>
@@ -303,152 +303,163 @@ var sectionId = 'dynsection-0';
 <g id="edge10_Node000006_Node000009" class="edge">
 <title>Node9&#45;&gt;Node6</title>
 <g id="a_edge10_Node000006_Node000009"><a xlink:title=" ">
-<path fill="none" stroke="#63b8ff" d="M21.95,-291.22C24.84,-266.6 33.1,-232.52 56.25,-214 86.64,-189.68 196.54,-215.04 230.5,-196 230.88,-195.79 231.26,-195.57 231.63,-195.34"/>
-<polygon fill="none" stroke="#63b8ff" points="231.54,-195.41 233.61,-188.5 240.78,-187.75 238.72,-194.66 231.54,-195.41"/>
+<path fill="none" stroke="#63b8ff" d="M360.67,-291.45C362.38,-268.87 367.44,-237.54 381.75,-214 391.19,-198.47 406.57,-185.39 420.43,-175.79"/>
+<polygon fill="none" stroke="#63b8ff" points="420.28,-175.89 423.12,-169.27 430.34,-169.35 427.49,-175.97 420.28,-175.89"/>
 </a>
 </g>
-<text xml:space="preserve" text-anchor="start" x="59.25" y="-240.55" font-family="Segoe UI" font-size="11.00" fill="grey">+tare_offset</text>
+<text xml:space="preserve" text-anchor="start" x="384.75" y="-240.55" font-family="Segoe UI" font-size="11.00" fill="grey">+tare_offset</text>
 </g>
 <!-- Node10 -->
 <g id="Node000010" class="node">
 <title>Node10</title>
 <g id="a_Node000010"><a xlink:title=" ">
-<polygon fill="white" stroke="none" points="219.12,-352 187.88,-352 187.88,-291 219.12,-291 219.12,-352"/>
-<text xml:space="preserve" text-anchor="start" x="191.88" y="-337.55" font-family="Segoe UI" font-size="11.00">bool</text>
-<text xml:space="preserve" text-anchor="start" x="202" y="-318.55" font-family="Segoe UI" font-size="11.00"> </text>
-<text xml:space="preserve" text-anchor="start" x="202" y="-299.55" font-family="Segoe UI" font-size="11.00"> </text>
-<polygon fill="#666666" stroke="#666666" points="187.88,-331 187.88,-331 219.12,-331 219.12,-331 187.88,-331"/>
-<polygon fill="#666666" stroke="#666666" points="187.88,-312 187.88,-312 219.12,-312 219.12,-312 187.88,-312"/>
-<polygon fill="none" stroke="#666666" points="187.88,-291 187.88,-352 219.12,-352 219.12,-291 187.88,-291"/>
+<polygon fill="white" stroke="none" points="160.62,-352 129.38,-352 129.38,-291 160.62,-291 160.62,-352"/>
+<text xml:space="preserve" text-anchor="start" x="133.38" y="-337.55" font-family="Segoe UI" font-size="11.00">bool</text>
+<text xml:space="preserve" text-anchor="start" x="143.5" y="-318.55" font-family="Segoe UI" font-size="11.00"> </text>
+<text xml:space="preserve" text-anchor="start" x="143.5" y="-299.55" font-family="Segoe UI" font-size="11.00"> </text>
+<polygon fill="#666666" stroke="#666666" points="129.38,-331 129.38,-331 160.62,-331 160.62,-331 129.38,-331"/>
+<polygon fill="#666666" stroke="#666666" points="129.38,-312 129.38,-312 160.62,-312 160.62,-312 129.38,-312"/>
+<polygon fill="none" stroke="#666666" points="129.38,-291 129.38,-352 160.62,-352 160.62,-291 129.38,-291"/>
 </a>
 </g>
 </g>
 <!-- Node10&#45;&gt;Node1 -->
-<g id="edge12_Node000001_Node000010" class="edge">
+<g id="edge13_Node000001_Node000010" class="edge">
 <title>Node10&#45;&gt;Node1</title>
-<g id="a_edge12_Node000001_Node000010"><a xlink:title=" ">
-<path fill="none" stroke="#63b8ff" d="M218.97,-297.7C221.55,-295.12 224.41,-292.78 227.5,-291 272.36,-265.23 301.05,-303.96 342.5,-273 365.76,-255.63 355.41,-238.8 370.5,-214 398.36,-168.21 399.46,-148.56 443.5,-118 515,-68.38 615.55,-46.68 676.69,-37.59"/>
-<polygon fill="none" stroke="#63b8ff" points="676.71,-37.59 682.1,-32.79 688.6,-35.91 683.21,-40.71 676.71,-37.59"/>
+<g id="a_edge13_Node000001_Node000010"><a xlink:title=" ">
+<path fill="none" stroke="#63b8ff" d="M137.43,-291.3C133.26,-268.65 131.33,-237.28 145,-214 189.32,-138.5 234.5,-147.28 317,-118 471.18,-63.28 665.09,-42.31 757.8,-35.01"/>
+<polygon fill="none" stroke="#63b8ff" points="757.86,-35.01 763.54,-30.56 769.82,-34.1 764.14,-38.54 757.86,-35.01"/>
 </a>
 </g>
-<text xml:space="preserve" text-anchor="start" x="446.5" y="-154.05" font-family="Segoe UI" font-size="11.00" fill="grey">+loadcell_initialized</text>
+<text xml:space="preserve" text-anchor="start" x="320" y="-154.05" font-family="Segoe UI" font-size="11.00" fill="grey">+loadcell_initialized</text>
 </g>
 <!-- Node10&#45;&gt;Node6 -->
 <g id="edge11_Node000006_Node000010" class="edge">
 <title>Node10&#45;&gt;Node6</title>
 <g id="a_edge11_Node000006_Node000010"><a xlink:title=" ">
-<path fill="none" stroke="#63b8ff" d="M199.19,-291.37C197.25,-269.04 197.6,-238.07 209.5,-214 214.95,-202.98 222.06,-204.94 230.5,-196 230.69,-195.8 230.88,-195.59 231.08,-195.39"/>
-<polygon fill="none" stroke="#63b8ff" points="231.14,-195.32 232.04,-188.16 238.99,-186.24 238.09,-193.39 231.14,-195.32"/>
+<path fill="none" stroke="#63b8ff" d="M146.1,-291.36C148.62,-267.16 156.13,-233.64 177.75,-214 186.7,-205.87 347.94,-176.35 418.45,-163.76"/>
+<polygon fill="none" stroke="#63b8ff" points="418.57,-163.74 423.77,-158.75 430.38,-161.63 425.18,-166.62 418.57,-163.74"/>
 </a>
 </g>
-<text xml:space="preserve" text-anchor="start" x="212.5" y="-240.55" font-family="Segoe UI" font-size="11.00" fill="grey">+is_tared</text>
+<text xml:space="preserve" text-anchor="start" x="180.75" y="-250.05" font-family="Segoe UI" font-size="11.00" fill="grey">+is_calibrated</text>
+<text xml:space="preserve" text-anchor="start" x="180.75" y="-231.05" font-family="Segoe UI" font-size="11.00" fill="grey">+is_tared</text>
+</g>
+<!-- Node11 -->
+<g id="Node000011" class="node">
+<title>Node11</title>
+<g id="a_Node000011"><a xlink:title=" ">
+<polygon fill="white" stroke="none" points="827.25,-352 796.75,-352 796.75,-291 827.25,-291 827.25,-352"/>
+<text xml:space="preserve" text-anchor="start" x="800.75" y="-337.55" font-family="Segoe UI" font-size="11.00">float</text>
+<text xml:space="preserve" text-anchor="start" x="810.5" y="-318.55" font-family="Segoe UI" font-size="11.00"> </text>
+<text xml:space="preserve" text-anchor="start" x="810.5" y="-299.55" font-family="Segoe UI" font-size="11.00"> </text>
+<polygon fill="#666666" stroke="#666666" points="796.75,-331 796.75,-331 827.25,-331 827.25,-331 796.75,-331"/>
+<polygon fill="#666666" stroke="#666666" points="796.75,-312 796.75,-312 827.25,-312 827.25,-312 796.75,-312"/>
+<polygon fill="none" stroke="#666666" points="796.75,-291 796.75,-352 827.25,-352 827.25,-291 796.75,-291"/>
+</a>
+</g>
 </g>
 <!-- Node11&#45;&gt;Node1 -->
-<g id="edge13_Node000001_Node000011" class="edge">
+<g id="edge19_Node000001_Node000011" class="edge">
 <title>Node11&#45;&gt;Node1</title>
-<g id="a_edge13_Node000001_Node000011"><a xlink:title=" ">
-<path fill="none" stroke="#63b8ff" d="M973.23,-126.61C967.97,-123.63 962.65,-120.7 957.5,-118 920.69,-98.7 911.15,-94.28 872.5,-79 843.7,-67.61 810.95,-56.54 784.17,-47.95"/>
-<polygon fill="none" stroke="#63b8ff" points="784.23,-47.97 777.3,-49.97 772.79,-44.34 779.72,-42.34 784.23,-47.97"/>
+<g id="a_edge19_Node000001_Node000011"><a xlink:title=" ">
+<path fill="none" stroke="#63b8ff" d="M812,-291.2C812,-239.81 812,-133.26 812,-73.86"/>
+<polygon fill="none" stroke="#63b8ff" points="812,-73.78 808,-67.78 812,-61.78 816,-67.78 812,-73.78"/>
 </a>
 </g>
-<text xml:space="preserve" text-anchor="start" x="924.37" y="-86.55" font-family="Segoe UI" font-size="11.00" fill="grey">+data</text>
+<text xml:space="preserve" text-anchor="start" x="815" y="-182.55" font-family="Segoe UI" font-size="11.00" fill="grey">+current_throttle</text>
+<text xml:space="preserve" text-anchor="start" x="815" y="-163.55" font-family="Segoe UI" font-size="11.00" fill="grey">+current_thrust</text>
+<text xml:space="preserve" text-anchor="start" x="815" y="-144.55" font-family="Segoe UI" font-size="11.00" fill="grey">+max_thrust_n</text>
+<text xml:space="preserve" text-anchor="start" x="815" y="-125.55" font-family="Segoe UI" font-size="11.00" fill="grey">+max_thrust_pwm</text>
 </g>
-<!-- Node12 -->
-<g id="Node000012" class="node">
-<title>Node12</title>
-<g id="a_Node000012"><a xlink:title=" ">
-<polygon fill="white" stroke="none" points="900.75,-352 870.25,-352 870.25,-291 900.75,-291 900.75,-352"/>
-<text xml:space="preserve" text-anchor="start" x="874.25" y="-337.55" font-family="Segoe UI" font-size="11.00">float</text>
-<text xml:space="preserve" text-anchor="start" x="884" y="-318.55" font-family="Segoe UI" font-size="11.00"> </text>
-<text xml:space="preserve" text-anchor="start" x="884" y="-299.55" font-family="Segoe UI" font-size="11.00"> </text>
-<polygon fill="#666666" stroke="#666666" points="870.25,-331 870.25,-331 900.75,-331 900.75,-331 870.25,-331"/>
-<polygon fill="#666666" stroke="#666666" points="870.25,-312 870.25,-312 900.75,-312 900.75,-312 870.25,-312"/>
-<polygon fill="none" stroke="#666666" points="870.25,-291 870.25,-352 900.75,-352 900.75,-291 870.25,-291"/>
+<!-- Node11&#45;&gt;Node6 -->
+<g id="edge12_Node000006_Node000011" class="edge">
+<title>Node11&#45;&gt;Node6</title>
+<g id="a_edge12_Node000006_Node000011"><a xlink:title=" ">
+<path fill="none" stroke="#63b8ff" d="M796.83,-315.55C778.15,-308.74 746.56,-294.78 727.5,-273 708.91,-251.76 725.5,-232.29 704,-214 687.2,-199.71 547.75,-174.47 483.36,-163.42"/>
+<polygon fill="none" stroke="#63b8ff" points="483.55,-163.46 476.96,-166.39 471.72,-161.44 478.3,-158.51 483.55,-163.46"/>
 </a>
 </g>
+<text xml:space="preserve" text-anchor="start" x="730.5" y="-240.55" font-family="Segoe UI" font-size="11.00" fill="grey">+scale_factor</text>
+</g>
+<!-- Node11&#45;&gt;Node12 -->
+<g id="edge16_Node000012_Node000011" class="edge">
+<title>Node11&#45;&gt;Node12</title>
+<g id="a_edge16_Node000012_Node000011"><a xlink:title=" ">
+<path fill="none" stroke="#63b8ff" d="M826.98,-318.42C854.39,-314.03 913.5,-301.73 954,-273 981.06,-253.8 970.91,-230.41 999.75,-214 1056.29,-181.83 1083.45,-217.05 1145,-196 1147.68,-195.08 1150.37,-194.04 1153.06,-192.91"/>
+<polygon fill="none" stroke="#63b8ff" points="1153.01,-192.93 1156.73,-186.75 1163.86,-187.81 1160.14,-193.99 1153.01,-192.93"/>
+</a>
+</g>
+<text xml:space="preserve" text-anchor="start" x="1002.75" y="-250.05" font-family="Segoe UI" font-size="11.00" fill="grey">+pwm_percent</text>
+<text xml:space="preserve" text-anchor="start" x="1002.75" y="-231.05" font-family="Segoe UI" font-size="11.00" fill="grey">+thrust_n</text>
 </g>
 <!-- Node12&#45;&gt;Node1 -->
-<g id="edge18_Node000001_Node000012" class="edge">
+<g id="edge14_Node000001_Node000012" class="edge">
 <title>Node12&#45;&gt;Node1</title>
-<g id="a_edge18_Node000001_Node000012"><a xlink:title=" ">
-<path fill="none" stroke="#63b8ff" d="M881.89,-291.31C875.72,-250.02 860.27,-173.45 825.5,-118 814.02,-99.69 797.62,-82.85 781.67,-68.99"/>
-<polygon fill="none" stroke="#63b8ff" points="781.73,-69.04 774.57,-68.26 772.54,-61.34 779.7,-62.12 781.73,-69.04"/>
+<g id="a_edge14_Node000001_Node000012"><a xlink:title=" ">
+<path fill="none" stroke="#63b8ff" d="M1160.69,-126.69C1155.44,-123.68 1150.13,-120.74 1145,-118 1109.39,-99.01 1101.36,-91.52 1063,-79 996.87,-57.42 917.55,-44.45 866.03,-37.64"/>
+<polygon fill="none" stroke="#63b8ff" points="866.03,-37.64 859.57,-40.85 854.13,-36.12 860.59,-32.91 866.03,-37.64"/>
 </a>
 </g>
-<text xml:space="preserve" text-anchor="start" x="862.49" y="-182.55" font-family="Segoe UI" font-size="11.00" fill="grey">+current_throttle</text>
-<text xml:space="preserve" text-anchor="start" x="862.49" y="-163.55" font-family="Segoe UI" font-size="11.00" fill="grey">+current_thrust</text>
-<text xml:space="preserve" text-anchor="start" x="862.49" y="-144.55" font-family="Segoe UI" font-size="11.00" fill="grey">+max_thrust_n</text>
-<text xml:space="preserve" text-anchor="start" x="862.49" y="-125.55" font-family="Segoe UI" font-size="11.00" fill="grey">+max_thrust_pwm</text>
-</g>
-<!-- Node12&#45;&gt;Node11 -->
-<g id="edge15_Node000011_Node000012" class="edge">
-<title>Node12&#45;&gt;Node11</title>
-<g id="a_edge15_Node000011_Node000012"><a xlink:title=" ">
-<path fill="none" stroke="#63b8ff" d="M893.16,-291.24C900.32,-268.25 912.86,-236.47 932.25,-214 934.97,-210.85 947.01,-202.88 961.42,-193.9"/>
-<polygon fill="none" stroke="#63b8ff" points="961.24,-194.01 964.25,-187.45 971.46,-187.71 968.45,-194.26 961.24,-194.01"/>
-</a>
-</g>
-<text xml:space="preserve" text-anchor="start" x="935.25" y="-250.05" font-family="Segoe UI" font-size="11.00" fill="grey">+pwm_percent</text>
-<text xml:space="preserve" text-anchor="start" x="935.25" y="-231.05" font-family="Segoe UI" font-size="11.00" fill="grey">+thrust_n</text>
+<text xml:space="preserve" text-anchor="start" x="1114.8" y="-86.55" font-family="Segoe UI" font-size="11.00" fill="grey">+data</text>
 </g>
 <!-- Node13 -->
 <g id="Node000013" class="node">
 <title>Node13</title>
 <g id="a_Node000013"><a xlink:title=" ">
-<polygon fill="white" stroke="none" points="1089,-352 1042,-352 1042,-291 1089,-291 1089,-352"/>
-<text xml:space="preserve" text-anchor="start" x="1046" y="-337.55" font-family="Segoe UI" font-size="11.00">uint16_t</text>
-<text xml:space="preserve" text-anchor="start" x="1064" y="-318.55" font-family="Segoe UI" font-size="11.00"> </text>
-<text xml:space="preserve" text-anchor="start" x="1064" y="-299.55" font-family="Segoe UI" font-size="11.00"> </text>
-<polygon fill="#666666" stroke="#666666" points="1042,-331 1042,-331 1089,-331 1089,-331 1042,-331"/>
-<polygon fill="#666666" stroke="#666666" points="1042,-312 1042,-312 1089,-312 1089,-312 1042,-312"/>
-<polygon fill="none" stroke="#666666" points="1042,-291 1042,-352 1089,-352 1089,-291 1042,-291"/>
+<polygon fill="white" stroke="none" points="1276.5,-352 1229.5,-352 1229.5,-291 1276.5,-291 1276.5,-352"/>
+<text xml:space="preserve" text-anchor="start" x="1233.5" y="-337.55" font-family="Segoe UI" font-size="11.00">uint16_t</text>
+<text xml:space="preserve" text-anchor="start" x="1251.5" y="-318.55" font-family="Segoe UI" font-size="11.00"> </text>
+<text xml:space="preserve" text-anchor="start" x="1251.5" y="-299.55" font-family="Segoe UI" font-size="11.00"> </text>
+<polygon fill="#666666" stroke="#666666" points="1229.5,-331 1229.5,-331 1276.5,-331 1276.5,-331 1229.5,-331"/>
+<polygon fill="#666666" stroke="#666666" points="1229.5,-312 1229.5,-312 1276.5,-312 1276.5,-312 1229.5,-312"/>
+<polygon fill="none" stroke="#666666" points="1229.5,-291 1229.5,-352 1276.5,-352 1276.5,-291 1229.5,-291"/>
 </a>
 </g>
 </g>
 <!-- Node13&#45;&gt;Node1 -->
-<g id="edge17_Node000001_Node000013" class="edge">
+<g id="edge18_Node000001_Node000013" class="edge">
 <title>Node13&#45;&gt;Node1</title>
-<g id="a_edge17_Node000001_Node000013"><a xlink:title=" ">
-<path fill="none" stroke="#63b8ff" d="M1085.99,-291.18C1089.09,-285.39 1091.81,-279.19 1093.5,-273 1111.69,-206.31 1124.87,-171.02 1080.5,-118 1042.87,-73.04 872.89,-47.56 784.41,-37.13"/>
-<polygon fill="none" stroke="#63b8ff" points="784.53,-37.14 778.12,-40.43 772.61,-35.77 779.03,-32.48 784.53,-37.14"/>
+<g id="a_edge18_Node000001_Node000013"><a xlink:title=" ">
+<path fill="none" stroke="#63b8ff" d="M1273.49,-291.18C1276.59,-285.39 1279.31,-279.19 1281,-273 1299.19,-206.31 1312.17,-171.18 1268,-118 1217.4,-57.08 975.69,-38.72 866.16,-33.47"/>
+<polygon fill="none" stroke="#63b8ff" points="866.06,-33.47 859.89,-37.19 854.07,-32.92 860.25,-29.2 866.06,-33.47"/>
 </a>
 </g>
-<text xml:space="preserve" text-anchor="start" x="1113.46" y="-163.55" font-family="Segoe UI" font-size="11.00" fill="grey">+data_count</text>
-<text xml:space="preserve" text-anchor="start" x="1113.46" y="-144.55" font-family="Segoe UI" font-size="11.00" fill="grey">+max_samples</text>
+<text xml:space="preserve" text-anchor="start" x="1300.89" y="-163.55" font-family="Segoe UI" font-size="11.00" fill="grey">+data_count</text>
+<text xml:space="preserve" text-anchor="start" x="1300.89" y="-144.55" font-family="Segoe UI" font-size="11.00" fill="grey">+max_samples</text>
 </g>
-<!-- Node13&#45;&gt;Node11 -->
-<g id="edge16_Node000011_Node000013" class="edge">
-<title>Node13&#45;&gt;Node11</title>
-<g id="a_edge16_Node000011_Node000013"><a xlink:title=" ">
-<path fill="none" stroke="#63b8ff" d="M1042.41,-298.82C1035.9,-291.32 1029.61,-282.41 1026,-273 1017.19,-250.03 1015.81,-222.55 1016.76,-200.21"/>
-<polygon fill="none" stroke="#63b8ff" points="1016.75,-200.27 1013.14,-194.03 1017.51,-188.29 1021.12,-194.53 1016.75,-200.27"/>
+<!-- Node13&#45;&gt;Node12 -->
+<g id="edge17_Node000012_Node000013" class="edge">
+<title>Node13&#45;&gt;Node12</title>
+<g id="a_edge17_Node000012_Node000013"><a xlink:title=" ">
+<path fill="none" stroke="#63b8ff" d="M1229.91,-298.82C1223.4,-291.32 1217.11,-282.41 1213.5,-273 1204.69,-250.03 1203.31,-222.55 1204.26,-200.21"/>
+<polygon fill="none" stroke="#63b8ff" points="1204.25,-200.27 1200.64,-194.03 1205.01,-188.29 1208.62,-194.53 1204.25,-200.27"/>
 </a>
 </g>
-<text xml:space="preserve" text-anchor="start" x="1029" y="-240.55" font-family="Segoe UI" font-size="11.00" fill="grey">+raw_counts</text>
+<text xml:space="preserve" text-anchor="start" x="1216.5" y="-240.55" font-family="Segoe UI" font-size="11.00" fill="grey">+raw_counts</text>
 </g>
 <!-- Node14 -->
 <g id="Node000014" class="node">
 <title>Node14</title>
 <g id="a_Node000014"><a xlink:title=" ">
-<polygon fill="white" stroke="none" points="1231.62,-187.5 1203.38,-187.5 1203.38,-126.5 1231.62,-126.5 1231.62,-187.5"/>
-<text xml:space="preserve" text-anchor="start" x="1207.38" y="-173.05" font-family="Segoe UI" font-size="11.00">char</text>
-<text xml:space="preserve" text-anchor="start" x="1216" y="-154.05" font-family="Segoe UI" font-size="11.00"> </text>
-<text xml:space="preserve" text-anchor="start" x="1216" y="-135.05" font-family="Segoe UI" font-size="11.00"> </text>
-<polygon fill="#666666" stroke="#666666" points="1203.38,-166.5 1203.38,-166.5 1231.62,-166.5 1231.62,-166.5 1203.38,-166.5"/>
-<polygon fill="#666666" stroke="#666666" points="1203.38,-147.5 1203.38,-147.5 1231.62,-147.5 1231.62,-147.5 1203.38,-147.5"/>
-<polygon fill="none" stroke="#666666" points="1203.38,-126.5 1203.38,-187.5 1231.62,-187.5 1231.62,-126.5 1203.38,-126.5"/>
+<polygon fill="white" stroke="none" points="1419.12,-187.5 1390.88,-187.5 1390.88,-126.5 1419.12,-126.5 1419.12,-187.5"/>
+<text xml:space="preserve" text-anchor="start" x="1394.88" y="-173.05" font-family="Segoe UI" font-size="11.00">char</text>
+<text xml:space="preserve" text-anchor="start" x="1403.5" y="-154.05" font-family="Segoe UI" font-size="11.00"> </text>
+<text xml:space="preserve" text-anchor="start" x="1403.5" y="-135.05" font-family="Segoe UI" font-size="11.00"> </text>
+<polygon fill="#666666" stroke="#666666" points="1390.88,-166.5 1390.88,-166.5 1419.12,-166.5 1419.12,-166.5 1390.88,-166.5"/>
+<polygon fill="#666666" stroke="#666666" points="1390.88,-147.5 1390.88,-147.5 1419.12,-147.5 1419.12,-147.5 1390.88,-147.5"/>
+<polygon fill="none" stroke="#666666" points="1390.88,-126.5 1390.88,-187.5 1419.12,-187.5 1419.12,-126.5 1390.88,-126.5"/>
 </a>
 </g>
 </g>
 <!-- Node14&#45;&gt;Node1 -->
-<g id="edge19_Node000001_Node000014" class="edge">
+<g id="edge20_Node000001_Node000014" class="edge">
 <title>Node14&#45;&gt;Node1</title>
-<g id="a_edge19_Node000001_Node000014"><a xlink:title=" ">
-<path fill="none" stroke="#63b8ff" d="M1203.52,-133.79C1199.42,-128.25 1194.64,-122.58 1189.5,-118 1163.5,-94.81 1154.56,-89.99 1121.5,-79 1005.71,-40.53 861.39,-32.61 784.55,-31.34"/>
-<polygon fill="none" stroke="#63b8ff" points="784.81,-31.35 778.76,-35.27 772.81,-31.2 778.86,-27.27 784.81,-31.35"/>
+<g id="a_edge20_Node000001_Node000014"><a xlink:title=" ">
+<path fill="none" stroke="#63b8ff" d="M1391.02,-133.79C1386.92,-128.25 1382.14,-122.58 1377,-118 1351,-94.81 1342.2,-89.56 1309,-79 1227.64,-53.12 977.21,-38.94 866.08,-33.78"/>
+<polygon fill="none" stroke="#63b8ff" points="866.12,-33.78 859.95,-37.51 854.14,-33.24 860.31,-29.52 866.12,-33.78"/>
 </a>
 </g>
-<text xml:space="preserve" text-anchor="start" x="1170.28" y="-86.55" font-family="Segoe UI" font-size="11.00" fill="grey">+error_msg</text>
+<text xml:space="preserve" text-anchor="start" x="1357.81" y="-86.55" font-family="Segoe UI" font-size="11.00" fill="grey">+error_msg</text>
 </g>
 </g>
 </svg>

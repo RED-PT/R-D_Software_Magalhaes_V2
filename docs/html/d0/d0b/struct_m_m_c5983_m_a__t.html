@@ -115,15 +115,17 @@ $(function() {
 <div id="dynsection-0-summary" class="dynsummary" style="display:block;">
 </div>
 <div id="dynsection-0-content" class="dyncontent" style="display:none;">
-<div class="center"><iframe scrolling="no" loading="lazy" frameborder="0" src="../../d3/d0c/struct_m_m_c5983_m_a__t__coll__graph.svg" width="420" height="300"><p><b>This browser is not able to show SVG: try Firefox, Chrome, Safari, or Opera instead.</b></p></iframe></div>
+<div class="center"><iframe scrolling="no" loading="lazy" frameborder="0" src="../../d3/d0c/struct_m_m_c5983_m_a__t__coll__graph.svg" width="423" height="326"><p><b>This browser is not able to show SVG: try Firefox, Chrome, Safari, or Opera instead.</b></p></iframe></div>
 </div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 id="header-pub-attribs" class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
 Data Fields</h2></td></tr>
 <tr class="memitem:a80f83db1c06a472880ca98c1d447abff" id="r_a80f83db1c06a472880ca98c1d447abff"><td class="memItemLeft">SPI_HandleTypeDef *&#160;</td><td class="memItemRight"><a class="el" href="#a80f83db1c06a472880ca98c1d447abff">hspi</a></td></tr>
-<tr class="memdesc:a80f83db1c06a472880ca98c1d447abff"><td class="mdescLeft">&#160;</td><td class="mdescRight">SPI peripheral handle.  <br /></td></tr>
-<tr class="memitem:a29f726226335df5a6e264c5f757ce3cd" id="r_a29f726226335df5a6e264c5f757ce3cd"><td class="memItemLeft">uint8_t&#160;</td><td class="memItemRight"><a class="el" href="#a29f726226335df5a6e264c5f757ce3cd">read_buffer</a> [8]</td></tr>
-<tr class="memdesc:a29f726226335df5a6e264c5f757ce3cd"><td class="mdescLeft">&#160;</td><td class="mdescRight">DMA receive buffer.  <br /></td></tr>
+<tr class="memdesc:a80f83db1c06a472880ca98c1d447abff"><td class="mdescLeft">&#160;</td><td class="mdescRight">SPI peripheral handle (SPI_MAG from config.h).  <br /></td></tr>
+<tr class="memitem:ab21a9c3593f3a1bf0f6aa4d769881677" id="r_ab21a9c3593f3a1bf0f6aa4d769881677"><td class="memItemLeft">uint8_t&#160;</td><td class="memItemRight"><a class="el" href="#ab21a9c3593f3a1bf0f6aa4d769881677">tx_buffer</a> [9]</td></tr>
+<tr class="memdesc:ab21a9c3593f3a1bf0f6aa4d769881677"><td class="mdescLeft">&#160;</td><td class="mdescRight">DMA transmit buffer (1 cmd + 8 dummy); kept in struct for DMA cache coherency.  <br /></td></tr>
+<tr class="memitem:a333305e55fe91663393e213a51fc22f0" id="r_a333305e55fe91663393e213a51fc22f0"><td class="memItemLeft">uint8_t&#160;</td><td class="memItemRight"><a class="el" href="#a333305e55fe91663393e213a51fc22f0">read_buffer</a> [9]</td></tr>
+<tr class="memdesc:a333305e55fe91663393e213a51fc22f0"><td class="mdescLeft">&#160;</td><td class="mdescRight">DMA receive buffer (1 dummy + 8 data); sized to 9 to prevent DMA buffer overflow.  <br /></td></tr>
 <tr class="memitem:aff603a8162c1f8962f2b730a690c8d13" id="r_aff603a8162c1f8962f2b730a690c8d13"><td class="memItemLeft">volatile uint8_t&#160;</td><td class="memItemRight"><a class="el" href="#aff603a8162c1f8962f2b730a690c8d13">data_ready</a></td></tr>
 <tr class="memdesc:aff603a8162c1f8962f2b730a690c8d13"><td class="mdescLeft">&#160;</td><td class="mdescRight">Flag set when new data available.  <br /></td></tr>
 <tr class="memitem:a0c0da11541662ea6bcb3ed13770de88c" id="r_a0c0da11541662ea6bcb3ed13770de88c"><td class="memItemLeft">int32_t&#160;</td><td class="memItemRight"><a class="el" href="#a0c0da11541662ea6bcb3ed13770de88c">mag_x_raw</a></td></tr>
@@ -155,9 +157,9 @@ Data Fields</h2></td></tr>
 
 <p>Flag set when new data available. </p>
 
-<p class="definition">Definition at line <a class="el" href="../../d4/d0e/_m_m_c5983_m_a_8h_source.html#l00101">101</a> of file <a class="el" href="../../d4/d0e/_m_m_c5983_m_a_8h_source.html">MMC5983MA.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d4/d0e/_m_m_c5983_m_a_8h_source.html#l00102">102</a> of file <a class="el" href="../../d4/d0e/_m_m_c5983_m_a_8h_source.html">MMC5983MA.h</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../d3/d01/_m_m_c5983_m_a_8c_source.html#l00017">MMC5983MA_Init()</a>, <a class="el" href="../../d4/d0e/_m_m_c5983_m_a_8h_source.html#l00187">MMC5983MA_IsDataReady()</a>, <a class="el" href="../../d3/d01/_m_m_c5983_m_a_8c_source.html#l00106">MMC5983MA_ParseDMABuffer()</a>, and <a class="el" href="../../d3/d01/_m_m_c5983_m_a_8c_source.html#l00132">MMC5983MA_ProcessData()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../d3/d01/_m_m_c5983_m_a_8c_source.html#l00028">MMC5983MA_Init()</a>, <a class="el" href="../../d4/d0e/_m_m_c5983_m_a_8h_source.html#l00188">MMC5983MA_IsDataReady()</a>, <a class="el" href="../../d3/d01/_m_m_c5983_m_a_8c_source.html#l00116">MMC5983MA_ParseDMABuffer()</a>, and <a class="el" href="../../d3/d01/_m_m_c5983_m_a_8c_source.html#l00142">MMC5983MA_ProcessData()</a>.</p>
 
 </div>
 </div>
@@ -173,11 +175,11 @@ Data Fields</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p>SPI peripheral handle. </p>
+<p>SPI peripheral handle (SPI_MAG from config.h). </p>
 
 <p class="definition">Definition at line <a class="el" href="../../d4/d0e/_m_m_c5983_m_a_8h_source.html#l00099">99</a> of file <a class="el" href="../../d4/d0e/_m_m_c5983_m_a_8h_source.html">MMC5983MA.h</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../d3/d01/_m_m_c5983_m_a_8c_source.html#l00017">MMC5983MA_Init()</a>, <a class="el" href="../../d3/d01/_m_m_c5983_m_a_8c_source.html#l00154">MMC5983MA_ReadRegister()</a>, <a class="el" href="../../d3/d01/_m_m_c5983_m_a_8c_source.html#l00087">MMC5983MA_StartReadDMA()</a>, and <a class="el" href="../../d3/d01/_m_m_c5983_m_a_8c_source.html#l00176">MMC5983MA_WriteRegister()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../d3/d01/_m_m_c5983_m_a_8c_source.html#l00028">MMC5983MA_Init()</a>, <a class="el" href="../../d3/d01/_m_m_c5983_m_a_8c_source.html#l00164">MMC5983MA_ReadRegister()</a>, <a class="el" href="../../d3/d01/_m_m_c5983_m_a_8c_source.html#l00098">MMC5983MA_StartReadDMA()</a>, and <a class="el" href="../../d3/d01/_m_m_c5983_m_a_8c_source.html#l00186">MMC5983MA_WriteRegister()</a>.</p>
 
 </div>
 </div>
@@ -195,9 +197,9 @@ Data Fields</h2></td></tr>
 
 <p>Raw X-axis magnetic field. </p>
 
-<p class="definition">Definition at line <a class="el" href="../../d4/d0e/_m_m_c5983_m_a_8h_source.html#l00104">104</a> of file <a class="el" href="../../d4/d0e/_m_m_c5983_m_a_8h_source.html">MMC5983MA.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d4/d0e/_m_m_c5983_m_a_8h_source.html#l00105">105</a> of file <a class="el" href="../../d4/d0e/_m_m_c5983_m_a_8h_source.html">MMC5983MA.h</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../d3/d01/_m_m_c5983_m_a_8c_source.html#l00106">MMC5983MA_ParseDMABuffer()</a>, and <a class="el" href="../../d3/d01/_m_m_c5983_m_a_8c_source.html#l00132">MMC5983MA_ProcessData()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../d3/d01/_m_m_c5983_m_a_8c_source.html#l00116">MMC5983MA_ParseDMABuffer()</a>, and <a class="el" href="../../d3/d01/_m_m_c5983_m_a_8c_source.html#l00142">MMC5983MA_ProcessData()</a>.</p>
 
 </div>
 </div>
@@ -215,9 +217,9 @@ Data Fields</h2></td></tr>
 
 <p>Raw Y-axis magnetic field. </p>
 
-<p class="definition">Definition at line <a class="el" href="../../d4/d0e/_m_m_c5983_m_a_8h_source.html#l00105">105</a> of file <a class="el" href="../../d4/d0e/_m_m_c5983_m_a_8h_source.html">MMC5983MA.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d4/d0e/_m_m_c5983_m_a_8h_source.html#l00106">106</a> of file <a class="el" href="../../d4/d0e/_m_m_c5983_m_a_8h_source.html">MMC5983MA.h</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../d3/d01/_m_m_c5983_m_a_8c_source.html#l00106">MMC5983MA_ParseDMABuffer()</a>, and <a class="el" href="../../d3/d01/_m_m_c5983_m_a_8c_source.html#l00132">MMC5983MA_ProcessData()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../d3/d01/_m_m_c5983_m_a_8c_source.html#l00116">MMC5983MA_ParseDMABuffer()</a>, and <a class="el" href="../../d3/d01/_m_m_c5983_m_a_8c_source.html#l00142">MMC5983MA_ProcessData()</a>.</p>
 
 </div>
 </div>
@@ -235,29 +237,29 @@ Data Fields</h2></td></tr>
 
 <p>Raw Z-axis magnetic field. </p>
 
-<p class="definition">Definition at line <a class="el" href="../../d4/d0e/_m_m_c5983_m_a_8h_source.html#l00106">106</a> of file <a class="el" href="../../d4/d0e/_m_m_c5983_m_a_8h_source.html">MMC5983MA.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d4/d0e/_m_m_c5983_m_a_8h_source.html#l00107">107</a> of file <a class="el" href="../../d4/d0e/_m_m_c5983_m_a_8h_source.html">MMC5983MA.h</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../d3/d01/_m_m_c5983_m_a_8c_source.html#l00106">MMC5983MA_ParseDMABuffer()</a>, and <a class="el" href="../../d3/d01/_m_m_c5983_m_a_8c_source.html#l00132">MMC5983MA_ProcessData()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../d3/d01/_m_m_c5983_m_a_8c_source.html#l00116">MMC5983MA_ParseDMABuffer()</a>, and <a class="el" href="../../d3/d01/_m_m_c5983_m_a_8c_source.html#l00142">MMC5983MA_ProcessData()</a>.</p>
 
 </div>
 </div>
-<a id="a29f726226335df5a6e264c5f757ce3cd" name="a29f726226335df5a6e264c5f757ce3cd"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a29f726226335df5a6e264c5f757ce3cd">&#9670;&#160;</a></span>read_buffer</h2>
+<a id="a333305e55fe91663393e213a51fc22f0" name="a333305e55fe91663393e213a51fc22f0"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a333305e55fe91663393e213a51fc22f0">&#9670;&#160;</a></span>read_buffer</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">uint8_t MMC5983MA_t::read_buffer[8]</td>
+          <td class="memname">uint8_t MMC5983MA_t::read_buffer[9]</td>
         </tr>
       </table>
 </div><div class="memdoc">
 
-<p>DMA receive buffer. </p>
+<p>DMA receive buffer (1 dummy + 8 data); sized to 9 to prevent DMA buffer overflow. </p>
 
-<p class="definition">Definition at line <a class="el" href="../../d4/d0e/_m_m_c5983_m_a_8h_source.html#l00100">100</a> of file <a class="el" href="../../d4/d0e/_m_m_c5983_m_a_8h_source.html">MMC5983MA.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d4/d0e/_m_m_c5983_m_a_8h_source.html#l00101">101</a> of file <a class="el" href="../../d4/d0e/_m_m_c5983_m_a_8h_source.html">MMC5983MA.h</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../d3/d01/_m_m_c5983_m_a_8c_source.html#l00017">MMC5983MA_Init()</a>, <a class="el" href="../../d3/d01/_m_m_c5983_m_a_8c_source.html#l00106">MMC5983MA_ParseDMABuffer()</a>, and <a class="el" href="../../d3/d01/_m_m_c5983_m_a_8c_source.html#l00087">MMC5983MA_StartReadDMA()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../d3/d01/_m_m_c5983_m_a_8c_source.html#l00028">MMC5983MA_Init()</a>, <a class="el" href="../../d3/d01/_m_m_c5983_m_a_8c_source.html#l00116">MMC5983MA_ParseDMABuffer()</a>, and <a class="el" href="../../d3/d01/_m_m_c5983_m_a_8c_source.html#l00098">MMC5983MA_StartReadDMA()</a>.</p>
 
 </div>
 </div>
@@ -275,9 +277,29 @@ Data Fields</h2></td></tr>
 
 <p>Raw temperature. </p>
 
-<p class="definition">Definition at line <a class="el" href="../../d4/d0e/_m_m_c5983_m_a_8h_source.html#l00107">107</a> of file <a class="el" href="../../d4/d0e/_m_m_c5983_m_a_8h_source.html">MMC5983MA.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d4/d0e/_m_m_c5983_m_a_8h_source.html#l00108">108</a> of file <a class="el" href="../../d4/d0e/_m_m_c5983_m_a_8h_source.html">MMC5983MA.h</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../d3/d01/_m_m_c5983_m_a_8c_source.html#l00106">MMC5983MA_ParseDMABuffer()</a>, and <a class="el" href="../../d3/d01/_m_m_c5983_m_a_8c_source.html#l00132">MMC5983MA_ProcessData()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../d3/d01/_m_m_c5983_m_a_8c_source.html#l00116">MMC5983MA_ParseDMABuffer()</a>, and <a class="el" href="../../d3/d01/_m_m_c5983_m_a_8c_source.html#l00142">MMC5983MA_ProcessData()</a>.</p>
+
+</div>
+</div>
+<a id="ab21a9c3593f3a1bf0f6aa4d769881677" name="ab21a9c3593f3a1bf0f6aa4d769881677"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ab21a9c3593f3a1bf0f6aa4d769881677">&#9670;&#160;</a></span>tx_buffer</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">uint8_t MMC5983MA_t::tx_buffer[9]</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>DMA transmit buffer (1 cmd + 8 dummy); kept in struct for DMA cache coherency. </p>
+
+<p class="definition">Definition at line <a class="el" href="../../d4/d0e/_m_m_c5983_m_a_8h_source.html#l00100">100</a> of file <a class="el" href="../../d4/d0e/_m_m_c5983_m_a_8h_source.html">MMC5983MA.h</a>.</p>
+
+<p class="reference">Referenced by <a class="el" href="../../d3/d01/_m_m_c5983_m_a_8c_source.html#l00098">MMC5983MA_StartReadDMA()</a>.</p>
 
 </div>
 </div>

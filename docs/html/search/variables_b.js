@@ -4,7 +4,7 @@ var searchData=
   ['mag_5fcfg_5fa_1',['mag_cfg_a',['../de/d0b/unionasm330lhhx__reg__t.html#a622e32c0463484c8de0c844dbc94ee08',1,'asm330lhhx_reg_t']]],
   ['mag_5fcfg_5fb_2',['mag_cfg_b',['../de/d0b/unionasm330lhhx__reg__t.html#adcab969f0508ab315d77e18f74c4436f',1,'asm330lhhx_reg_t']]],
   ['mag_5fconfig_3',['mag_config',['../d1/d0f/structboot__status__t.html#aa136f6fe341b69d18f8dac3b38a666e0',1,'boot_status_t']]],
-  ['mag_5fdevice_4',['mag_device',['../d0/d00/hal__callbacks_8c.html#a9bb445c821c8850eb07afc9c7a4ec717',1,'mag_device:&#160;sensors_thread.c'],['../d5/d02/group___sensor_instances.html#ga9bb445c821c8850eb07afc9c7a4ec717',1,'mag_device:&#160;sensors_thread.c'],['../d5/d02/group___sensor_instances.html#ga9bb445c821c8850eb07afc9c7a4ec717',1,'mag_device:&#160;sensors_thread.c']]],
+  ['mag_5fdevice_4',['mag_device',['../d0/d00/hal__callbacks_8c.html#a9bb445c821c8850eb07afc9c7a4ec717',1,'mag_device:&#160;sensors_thread.c'],['../d5/d02/group___sensor_instances.html#gaa0d3123b6874344a82a840b00af4c62a',1,'mag_device:&#160;sensors_thread.c'],['../d5/d02/group___sensor_instances.html#ga9bb445c821c8850eb07afc9c7a4ec717',1,'mag_device:&#160;sensors_thread.c']]],
   ['mag_5ferrors_5',['mag_errors',['../d3/d05/sensors__thread_8c.html#abf68830add5757a433d328703cbc4238',1,'sensors_thread.c']]],
   ['mag_5finit_6',['mag_init',['../d1/d0f/structboot__status__t.html#ad157b23ab37c935b18b91ad91dbfdd0f',1,'boot_status_t']]],
   ['mag_5fraw_7',['mag_raw',['../d6/d09/struct_b_n_o055__t.html#a59a9bf7670269fbb03fa511a33259962',1,'BNO055_t']]],

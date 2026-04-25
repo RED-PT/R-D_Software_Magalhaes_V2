@@ -112,9 +112,8 @@ $(function() {
 <div class="textblock"><code>#include &quot;FreeRTOS.h&quot;</code><br />
 <code>#include &quot;task.h&quot;</code><br />
 <code>#include &quot;timers.h&quot;</code><br />
-<code>#include &quot;config.h&quot;</code><br />
+<code>#include &quot;<a class="el" href="../../df/d0c/_s_t_m32_f446_z_e___magalhaes_2_core_2_inc_2config_8h_source.html">config.h</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="../../d5/d04/defs_8h_source.html">defs.h</a>&quot;</code><br />
-<code>#include &quot;stm32f4xx_hal.h&quot;</code><br />
 <code>#include &quot;print.h&quot;</code><br />
 <code>#include &lt;string.h&gt;</code><br />
 <code>#include &lt;limits.h&gt;</code><br />
@@ -203,9 +202,9 @@ Variables</h2></td></tr>
 <tr class="memitem:ga00e36748cb36d619521181907dc231fd" id="r_ga00e36748cb36d619521181907dc231fd"><td class="memItemLeft"><a class="el" href="../../dd/d09/struct_u_b_l_o_x___g_p_s__t.html">UBLOX_GPS_t</a>&#160;</td><td class="memItemRight"><a class="el" href="../../d5/d02/group___sensor_instances.html#ga00e36748cb36d619521181907dc231fd">gps_device</a></td></tr>
 <tr class="memdesc:ga00e36748cb36d619521181907dc231fd"><td class="mdescLeft">&#160;</td><td class="mdescRight">UBLOX GPS device instance.  <br /></td></tr>
 <tr class="memitem:ga9341c303ff0629cc51ba13cdd7e0c21b" id="r_ga9341c303ff0629cc51ba13cdd7e0c21b"><td class="memItemLeft">volatile <a class="el" href="../../d7/d0c/group___sensor_bus_tracking.html#ga236ff5c902af3e544b7e5ec44224769d">active_sensor_t</a>&#160;</td><td class="memItemRight"><a class="el" href="../../d7/d0c/group___sensor_bus_tracking.html#ga9341c303ff0629cc51ba13cdd7e0c21b">spi1_active_sensor</a></td></tr>
-<tr class="memdesc:ga9341c303ff0629cc51ba13cdd7e0c21b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Current active sensor on SPI1 bus.  <br /></td></tr>
-<tr class="memitem:ga70b8d7beeada26526dc6ca712893863c" id="r_ga70b8d7beeada26526dc6ca712893863c"><td class="memItemLeft">volatile <a class="el" href="../../d7/d0c/group___sensor_bus_tracking.html#ga236ff5c902af3e544b7e5ec44224769d">active_sensor_t</a>&#160;</td><td class="memItemRight"><a class="el" href="../../d7/d0c/group___sensor_bus_tracking.html#ga70b8d7beeada26526dc6ca712893863c">spi3_active_sensor</a></td></tr>
-<tr class="memdesc:ga70b8d7beeada26526dc6ca712893863c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Current active sensor on SPI3 bus.  <br /></td></tr>
+<tr class="memdesc:ga9341c303ff0629cc51ba13cdd7e0c21b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Current active sensor on SPI_IMU_BARO bus (IMU or barometer).  <br /></td></tr>
+<tr class="memitem:ga45603ab2dbaf4b2eb8d988b176304974" id="r_ga45603ab2dbaf4b2eb8d988b176304974"><td class="memItemLeft">volatile <a class="el" href="../../d7/d0c/group___sensor_bus_tracking.html#ga236ff5c902af3e544b7e5ec44224769d">active_sensor_t</a>&#160;</td><td class="memItemRight"><a class="el" href="../../d7/d0c/group___sensor_bus_tracking.html#ga45603ab2dbaf4b2eb8d988b176304974">spi_mag_active_sensor</a></td></tr>
+<tr class="memdesc:ga45603ab2dbaf4b2eb8d988b176304974"><td class="mdescLeft">&#160;</td><td class="mdescRight">Current active sensor on SPI_MAG bus (magnetometer; SPI3 on F446ZE, SPI6 on H743ZI).  <br /></td></tr>
 <tr class="memitem:gaaf76c2387a5b632544ba92b873ec1d7a" id="r_gaaf76c2387a5b632544ba92b873ec1d7a"><td class="memItemLeft">volatile <a class="el" href="../../d7/d0c/group___sensor_bus_tracking.html#ga236ff5c902af3e544b7e5ec44224769d">active_sensor_t</a>&#160;</td><td class="memItemRight"><a class="el" href="../../d7/d0c/group___sensor_bus_tracking.html#gaaf76c2387a5b632544ba92b873ec1d7a">i2c1_active_sensor</a></td></tr>
 <tr class="memdesc:gaaf76c2387a5b632544ba92b873ec1d7a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Current active sensor on I2C1 bus.  <br /></td></tr>
 </table>
@@ -216,19 +215,20 @@ Variables</h2></td></tr>
 <p>This module implements the FreeRTOS task responsible for coordinating all sensor readings. It manages multiple sensors across different buses (SPI, I2C, UART) using DMA for efficient data transfer.</p>
 <h1 class="doxsection"><a class="anchor" id="sensor_hw"></a>
 Sensor Hardware</h1>
+<p>SPI instances vary by board; actual peripherals are abstracted via config.h macros (SPI_IMU_BARO, SPI_MAG, I2C_BNO, UART_UBLOX).</p>
 <table class="markdownTable">
 <tr class="markdownTableHead">
-<th class="markdownTableHeadNone">Sensor  </th><th class="markdownTableHeadNone">Interface  </th><th class="markdownTableHeadNone">Function  </th></tr>
+<th class="markdownTableHeadNone">Sensor  </th><th class="markdownTableHeadNone">config.h macro  </th><th class="markdownTableHeadNone">F446ZE (Nucleo)  </th><th class="markdownTableHeadNone">H743ZI (Buzz V4)  </th><th class="markdownTableHeadNone">Function  </th></tr>
 <tr class="markdownTableRowOdd">
-<td class="markdownTableBodyNone">ASM330LHHX  </td><td class="markdownTableBodyNone">SPI1  </td><td class="markdownTableBodyNone">6-axis IMU (accel + gyro)  </td></tr>
+<td class="markdownTableBodyNone">ASM330LHHX  </td><td class="markdownTableBodyNone">SPI_IMU_BARO  </td><td class="markdownTableBodyNone">SPI1  </td><td class="markdownTableBodyNone">SPI1  </td><td class="markdownTableBodyNone">6-axis IMU (accel + gyro)  </td></tr>
 <tr class="markdownTableRowEven">
-<td class="markdownTableBodyNone">MMC5983MA  </td><td class="markdownTableBodyNone">SPI1  </td><td class="markdownTableBodyNone">3-axis magnetometer  </td></tr>
+<td class="markdownTableBodyNone">MMC5983MA  </td><td class="markdownTableBodyNone">SPI_MAG  </td><td class="markdownTableBodyNone">SPI3  </td><td class="markdownTableBodyNone">SPI6  </td><td class="markdownTableBodyNone">3-axis magnetometer  </td></tr>
 <tr class="markdownTableRowOdd">
-<td class="markdownTableBodyNone">MS5607  </td><td class="markdownTableBodyNone">SPI3  </td><td class="markdownTableBodyNone">Barometric pressure/altitude  </td></tr>
+<td class="markdownTableBodyNone">MS5607  </td><td class="markdownTableBodyNone">SPI_IMU_BARO  </td><td class="markdownTableBodyNone">SPI1  </td><td class="markdownTableBodyNone">SPI1  </td><td class="markdownTableBodyNone">Barometric pressure/altitude  </td></tr>
 <tr class="markdownTableRowEven">
-<td class="markdownTableBodyNone">BNO055  </td><td class="markdownTableBodyNone">I2C1  </td><td class="markdownTableBodyNone">9-DOF with sensor fusion  </td></tr>
+<td class="markdownTableBodyNone">BNO055  </td><td class="markdownTableBodyNone">I2C_BNO  </td><td class="markdownTableBodyNone">I2C1  </td><td class="markdownTableBodyNone">I2C1  </td><td class="markdownTableBodyNone">9-DOF with sensor fusion  </td></tr>
 <tr class="markdownTableRowOdd">
-<td class="markdownTableBodyNone">UBLOX GPS  </td><td class="markdownTableBodyNone">UART  </td><td class="markdownTableBodyNone">Position/velocity  </td></tr>
+<td class="markdownTableBodyNone">UBLOX GPS  </td><td class="markdownTableBodyNone">UART_UBLOX  </td><td class="markdownTableBodyNone">USART2  </td><td class="markdownTableBodyNone">USART1  </td><td class="markdownTableBodyNone">Position/velocity  </td></tr>
 </table>
 <h1 class="doxsection"><a class="anchor" id="sensor_timing"></a>
 Timing</h1>

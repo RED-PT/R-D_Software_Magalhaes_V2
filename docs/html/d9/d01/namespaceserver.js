@@ -2,6 +2,7 @@ var namespaceserver =
 [
     [ "ConnectionManager", "dd/d06/classserver_1_1_connection_manager.html", "dd/d06/classserver_1_1_connection_manager" ],
     [ "SerialReader", "d5/d0f/classserver_1_1_serial_reader.html", "d5/d0f/classserver_1_1_serial_reader" ],
+    [ "NoCacheMiddleware", "d1/d0b/classserver_1_1_no_cache_middleware.html", "d1/d0b/classserver_1_1_no_cache_middleware" ],
     [ "api_connect", "d9/d01/namespaceserver.html#aefa44a82a0b4eb6c737cf6b198c4d573", null ],
     [ "api_disconnect", "d9/d01/namespaceserver.html#a52876e9f764190107383c74b03454865", null ],
     [ "api_help", "d9/d01/namespaceserver.html#aea1519a04b01e4880aff3dc7dd4943b3", null ],

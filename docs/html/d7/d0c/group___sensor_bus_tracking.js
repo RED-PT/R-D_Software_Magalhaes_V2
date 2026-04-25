@@ -10,6 +10,6 @@ var group___sensor_bus_tracking =
     [ "i2c1_active_sensor", "d7/d0c/group___sensor_bus_tracking.html#gaaf76c2387a5b632544ba92b873ec1d7a", null ],
     [ "i2c1_active_sensor", "d7/d0c/group___sensor_bus_tracking.html#gaaf76c2387a5b632544ba92b873ec1d7a", null ],
     [ "spi1_active_sensor", "d7/d0c/group___sensor_bus_tracking.html#ga9341c303ff0629cc51ba13cdd7e0c21b", null ],
-    [ "spi3_active_sensor", "d7/d0c/group___sensor_bus_tracking.html#ga70b8d7beeada26526dc6ca712893863c", null ],
-    [ "spi3_active_sensor", "d7/d0c/group___sensor_bus_tracking.html#ga70b8d7beeada26526dc6ca712893863c", null ]
+    [ "spi_mag_active_sensor", "d7/d0c/group___sensor_bus_tracking.html#ga45603ab2dbaf4b2eb8d988b176304974", null ],
+    [ "spi_mag_active_sensor", "d7/d0c/group___sensor_bus_tracking.html#ga45603ab2dbaf4b2eb8d988b176304974", null ]
 ];

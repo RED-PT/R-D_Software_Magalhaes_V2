@@ -5,7 +5,7 @@ var searchData=
   ['gda_2',['gda',['../d9/d04/structasm330lhhx__status__reg__t.html#a049aa521faddaf08e5f994cc9cd7a945',1,'asm330lhhx_status_reg_t']]],
   ['gps_5fbuffer_3',['gps_buffer',['../de/d08/flash__data__handler_8c.html#a86d56c0b6d4daabf390dd49f576240f5',1,'flash_data_handler.c']]],
   ['gps_5fconfig_4',['gps_config',['../d1/d0f/structboot__status__t.html#af7fca077280c7c4b2d1f7b3e45f53c1b',1,'boot_status_t']]],
-  ['gps_5fdevice_5',['gps_device',['../d5/d02/group___sensor_instances.html#ga00e36748cb36d619521181907dc231fd',1,'gps_device:&#160;sensors_thread.c'],['../d5/d02/group___sensor_instances.html#ga00e36748cb36d619521181907dc231fd',1,'gps_device:&#160;sensors_thread.c']]],
+  ['gps_5fdevice_5',['gps_device',['../d5/d02/group___sensor_instances.html#ga4f384dcc1ec1ef30bc13e555fa49343f',1,'gps_device:&#160;sensors_thread.c'],['../d5/d02/group___sensor_instances.html#ga00e36748cb36d619521181907dc231fd',1,'gps_device:&#160;sensors_thread.c']]],
   ['gps_5ferrors_6',['gps_errors',['../d3/d05/sensors__thread_8c.html#a320b405eeb108d4792b250d257c0dbbd',1,'sensors_thread.c']]],
   ['gps_5finit_7',['gps_init',['../d1/d0f/structboot__status__t.html#a3839b06f5f19a4649fd206d85baf395c',1,'boot_status_t']]],
   ['gps_5flocked_8',['gps_locked',['../d7/d04/structfsm__flags__t.html#a1d60d38bc039bd910d9ffc1d9f55104b',1,'fsm_flags_t']]],

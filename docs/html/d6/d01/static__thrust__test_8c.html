@@ -106,10 +106,13 @@ $(function() {
   <div class="headertitle"><div class="title">static_thrust_test.c File Reference</div></div>
 </div><!--header-->
 <div class="contents">
+
+<p>Static motor thrust test implementation.  
+<a href="#details">More...</a></p>
 <div class="textblock"><code>#include &quot;<a class="el" href="../../d0/d04/static__thrust__test_8h_source.html">static_thrust_test.h</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="../../de/d08/_p_w_m___f_u_n_c_t_i_o_n_s_8h_source.html">Atuadores/ESC/PWM_FUNCTIONS.h</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="../../d3/d08/sd__card__thread_8h_source.html">Storage/sd_card_thread.h</a>&quot;</code><br />
-<code>#include &quot;config.h&quot;</code><br />
+<code>#include &quot;<a class="el" href="../../df/d0c/_s_t_m32_f446_z_e___magalhaes_2_core_2_inc_2config_8h_source.html">config.h</a>&quot;</code><br />
 <code>#include &quot;ff.h&quot;</code><br />
 <code>#include &lt;stdio.h&gt;</code><br />
 <code>#include &lt;string.h&gt;</code><br />
@@ -122,6 +125,11 @@ $(function() {
 </div>
 <p><a href="../../d6/d01/static__thrust__test_8c_source.html">Go to the source code of this file.</a></p>
 <table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 id="header-define-members" class="groupheader"><a id="define-members" name="define-members"></a>
+Macros</h2></td></tr>
+<tr class="memitem:a7a4ce6e81dde6ca543d6c9658e21ce7a" id="r_a7a4ce6e81dde6ca543d6c9658e21ce7a"><td class="memItemLeft">#define&#160;</td><td class="memItemRight"><a class="el" href="#a7a4ce6e81dde6ca543d6c9658e21ce7a">LOADCELL_SCALE_FACTOR</a>&#160;&#160;&#160;0.4481f</td></tr>
+<tr class="memdesc:a7a4ce6e81dde6ca543d6c9658e21ce7a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Load cell calibration scale factor.  <br /></td></tr>
+</table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 id="header-func-members" class="groupheader"><a id="func-members" name="func-members"></a>
 Functions</h2></td></tr>
 <tr class="memitem:a2db4dd4bcbbcc3e094a0e8439f3012f1" id="r_a2db4dd4bcbbcc3e094a0e8439f3012f1"><td class="memItemLeft">static <a class="el" href="../../d3/d00/fatfs__sd_8c.html#abb452686968e48b67397da5f97445f5b">bool</a>&#160;</td><td class="memItemRight"><a class="el" href="#a2db4dd4bcbbcc3e094a0e8439f3012f1">save_test_data_to_sd</a> (void)</td></tr>
@@ -148,9 +156,45 @@ Functions</h2></td></tr>
 <tr class="heading"><td colspan="2"><h2 id="header-var-members" class="groupheader"><a id="var-members" name="var-members"></a>
 Variables</h2></td></tr>
 <tr class="memitem:ac379bcc152d860f08b1279fd3e232295" id="r_ac379bcc152d860f08b1279fd3e232295"><td class="memItemLeft">I2C_HandleTypeDef&#160;</td><td class="memItemRight"><a class="el" href="#ac379bcc152d860f08b1279fd3e232295">hi2c2</a></td></tr>
+<tr class="memdesc:ac379bcc152d860f08b1279fd3e232295"><td class="mdescLeft">&#160;</td><td class="mdescRight">I2C handle for load cell (I2C_LOADCELL from config.h = hi2c2).  <br /></td></tr>
 <tr class="memitem:ad2f5c2126cca60097f869c16299bd04e" id="r_ad2f5c2126cca60097f869c16299bd04e"><td class="memItemLeft">static <a class="el" href="../../dd/d09/structstatic__test__ctx__t.html">static_test_ctx_t</a>&#160;</td><td class="memItemRight"><a class="el" href="#ad2f5c2126cca60097f869c16299bd04e">test_ctx</a> = {0}</td></tr>
 <tr class="memitem:adf72155ebaf2b550867c203617083c38" id="r_adf72155ebaf2b550867c203617083c38"><td class="memItemLeft">static char&#160;</td><td class="memItemRight"><a class="el" href="#adf72155ebaf2b550867c203617083c38">test_filename</a> [32] = {0}</td></tr>
 </table>
+<a name="details" id="details"></a><h2 id="header-details" class="groupheader">Detailed Description</h2>
+<div class="textblock"><p>Static motor thrust test implementation. </p>
+<dl class="section author"><dt>Author</dt><dd>Tomas Teixeira </dd></dl>
+<dl class="section date"><dt>Date</dt><dd>January 2026</dd></dl>
+<p>Implements the state machine for automated static thrust testing. The test performs a step response (instant jump to max throttle), holds for STATIC_TEST_HOLD_DURATION_MS while sampling the FX29 load cell at STATIC_TEST_SAMPLE_RATE_HZ, then saves the results.</p>
+<p>SD card logging is paused during the test (sd_card_pause / sd_card_resume) to avoid SPI bus contention with the motor's EMI. Data is made available to the dashboard via telemetry; <a class="el" href="#a2db4dd4bcbbcc3e094a0e8439f3012f1">save_test_data_to_sd()</a> is a stub that returns true.</p>
+<dl class="section see"><dt>See also</dt><dd><a class="el" href="../../d0/d04/static__thrust__test_8h.html" title="Static motor thrust test module for the Magalhaes Test Stand.">static_thrust_test.h</a> for public API and configuration macros </dd>
+<dd>
+<a class="el" href="../../df/d0e/_f_x29_8h.html" title="FX29 load cell driver for the Magalhaes Static Test Stand.">FX29.h</a> for load cell driver </dd>
+<dd>
+<a class="el" href="../../de/d08/_p_w_m___f_u_n_c_t_i_o_n_s_8h.html" title="PWM control functions for ESC motor control.">PWM_FUNCTIONS.h</a> for motor control </dd></dl>
+
+<p class="definition">Definition in file <a class="el" href="../../d6/d01/static__thrust__test_8c_source.html">static_thrust_test.c</a>.</p>
+</div><a name="doc-define-members" id="doc-define-members"></a><h2 id="header-doc-define-members" class="groupheader">Macro Definition Documentation</h2>
+<a id="a7a4ce6e81dde6ca543d6c9658e21ce7a" name="a7a4ce6e81dde6ca543d6c9658e21ce7a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a7a4ce6e81dde6ca543d6c9658e21ce7a">&#9670;&#160;</a></span>LOADCELL_SCALE_FACTOR</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">#define LOADCELL_SCALE_FACTOR&#160;&#160;&#160;0.4481f</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Load cell calibration scale factor. </p>
+<p>Derived from linear regression over 11 calibration points. Formula: F_real = LOADCELL_SCALE_FACTOR * F_measured </p>
+
+<p class="definition">Definition at line <a class="el" href="../../d6/d01/static__thrust__test_8c_source.html#l00039">39</a> of file <a class="el" href="../../d6/d01/static__thrust__test_8c_source.html">static_thrust_test.c</a>.</p>
+
+<p class="reference">Referenced by <a class="el" href="../../d6/d01/static__thrust__test_8c_source.html#l00101">StaticTest_Update()</a>.</p>
+
+</div>
+</div>
 <a name="doc-func-members" id="doc-func-members"></a><h2 id="header-doc-func-members" class="groupheader">Function Documentation</h2>
 <a id="a2db4dd4bcbbcc3e094a0e8439f3012f1" name="a2db4dd4bcbbcc3e094a0e8439f3012f1"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a2db4dd4bcbbcc3e094a0e8439f3012f1">&#9670;&#160;</a></span>save_test_data_to_sd()</h2>
@@ -175,9 +219,9 @@ Variables</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../d6/d01/static__thrust__test_8c_source.html#l00263">263</a> of file <a class="el" href="../../d6/d01/static__thrust__test_8c_source.html">static_thrust_test.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d6/d01/static__thrust__test_8c_source.html#l00243">243</a> of file <a class="el" href="../../d6/d01/static__thrust__test_8c_source.html">static_thrust_test.c</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../d6/d01/static__thrust__test_8c_source.html#l00082">StaticTest_Update()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../d6/d01/static__thrust__test_8c_source.html#l00101">StaticTest_Update()</a>.</p>
 <div id="dynsection-1" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the caller graph for this function:</div>
 <div id="dynsection-1-summary" class="dynsummary" style="display:block;">
 </div>
@@ -210,11 +254,11 @@ Variables</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../d6/d01/static__thrust__test_8c_source.html#l00239">239</a> of file <a class="el" href="../../d6/d01/static__thrust__test_8c_source.html">static_thrust_test.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d6/d01/static__thrust__test_8c_source.html#l00219">219</a> of file <a class="el" href="../../d6/d01/static__thrust__test_8c_source.html">static_thrust_test.c</a>.</p>
 
-<p class="reference">References <a class="el" href="../../d5/d04/defs_8h_source.html#l00157">LOADCELL_t::force_n</a>, <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00073">FX29_ReadWithPWM()</a>, <a class="el" href="../../d0/d04/static__thrust__test_8h_source.html#l00092">thrust_data_point_t::pwm_percent</a>, <a class="el" href="../../d5/d04/defs_8h_source.html#l00159">LOADCELL_t::raw_counts</a>, <a class="el" href="../../d0/d04/static__thrust__test_8h_source.html#l00093">thrust_data_point_t::raw_counts</a>, <a class="el" href="../../d6/d01/static__thrust__test_8c_source.html#l00023">test_ctx</a>, <a class="el" href="../../d0/d04/static__thrust__test_8h_source.html#l00091">thrust_data_point_t::thrust_n</a>, and <a class="el" href="../../d0/d04/static__thrust__test_8h_source.html#l00090">thrust_data_point_t::timestamp_ms</a>.</p>
+<p class="reference">References <a class="el" href="../../d5/d04/defs_8h_source.html#l00157">LOADCELL_t::force_n</a>, <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00075">FX29_ReadWithPWM()</a>, <a class="el" href="../../d0/d04/static__thrust__test_8h_source.html#l00102">thrust_data_point_t::pwm_percent</a>, <a class="el" href="../../d5/d04/defs_8h_source.html#l00159">LOADCELL_t::raw_counts</a>, <a class="el" href="../../d0/d04/static__thrust__test_8h_source.html#l00103">thrust_data_point_t::raw_counts</a>, <a class="el" href="../../d6/d01/static__thrust__test_8c_source.html#l00042">test_ctx</a>, <a class="el" href="../../d0/d04/static__thrust__test_8h_source.html#l00101">thrust_data_point_t::thrust_n</a>, and <a class="el" href="../../d0/d04/static__thrust__test_8h_source.html#l00100">thrust_data_point_t::timestamp_ms</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../d6/d01/static__thrust__test_8c_source.html#l00082">StaticTest_Update()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../d6/d01/static__thrust__test_8c_source.html#l00101">StaticTest_Update()</a>.</p>
 <div id="dynsection-2" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the call graph for this function:</div>
 <div id="dynsection-2-summary" class="dynsummary" style="display:block;">
 </div>
@@ -251,7 +295,9 @@ Variables</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="reference">Referenced by <a class="el" href="../../d6/d01/static__thrust__test_8c_source.html#l00082">StaticTest_Update()</a>.</p>
+<p>I2C handle for load cell (I2C_LOADCELL from config.h = hi2c2). </p>
+
+<p class="reference">Referenced by <a class="el" href="../../d6/d01/static__thrust__test_8c_source.html#l00101">StaticTest_Update()</a>.</p>
 
 </div>
 </div>
@@ -275,9 +321,9 @@ Variables</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../d6/d01/static__thrust__test_8c_source.html#l00023">23</a> of file <a class="el" href="../../d6/d01/static__thrust__test_8c_source.html">static_thrust_test.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d6/d01/static__thrust__test_8c_source.html#l00042">42</a> of file <a class="el" href="../../d6/d01/static__thrust__test_8c_source.html">static_thrust_test.c</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../d6/d01/static__thrust__test_8c_source.html#l00277">StaticTest_Cancel()</a>, <a class="el" href="../../d6/d01/static__thrust__test_8c_source.html#l00273">StaticTest_GetContext()</a>, <a class="el" href="../../d6/d01/static__thrust__test_8c_source.html#l00269">StaticTest_GetState()</a>, <a class="el" href="../../d6/d01/static__thrust__test_8c_source.html#l00030">StaticTest_Init()</a>, <a class="el" href="../../d6/d01/static__thrust__test_8c_source.html#l00294">StaticTest_IsRunning()</a>, <a class="el" href="../../d6/d01/static__thrust__test_8c_source.html#l00038">StaticTest_Start()</a>, <a class="el" href="../../d6/d01/static__thrust__test_8c_source.html#l00082">StaticTest_Update()</a>, and <a class="el" href="../../d6/d01/static__thrust__test_8c_source.html#l00239">take_sample()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../d6/d01/static__thrust__test_8c_source.html#l00257">StaticTest_Cancel()</a>, <a class="el" href="../../d6/d01/static__thrust__test_8c_source.html#l00253">StaticTest_GetContext()</a>, <a class="el" href="../../d6/d01/static__thrust__test_8c_source.html#l00249">StaticTest_GetState()</a>, <a class="el" href="../../d6/d01/static__thrust__test_8c_source.html#l00049">StaticTest_Init()</a>, <a class="el" href="../../d6/d01/static__thrust__test_8c_source.html#l00274">StaticTest_IsRunning()</a>, <a class="el" href="../../d6/d01/static__thrust__test_8c_source.html#l00057">StaticTest_Start()</a>, <a class="el" href="../../d6/d01/static__thrust__test_8c_source.html#l00101">StaticTest_Update()</a>, and <a class="el" href="../../d6/d01/static__thrust__test_8c_source.html#l00219">take_sample()</a>.</p>
 
 </div>
 </div>
@@ -301,9 +347,9 @@ Variables</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../d6/d01/static__thrust__test_8c_source.html#l00024">24</a> of file <a class="el" href="../../d6/d01/static__thrust__test_8c_source.html">static_thrust_test.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d6/d01/static__thrust__test_8c_source.html#l00043">43</a> of file <a class="el" href="../../d6/d01/static__thrust__test_8c_source.html">static_thrust_test.c</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../d6/d01/static__thrust__test_8c_source.html#l00300">StaticTest_GetFilename()</a>, <a class="el" href="../../d6/d01/static__thrust__test_8c_source.html#l00038">StaticTest_Start()</a>, and <a class="el" href="../../d6/d01/static__thrust__test_8c_source.html#l00082">StaticTest_Update()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../d6/d01/static__thrust__test_8c_source.html#l00280">StaticTest_GetFilename()</a>, <a class="el" href="../../d6/d01/static__thrust__test_8c_source.html#l00057">StaticTest_Start()</a>, and <a class="el" href="../../d6/d01/static__thrust__test_8c_source.html#l00101">StaticTest_Update()</a>.</p>
 
 </div>
 </div>

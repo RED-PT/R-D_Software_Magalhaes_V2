@@ -28,7 +28,7 @@ var searchData=
   ['bitwise_25',['bitwise',['../de/d0b/unionasm330lhhx__reg__t.html#afb58676a31b68be39a1c5f1ba7bbfae8',1,'asm330lhhx_reg_t']]],
   ['bno_5fbuffer_26',['bno_buffer',['../de/d08/flash__data__handler_8c.html#aee8dea25622b14c468f2fa2e7db655d4',1,'flash_data_handler.c']]],
   ['bno_5fconfig_27',['bno_config',['../d1/d0f/structboot__status__t.html#af49400ca0072c287e230029ea9596c4d',1,'boot_status_t']]],
-  ['bno_5fdevice_28',['bno_device',['../d0/d00/hal__callbacks_8c.html#a2b12a45ed39404d58674cd4f03c98b67',1,'bno_device:&#160;sensors_thread.c'],['../d5/d02/group___sensor_instances.html#ga2b12a45ed39404d58674cd4f03c98b67',1,'bno_device:&#160;sensors_thread.c'],['../d5/d02/group___sensor_instances.html#ga2b12a45ed39404d58674cd4f03c98b67',1,'bno_device:&#160;sensors_thread.c']]],
+  ['bno_5fdevice_28',['bno_device',['../d0/d00/hal__callbacks_8c.html#a2b12a45ed39404d58674cd4f03c98b67',1,'bno_device:&#160;sensors_thread.c'],['../d5/d02/group___sensor_instances.html#ga81bf5dbfc3b57fca6bf874a69b506254',1,'bno_device:&#160;sensors_thread.c'],['../d5/d02/group___sensor_instances.html#ga2b12a45ed39404d58674cd4f03c98b67',1,'bno_device:&#160;sensors_thread.c']]],
   ['bno_5ferrors_29',['bno_errors',['../d3/d05/sensors__thread_8c.html#adfd371c99b97f670967b49650f77a330',1,'sensors_thread.c']]],
   ['bno_5finit_30',['bno_init',['../d1/d0f/structboot__status__t.html#adca6f8f59d02bc794d6f3c65148bbf89',1,'boot_status_t']]],
   ['bno_5fsamples_31',['bno_samples',['../d3/d05/sensors__thread_8c.html#a7096cccd3ec54f57c94ccf73abb584dd',1,'sensors_thread.c']]],
@@ -41,6 +41,7 @@ var searchData=
   ['br_38',['br',['../d6/d07/fatfs__funcoes__auxiliares_8c.html#af73466f2f9a9dc91e720750a58b422e4',1,'fatfs_funcoes_auxiliares.c']]],
   ['buffer_39',['buffer',['../d6/d04/structram__circular__buffer__t.html#af5729011f9dceff56838d1777fc54117',1,'ram_circular_buffer_t::buffer'],['../db/d0a/structradio__packet__t.html#abccd7c89ac15480407d34c0889562cb6',1,'radio_packet_t::buffer']]],
   ['buffer_5fpos_40',['buffer_pos',['../d2/d0b/sd__card__thread_8c.html#a7836bbaf322eac5481649d80fad352dc',1,'sd_card_thread.c']]],
-  ['bw_41',['bw',['../d6/d07/fatfs__funcoes__auxiliares_8c.html#a43bf7f8524c9a39d4b8d4fa43fc51620',1,'fatfs_funcoes_auxiliares.c']]],
-  ['byte_42',['byte',['../de/d0b/unionasm330lhhx__reg__t.html#af196f14604f2299bb5f70f4be371ed4c',1,'asm330lhhx_reg_t']]]
+  ['bus_5fvoltage_5fv_41',['bus_voltage_v',['../d8/d0f/struct_i_n_a219__t.html#ae8e78221a4c623f30a52fcbd97957a43',1,'INA219_t']]],
+  ['bw_42',['bw',['../d6/d07/fatfs__funcoes__auxiliares_8c.html#a43bf7f8524c9a39d4b8d4fa43fc51620',1,'fatfs_funcoes_auxiliares.c']]],
+  ['byte_43',['byte',['../de/d0b/unionasm330lhhx__reg__t.html#af196f14604f2299bb5f70f4be371ed4c',1,'asm330lhhx_reg_t']]]
 ];

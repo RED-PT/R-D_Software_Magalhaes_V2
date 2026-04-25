@@ -190,7 +190,7 @@ Functions</h2></td></tr>
 </td></tr>
 </table>
 
-<p class="definition">Definition at line <a class="el" href="../../de/d08/_p_w_m___f_u_n_c_t_i_o_n_s_8h_source.html#l00224">224</a> of file <a class="el" href="../../de/d08/_p_w_m___f_u_n_c_t_i_o_n_s_8h_source.html">PWM_FUNCTIONS.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../de/d08/_p_w_m___f_u_n_c_t_i_o_n_s_8h_source.html#l00240">240</a> of file <a class="el" href="../../de/d08/_p_w_m___f_u_n_c_t_i_o_n_s_8h_source.html">PWM_FUNCTIONS.h</a>.</p>
 
 </div>
 </div>
@@ -213,9 +213,17 @@ Functions</h2></td></tr>
 <p>Acknowledge ESC beep. </p>
 <p>User confirms ESC has beeped, can skip to phase 2 early. </p>
 
-<p class="definition">Definition at line <a class="el" href="../../d4/d0f/_p_w_m___f_u_n_c_t_i_o_n_s_8c_source.html#l00278">278</a> of file <a class="el" href="../../d4/d0f/_p_w_m___f_u_n_c_t_i_o_n_s_8c_source.html">PWM_FUNCTIONS.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d4/d0f/_p_w_m___f_u_n_c_t_i_o_n_s_8c_source.html#l00436">436</a> of file <a class="el" href="../../d4/d0f/_p_w_m___f_u_n_c_t_i_o_n_s_8c_source.html">PWM_FUNCTIONS.c</a>.</p>
 
-<p class="reference">References <a class="el" href="../../d4/d0f/_p_w_m___f_u_n_c_t_i_o_n_s_8c_source.html#l00190">esc_cal_ctx</a>, and <a class="el" href="../../de/d08/_p_w_m___f_u_n_c_t_i_o_n_s_8h_source.html#l00226">ESC_CAL_PHASE1_MAX</a>.</p>
+<p class="reference">References <a class="el" href="../../d4/d0f/_p_w_m___f_u_n_c_t_i_o_n_s_8c_source.html#l00345">esc_cal_ctx</a>, and <a class="el" href="../../de/d08/_p_w_m___f_u_n_c_t_i_o_n_s_8h_source.html#l00242">ESC_CAL_PHASE1_MAX</a>.</p>
+
+<p class="reference">Referenced by <a class="el" href="../../de/d09/flight__computer__thread_8c_source.html#l00764">handle_cmd_calibrate_motor()</a>.</p>
+<div id="dynsection-1" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the caller graph for this function:</div>
+<div id="dynsection-1-summary" class="dynsummary" style="display:block;">
+</div>
+<div id="dynsection-1-content" class="dyncontent" style="display:none;">
+<div class="center"><div class="zoom"><iframe scrolling="no" loading="lazy" frameborder="0" src="../../d5/d00/group___e_s_c_calibration_gaa4c1dabf162ddb956b71c7eac30b7a27_icgraph.svg" width="100%" height="300"><p><b>This browser is not able to show SVG: try Firefox, Chrome, Safari, or Opera instead.</b></p></iframe></div></div>
+</div>
 
 </div>
 </div>
@@ -238,21 +246,21 @@ Functions</h2></td></tr>
 <p>Call periodically (e.g., every 50ms) during calibration.</p>
 <dl class="section return"><dt>Returns</dt><dd>Current calibration state </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="../../d4/d0f/_p_w_m___f_u_n_c_t_i_o_n_s_8c_source.html#l00221">221</a> of file <a class="el" href="../../d4/d0f/_p_w_m___f_u_n_c_t_i_o_n_s_8c_source.html">PWM_FUNCTIONS.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d4/d0f/_p_w_m___f_u_n_c_t_i_o_n_s_8c_source.html#l00379">379</a> of file <a class="el" href="../../d4/d0f/_p_w_m___f_u_n_c_t_i_o_n_s_8c_source.html">PWM_FUNCTIONS.c</a>.</p>
 
-<p class="reference">References <a class="el" href="../../de/d08/_p_w_m___f_u_n_c_t_i_o_n_s_8h_source.html#l00228">ESC_CAL_COMPLETE</a>, <a class="el" href="../../d4/d0f/_p_w_m___f_u_n_c_t_i_o_n_s_8c_source.html#l00190">esc_cal_ctx</a>, <a class="el" href="../../de/d08/_p_w_m___f_u_n_c_t_i_o_n_s_8h_source.html#l00229">ESC_CAL_FAILED</a>, <a class="el" href="../../de/d08/_p_w_m___f_u_n_c_t_i_o_n_s_8h_source.html#l00225">ESC_CAL_IDLE</a>, <a class="el" href="../../de/d08/_p_w_m___f_u_n_c_t_i_o_n_s_8h_source.html#l00226">ESC_CAL_PHASE1_MAX</a>, <a class="el" href="../../de/d08/_p_w_m___f_u_n_c_t_i_o_n_s_8h_source.html#l00227">ESC_CAL_PHASE2_MIN</a>, and <a class="el" href="../../d4/d0f/_p_w_m___f_u_n_c_t_i_o_n_s_8c_source.html#l00062">PWM_SetThrottle()</a>.</p>
+<p class="reference">References <a class="el" href="../../de/d08/_p_w_m___f_u_n_c_t_i_o_n_s_8h_source.html#l00244">ESC_CAL_COMPLETE</a>, <a class="el" href="../../d4/d0f/_p_w_m___f_u_n_c_t_i_o_n_s_8c_source.html#l00345">esc_cal_ctx</a>, <a class="el" href="../../de/d08/_p_w_m___f_u_n_c_t_i_o_n_s_8h_source.html#l00245">ESC_CAL_FAILED</a>, <a class="el" href="../../de/d08/_p_w_m___f_u_n_c_t_i_o_n_s_8h_source.html#l00241">ESC_CAL_IDLE</a>, <a class="el" href="../../de/d08/_p_w_m___f_u_n_c_t_i_o_n_s_8h_source.html#l00242">ESC_CAL_PHASE1_MAX</a>, <a class="el" href="../../de/d08/_p_w_m___f_u_n_c_t_i_o_n_s_8h_source.html#l00243">ESC_CAL_PHASE2_MIN</a>, and <a class="el" href="../../d4/d0f/_p_w_m___f_u_n_c_t_i_o_n_s_8c_source.html#l00217">PWM_SetThrottle()</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../de/d09/flight__computer__thread_8c_source.html#l00995">process_motor_calibration()</a>.</p>
-<div id="dynsection-1" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the call graph for this function:</div>
-<div id="dynsection-1-summary" class="dynsummary" style="display:block;">
-</div>
-<div id="dynsection-1-content" class="dyncontent" style="display:none;">
-<div class="center"><iframe scrolling="no" loading="lazy" frameborder="0" src="../../d5/d00/group___e_s_c_calibration_ga3ba212e0bbb3dc306e217beee7cc99e8_cgraph.svg" width="563" height="42"><p><b>This browser is not able to show SVG: try Firefox, Chrome, Safari, or Opera instead.</b></p></iframe></div>
-</div>
-<div id="dynsection-2" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the caller graph for this function:</div>
+<p class="reference">Referenced by <a class="el" href="../../de/d09/flight__computer__thread_8c_source.html#l01010">process_motor_calibration()</a>.</p>
+<div id="dynsection-2" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the call graph for this function:</div>
 <div id="dynsection-2-summary" class="dynsummary" style="display:block;">
 </div>
 <div id="dynsection-2-content" class="dyncontent" style="display:none;">
+<div class="center"><iframe scrolling="no" loading="lazy" frameborder="0" src="../../d5/d00/group___e_s_c_calibration_ga3ba212e0bbb3dc306e217beee7cc99e8_cgraph.svg" width="563" height="42"><p><b>This browser is not able to show SVG: try Firefox, Chrome, Safari, or Opera instead.</b></p></iframe></div>
+</div>
+<div id="dynsection-3" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the caller graph for this function:</div>
+<div id="dynsection-3-summary" class="dynsummary" style="display:block;">
+</div>
+<div id="dynsection-3-content" class="dyncontent" style="display:none;">
 <div class="center"><div class="zoom"><iframe scrolling="no" loading="lazy" frameborder="0" src="../../d5/d00/group___e_s_c_calibration_ga3ba212e0bbb3dc306e217beee7cc99e8_icgraph.svg" width="100%" height="300"><p><b>This browser is not able to show SVG: try Firefox, Chrome, Safari, or Opera instead.</b></p></iframe></div></div>
 </div>
 
@@ -275,13 +283,13 @@ Functions</h2></td></tr>
 
 <p>Cancel ongoing calibration. </p>
 
-<p class="definition">Definition at line <a class="el" href="../../d4/d0f/_p_w_m___f_u_n_c_t_i_o_n_s_8c_source.html#l00266">266</a> of file <a class="el" href="../../d4/d0f/_p_w_m___f_u_n_c_t_i_o_n_s_8c_source.html">PWM_FUNCTIONS.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d4/d0f/_p_w_m___f_u_n_c_t_i_o_n_s_8c_source.html#l00424">424</a> of file <a class="el" href="../../d4/d0f/_p_w_m___f_u_n_c_t_i_o_n_s_8c_source.html">PWM_FUNCTIONS.c</a>.</p>
 
-<p class="reference">References <a class="el" href="../../d4/d0f/_p_w_m___f_u_n_c_t_i_o_n_s_8c_source.html#l00190">esc_cal_ctx</a>, <a class="el" href="../../de/d08/_p_w_m___f_u_n_c_t_i_o_n_s_8h_source.html#l00229">ESC_CAL_FAILED</a>, <a class="el" href="../../de/d08/_p_w_m___f_u_n_c_t_i_o_n_s_8h_source.html#l00226">ESC_CAL_PHASE1_MAX</a>, <a class="el" href="../../de/d08/_p_w_m___f_u_n_c_t_i_o_n_s_8h_source.html#l00227">ESC_CAL_PHASE2_MIN</a>, and <a class="el" href="../../d4/d0f/_p_w_m___f_u_n_c_t_i_o_n_s_8c_source.html#l00062">PWM_SetThrottle()</a>.</p>
-<div id="dynsection-3" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the call graph for this function:</div>
-<div id="dynsection-3-summary" class="dynsummary" style="display:block;">
+<p class="reference">References <a class="el" href="../../d4/d0f/_p_w_m___f_u_n_c_t_i_o_n_s_8c_source.html#l00345">esc_cal_ctx</a>, <a class="el" href="../../de/d08/_p_w_m___f_u_n_c_t_i_o_n_s_8h_source.html#l00245">ESC_CAL_FAILED</a>, <a class="el" href="../../de/d08/_p_w_m___f_u_n_c_t_i_o_n_s_8h_source.html#l00242">ESC_CAL_PHASE1_MAX</a>, <a class="el" href="../../de/d08/_p_w_m___f_u_n_c_t_i_o_n_s_8h_source.html#l00243">ESC_CAL_PHASE2_MIN</a>, and <a class="el" href="../../d4/d0f/_p_w_m___f_u_n_c_t_i_o_n_s_8c_source.html#l00217">PWM_SetThrottle()</a>.</p>
+<div id="dynsection-4" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the call graph for this function:</div>
+<div id="dynsection-4-summary" class="dynsummary" style="display:block;">
 </div>
-<div id="dynsection-3-content" class="dyncontent" style="display:none;">
+<div id="dynsection-4-content" class="dyncontent" style="display:none;">
 <div class="center"><iframe scrolling="no" loading="lazy" frameborder="0" src="../../d5/d00/group___e_s_c_calibration_ga55754aa17823fa98b6070f3fa5cf5d11_cgraph.svg" width="558" height="42"><p><b>This browser is not able to show SVG: try Firefox, Chrome, Safari, or Opera instead.</b></p></iframe></div>
 </div>
 
@@ -305,15 +313,15 @@ Functions</h2></td></tr>
 <p>Get calibration context. </p>
 <dl class="section return"><dt>Returns</dt><dd>Pointer to calibration context for status reporting </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="../../d4/d0f/_p_w_m___f_u_n_c_t_i_o_n_s_8c_source.html#l00285">285</a> of file <a class="el" href="../../d4/d0f/_p_w_m___f_u_n_c_t_i_o_n_s_8c_source.html">PWM_FUNCTIONS.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d4/d0f/_p_w_m___f_u_n_c_t_i_o_n_s_8c_source.html#l00443">443</a> of file <a class="el" href="../../d4/d0f/_p_w_m___f_u_n_c_t_i_o_n_s_8c_source.html">PWM_FUNCTIONS.c</a>.</p>
 
-<p class="reference">References <a class="el" href="../../d4/d0f/_p_w_m___f_u_n_c_t_i_o_n_s_8c_source.html#l00190">esc_cal_ctx</a>.</p>
+<p class="reference">References <a class="el" href="../../d4/d0f/_p_w_m___f_u_n_c_t_i_o_n_s_8c_source.html#l00345">esc_cal_ctx</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../de/d09/flight__computer__thread_8c_source.html#l00995">process_motor_calibration()</a>.</p>
-<div id="dynsection-4" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the caller graph for this function:</div>
-<div id="dynsection-4-summary" class="dynsummary" style="display:block;">
+<p class="reference">Referenced by <a class="el" href="../../de/d09/flight__computer__thread_8c_source.html#l01010">process_motor_calibration()</a>.</p>
+<div id="dynsection-5" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the caller graph for this function:</div>
+<div id="dynsection-5-summary" class="dynsummary" style="display:block;">
 </div>
-<div id="dynsection-4-content" class="dyncontent" style="display:none;">
+<div id="dynsection-5-content" class="dyncontent" style="display:none;">
 <div class="center"><div class="zoom"><iframe scrolling="no" loading="lazy" frameborder="0" src="../../d5/d00/group___e_s_c_calibration_ga7f1f7026eb20164c18833b4f2698fd0b_icgraph.svg" width="100%" height="300"><p><b>This browser is not able to show SVG: try Firefox, Chrome, Safari, or Opera instead.</b></p></iframe></div></div>
 </div>
 
@@ -337,9 +345,17 @@ Functions</h2></td></tr>
 <p>Get current calibration state. </p>
 <dl class="section return"><dt>Returns</dt><dd>Current state </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="../../d4/d0f/_p_w_m___f_u_n_c_t_i_o_n_s_8c_source.html#l00262">262</a> of file <a class="el" href="../../d4/d0f/_p_w_m___f_u_n_c_t_i_o_n_s_8c_source.html">PWM_FUNCTIONS.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d4/d0f/_p_w_m___f_u_n_c_t_i_o_n_s_8c_source.html#l00420">420</a> of file <a class="el" href="../../d4/d0f/_p_w_m___f_u_n_c_t_i_o_n_s_8c_source.html">PWM_FUNCTIONS.c</a>.</p>
 
-<p class="reference">References <a class="el" href="../../d4/d0f/_p_w_m___f_u_n_c_t_i_o_n_s_8c_source.html#l00190">esc_cal_ctx</a>.</p>
+<p class="reference">References <a class="el" href="../../d4/d0f/_p_w_m___f_u_n_c_t_i_o_n_s_8c_source.html#l00345">esc_cal_ctx</a>.</p>
+
+<p class="reference">Referenced by <a class="el" href="../../de/d09/flight__computer__thread_8c_source.html#l00764">handle_cmd_calibrate_motor()</a>.</p>
+<div id="dynsection-6" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the caller graph for this function:</div>
+<div id="dynsection-6-summary" class="dynsummary" style="display:block;">
+</div>
+<div id="dynsection-6-content" class="dyncontent" style="display:none;">
+<div class="center"><div class="zoom"><iframe scrolling="no" loading="lazy" frameborder="0" src="../../d5/d00/group___e_s_c_calibration_ga898d23ddc397e5652025deefa03eaaca_icgraph.svg" width="100%" height="300"><p><b>This browser is not able to show SVG: try Firefox, Chrome, Safari, or Opera instead.</b></p></iframe></div></div>
+</div>
 
 </div>
 </div>
@@ -370,21 +386,21 @@ Functions</h2></td></tr>
 <dd>
 false if already calibrating or error </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="../../d4/d0f/_p_w_m___f_u_n_c_t_i_o_n_s_8c_source.html#l00192">192</a> of file <a class="el" href="../../d4/d0f/_p_w_m___f_u_n_c_t_i_o_n_s_8c_source.html">PWM_FUNCTIONS.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d4/d0f/_p_w_m___f_u_n_c_t_i_o_n_s_8c_source.html#l00347">347</a> of file <a class="el" href="../../d4/d0f/_p_w_m___f_u_n_c_t_i_o_n_s_8c_source.html">PWM_FUNCTIONS.c</a>.</p>
 
-<p class="reference">References <a class="el" href="../../d4/d0f/_p_w_m___f_u_n_c_t_i_o_n_s_8c_source.html#l00190">esc_cal_ctx</a>, <a class="el" href="../../de/d08/_p_w_m___f_u_n_c_t_i_o_n_s_8h_source.html#l00247">ESC_CAL_PHASE1_DEFAULT_MS</a>, <a class="el" href="../../de/d08/_p_w_m___f_u_n_c_t_i_o_n_s_8h_source.html#l00226">ESC_CAL_PHASE1_MAX</a>, <a class="el" href="../../de/d08/_p_w_m___f_u_n_c_t_i_o_n_s_8h_source.html#l00248">ESC_CAL_PHASE2_DEFAULT_MS</a>, <a class="el" href="../../de/d08/_p_w_m___f_u_n_c_t_i_o_n_s_8h_source.html#l00227">ESC_CAL_PHASE2_MIN</a>, <a class="el" href="../../d4/d0f/_p_w_m___f_u_n_c_t_i_o_n_s_8c_source.html#l00062">PWM_SetThrottle()</a>, and <a class="el" href="../../d4/d0f/_p_w_m___f_u_n_c_t_i_o_n_s_8c_source.html#l00017">ramp_active</a>.</p>
+<p class="reference">References <a class="el" href="../../d4/d0f/_p_w_m___f_u_n_c_t_i_o_n_s_8c_source.html#l00345">esc_cal_ctx</a>, <a class="el" href="../../de/d08/_p_w_m___f_u_n_c_t_i_o_n_s_8h_source.html#l00263">ESC_CAL_PHASE1_DEFAULT_MS</a>, <a class="el" href="../../de/d08/_p_w_m___f_u_n_c_t_i_o_n_s_8h_source.html#l00242">ESC_CAL_PHASE1_MAX</a>, <a class="el" href="../../de/d08/_p_w_m___f_u_n_c_t_i_o_n_s_8h_source.html#l00264">ESC_CAL_PHASE2_DEFAULT_MS</a>, <a class="el" href="../../de/d08/_p_w_m___f_u_n_c_t_i_o_n_s_8h_source.html#l00243">ESC_CAL_PHASE2_MIN</a>, <a class="el" href="../../d4/d0f/_p_w_m___f_u_n_c_t_i_o_n_s_8c_source.html#l00053">PWM_Init()</a>, <a class="el" href="../../d4/d0f/_p_w_m___f_u_n_c_t_i_o_n_s_8c_source.html#l00217">PWM_SetThrottle()</a>, and <a class="el" href="../../d4/d0f/_p_w_m___f_u_n_c_t_i_o_n_s_8c_source.html#l00044">ramp_active</a>.</p>
 
 <p class="reference">Referenced by <a class="el" href="../../de/d09/flight__computer__thread_8c_source.html#l00764">handle_cmd_calibrate_motor()</a>.</p>
-<div id="dynsection-5" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the call graph for this function:</div>
-<div id="dynsection-5-summary" class="dynsummary" style="display:block;">
+<div id="dynsection-7" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the call graph for this function:</div>
+<div id="dynsection-7-summary" class="dynsummary" style="display:block;">
 </div>
-<div id="dynsection-5-content" class="dyncontent" style="display:none;">
-<div class="center"><iframe scrolling="no" loading="lazy" frameborder="0" src="../../d5/d00/group___e_s_c_calibration_gac618a44b4cb9f3c388bb8482dc54f3ce_cgraph.svg" width="544" height="42"><p><b>This browser is not able to show SVG: try Firefox, Chrome, Safari, or Opera instead.</b></p></iframe></div>
+<div id="dynsection-7-content" class="dyncontent" style="display:none;">
+<div class="center"><div class="zoom"><iframe scrolling="no" loading="lazy" frameborder="0" src="../../d5/d00/group___e_s_c_calibration_gac618a44b4cb9f3c388bb8482dc54f3ce_cgraph.svg" width="100%" height="300"><p><b>This browser is not able to show SVG: try Firefox, Chrome, Safari, or Opera instead.</b></p></iframe></div></div>
 </div>
-<div id="dynsection-6" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the caller graph for this function:</div>
-<div id="dynsection-6-summary" class="dynsummary" style="display:block;">
+<div id="dynsection-8" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the caller graph for this function:</div>
+<div id="dynsection-8-summary" class="dynsummary" style="display:block;">
 </div>
-<div id="dynsection-6-content" class="dyncontent" style="display:none;">
+<div id="dynsection-8-content" class="dyncontent" style="display:none;">
 <div class="center"><div class="zoom"><iframe scrolling="no" loading="lazy" frameborder="0" src="../../d5/d00/group___e_s_c_calibration_gac618a44b4cb9f3c388bb8482dc54f3ce_icgraph.svg" width="100%" height="300"><p><b>This browser is not able to show SVG: try Firefox, Chrome, Safari, or Opera instead.</b></p></iframe></div></div>
 </div>
 

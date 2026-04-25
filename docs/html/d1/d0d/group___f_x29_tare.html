@@ -125,6 +125,14 @@ Functions</h2></td></tr>
 <tr class="memdesc:gaa05db571a1478d924a9d8201fe3976eb"><td class="mdescLeft">&#160;</td><td class="mdescRight">Perform blocking tare calibration.  <br /></td></tr>
 <tr class="memitem:gac2a5ec2de39d70cb7291eda2c38158ab" id="r_gac2a5ec2de39d70cb7291eda2c38158ab"><td class="memItemLeft">void&#160;</td><td class="memItemRight"><a class="el" href="#gac2a5ec2de39d70cb7291eda2c38158ab">FX29_ClearTare</a> (<a class="el" href="../../d7/d0f/struct_f_x29__t.html">FX29_t</a> *dev)</td></tr>
 <tr class="memdesc:gac2a5ec2de39d70cb7291eda2c38158ab"><td class="mdescLeft">&#160;</td><td class="mdescRight">Clear tare calibration.  <br /></td></tr>
+<tr class="memitem:gad6b7bc9d822d7bc8c4303153f4ee2180" id="r_gad6b7bc9d822d7bc8c4303153f4ee2180"><td class="memItemLeft"><a class="el" href="../../d3/d00/fatfs__sd_8c.html#abb452686968e48b67397da5f97445f5b">bool</a>&#160;</td><td class="memItemRight"><a class="el" href="#gad6b7bc9d822d7bc8c4303153f4ee2180">FX29_Calibrate</a> (<a class="el" href="../../d7/d0f/struct_f_x29__t.html">FX29_t</a> *dev, float known_weight1_n, float measured1_n, float known_weight2_n, float measured2_n)</td></tr>
+<tr class="memdesc:gad6b7bc9d822d7bc8c4303153f4ee2180"><td class="mdescLeft">&#160;</td><td class="mdescRight">Two-point scale factor calibration.  <br /></td></tr>
+<tr class="memitem:ga8544032c1ba91af04bb0bc7329245879" id="r_ga8544032c1ba91af04bb0bc7329245879"><td class="memItemLeft">void&#160;</td><td class="memItemRight"><a class="el" href="#ga8544032c1ba91af04bb0bc7329245879">FX29_SetScaleFactor</a> (<a class="el" href="../../d7/d0f/struct_f_x29__t.html">FX29_t</a> *dev, float scale_factor)</td></tr>
+<tr class="memdesc:ga8544032c1ba91af04bb0bc7329245879"><td class="mdescLeft">&#160;</td><td class="mdescRight">Set scale factor directly.  <br /></td></tr>
+<tr class="memitem:gaaf46c8f37d261e7aa603d92756bc1c34" id="r_gaaf46c8f37d261e7aa603d92756bc1c34"><td class="memItemLeft">float&#160;</td><td class="memItemRight"><a class="el" href="#gaaf46c8f37d261e7aa603d92756bc1c34">FX29_GetScaleFactor</a> (<a class="el" href="../../d7/d0f/struct_f_x29__t.html">FX29_t</a> *dev)</td></tr>
+<tr class="memdesc:gaaf46c8f37d261e7aa603d92756bc1c34"><td class="mdescLeft">&#160;</td><td class="mdescRight">Get current scale factor.  <br /></td></tr>
+<tr class="memitem:ga5daf4c277f3e9b7b3de24ad8cb042f26" id="r_ga5daf4c277f3e9b7b3de24ad8cb042f26"><td class="memItemLeft">void&#160;</td><td class="memItemRight"><a class="el" href="#ga5daf4c277f3e9b7b3de24ad8cb042f26">FX29_ClearCalibration</a> (<a class="el" href="../../d7/d0f/struct_f_x29__t.html">FX29_t</a> *dev)</td></tr>
+<tr class="memdesc:ga5daf4c277f3e9b7b3de24ad8cb042f26"><td class="mdescLeft">&#160;</td><td class="mdescRight">Clear scale calibration.  <br /></td></tr>
 </table>
 <a name="details" id="details"></a><h2 id="header-details" class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Parameters for zero calibration. </p>
@@ -146,7 +154,7 @@ Functions</h2></td></tr>
 
 <p class="definition">Definition at line <a class="el" href="../../df/d0e/_f_x29_8h_source.html#l00096">96</a> of file <a class="el" href="../../df/d0e/_f_x29_8h_source.html">FX29.h</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00129">FX29_Tare()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00136">FX29_Tare()</a>.</p>
 
 </div>
 </div>
@@ -166,11 +174,100 @@ Functions</h2></td></tr>
 
 <p class="definition">Definition at line <a class="el" href="../../df/d0e/_f_x29_8h_source.html#l00095">95</a> of file <a class="el" href="../../df/d0e/_f_x29_8h_source.html">FX29.h</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00129">FX29_Tare()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00136">FX29_Tare()</a>.</p>
 
 </div>
 </div>
 <a name="doc-func-members" id="doc-func-members"></a><h2 id="header-doc-func-members" class="groupheader">Function Documentation</h2>
+<a id="gad6b7bc9d822d7bc8c4303153f4ee2180" name="gad6b7bc9d822d7bc8c4303153f4ee2180"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#gad6b7bc9d822d7bc8c4303153f4ee2180">&#9670;&#160;</a></span>FX29_Calibrate()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="../../d3/d00/fatfs__sd_8c.html#abb452686968e48b67397da5f97445f5b">bool</a> FX29_Calibrate </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="../../d7/d0f/struct_f_x29__t.html">FX29_t</a> *</td>          <td class="paramname"><span class="paramname"><em>dev</em></span>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float</td>          <td class="paramname"><span class="paramname"><em>known_weight1_n</em></span>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float</td>          <td class="paramname"><span class="paramname"><em>measured1_n</em></span>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float</td>          <td class="paramname"><span class="paramname"><em>known_weight2_n</em></span>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float</td>          <td class="paramname"><span class="paramname"><em>measured2_n</em></span>&#160;)</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Two-point scale factor calibration. </p>
+<p>Calculates a scale factor based on two known weights. Call this after tare with no load, then apply two known weights.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramdir">[in,out]</td><td class="paramname">dev</td><td>Pointer to driver context </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">known_weight1_n</td><td>First known weight in Newtons </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">measured1_n</td><td>First measured reading in Newtons (from FX29_Read) </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">known_weight2_n</td><td>Second known weight in Newtons </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">measured2_n</td><td>Second measured reading in Newtons (from FX29_Read)</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>true if calibration successful </dd>
+<dd>
+false if invalid parameters (division by zero)</dd></dl>
+<dl class="section note"><dt>Note</dt><dd>Use weights that span your expected measurement range </dd>
+<dd>
+Formula: scale = (known2 - known1) / (measured2 - measured1) </dd></dl>
+
+<p class="definition">Definition at line <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00180">180</a> of file <a class="el" href="../../db/d0c/_f_x29_8c_source.html">FX29.c</a>.</p>
+
+<p class="reference">References <a class="el" href="../../df/d0e/_f_x29_8h_source.html#l00136">FX29_t::is_calibrated</a>, and <a class="el" href="../../df/d0e/_f_x29_8h_source.html#l00135">FX29_t::scale_factor</a>.</p>
+
+</div>
+</div>
+<a id="ga5daf4c277f3e9b7b3de24ad8cb042f26" name="ga5daf4c277f3e9b7b3de24ad8cb042f26"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ga5daf4c277f3e9b7b3de24ad8cb042f26">&#9670;&#160;</a></span>FX29_ClearCalibration()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void FX29_ClearCalibration </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="../../d7/d0f/struct_f_x29__t.html">FX29_t</a> *</td>          <td class="paramname"><span class="paramname"><em>dev</em></span></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Clear scale calibration. </p>
+<p>Resets scale factor to 1.0</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramdir">[in,out]</td><td class="paramname">dev</td><td>Pointer to driver context </td></tr>
+  </table>
+  </dd>
+</dl>
+
+<p class="definition">Definition at line <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00218">218</a> of file <a class="el" href="../../db/d0c/_f_x29_8c_source.html">FX29.c</a>.</p>
+
+<p class="reference">References <a class="el" href="../../df/d0e/_f_x29_8h_source.html#l00136">FX29_t::is_calibrated</a>, and <a class="el" href="../../df/d0e/_f_x29_8h_source.html#l00135">FX29_t::scale_factor</a>.</p>
+
+</div>
+</div>
 <a id="gac2a5ec2de39d70cb7291eda2c38158ab" name="gac2a5ec2de39d70cb7291eda2c38158ab"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#gac2a5ec2de39d70cb7291eda2c38158ab">&#9670;&#160;</a></span>FX29_ClearTare()</h2>
 
@@ -195,9 +292,82 @@ Functions</h2></td></tr>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00165">165</a> of file <a class="el" href="../../db/d0c/_f_x29_8c_source.html">FX29.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00172">172</a> of file <a class="el" href="../../db/d0c/_f_x29_8c_source.html">FX29.c</a>.</p>
 
 <p class="reference">References <a class="el" href="../../df/d0e/_f_x29_8h_source.html#l00134">FX29_t::is_tared</a>, and <a class="el" href="../../df/d0e/_f_x29_8h_source.html#l00133">FX29_t::tare_offset</a>.</p>
+
+</div>
+</div>
+<a id="gaaf46c8f37d261e7aa603d92756bc1c34" name="gaaf46c8f37d261e7aa603d92756bc1c34"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#gaaf46c8f37d261e7aa603d92756bc1c34">&#9670;&#160;</a></span>FX29_GetScaleFactor()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">float FX29_GetScaleFactor </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="../../d7/d0f/struct_f_x29__t.html">FX29_t</a> *</td>          <td class="paramname"><span class="paramname"><em>dev</em></span></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Get current scale factor. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramdir">[in]</td><td class="paramname">dev</td><td>Pointer to driver context </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>Current scale factor (1.0 if not calibrated) </dd></dl>
+
+<p class="definition">Definition at line <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00213">213</a> of file <a class="el" href="../../db/d0c/_f_x29_8c_source.html">FX29.c</a>.</p>
+
+<p class="reference">References <a class="el" href="../../df/d0e/_f_x29_8h_source.html#l00135">FX29_t::scale_factor</a>.</p>
+
+</div>
+</div>
+<a id="ga8544032c1ba91af04bb0bc7329245879" name="ga8544032c1ba91af04bb0bc7329245879"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ga8544032c1ba91af04bb0bc7329245879">&#9670;&#160;</a></span>FX29_SetScaleFactor()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void FX29_SetScaleFactor </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="../../d7/d0f/struct_f_x29__t.html">FX29_t</a> *</td>          <td class="paramname"><span class="paramname"><em>dev</em></span>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float</td>          <td class="paramname"><span class="paramname"><em>scale_factor</em></span>&#160;)</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Set scale factor directly. </p>
+<p>Allows setting the scale factor without running calibration. Useful for loading a previously calculated value.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramdir">[in,out]</td><td class="paramname">dev</td><td>Pointer to driver context </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">scale_factor</td><td>Scale factor to apply (typically 0.8 - 1.2) </td></tr>
+  </table>
+  </dd>
+</dl>
+
+<p class="definition">Definition at line <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00205">205</a> of file <a class="el" href="../../db/d0c/_f_x29_8c_source.html">FX29.c</a>.</p>
+
+<p class="reference">References <a class="el" href="../../df/d0e/_f_x29_8h_source.html#l00136">FX29_t::is_calibrated</a>, and <a class="el" href="../../df/d0e/_f_x29_8h_source.html#l00135">FX29_t::scale_factor</a>.</p>
+
+<p class="reference">Referenced by <a class="el" href="../../d6/d01/static__thrust__test_8c_source.html#l00101">StaticTest_Update()</a>.</p>
+<div id="dynsection-0" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the caller graph for this function:</div>
+<div id="dynsection-0-summary" class="dynsummary" style="display:block;">
+</div>
+<div id="dynsection-0-content" class="dyncontent" style="display:none;">
+<div class="center"><div class="zoom"><iframe scrolling="no" loading="lazy" frameborder="0" src="../../d1/d0d/group___f_x29_tare_ga8544032c1ba91af04bb0bc7329245879_icgraph.svg" width="100%" height="300"><p><b>This browser is not able to show SVG: try Firefox, Chrome, Safari, or Opera instead.</b></p></iframe></div></div>
+</div>
 
 </div>
 </div>
@@ -228,7 +398,7 @@ Functions</h2></td></tr>
 <dd>
 false if error </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00122">122</a> of file <a class="el" href="../../db/d0c/_f_x29_8c_source.html">FX29.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00129">129</a> of file <a class="el" href="../../db/d0c/_f_x29_8c_source.html">FX29.c</a>.</p>
 
 <p class="reference">References <a class="el" href="../../df/d0e/_f_x29_8h_source.html#l00134">FX29_t::is_tared</a>, and <a class="el" href="../../df/d0e/_f_x29_8h_source.html#l00133">FX29_t::tare_offset</a>.</p>
 
@@ -264,21 +434,21 @@ false if error</dd></dl>
 <dd>
 Ensure no force is applied during tare </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00129">129</a> of file <a class="el" href="../../db/d0c/_f_x29_8c_source.html">FX29.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00136">136</a> of file <a class="el" href="../../db/d0c/_f_x29_8c_source.html">FX29.c</a>.</p>
 
-<p class="reference">References <a class="el" href="../../df/d0e/_f_x29_8h_source.html#l00118">FX29_OK</a>, <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00069">FX29_Read()</a>, <a class="el" href="../../df/d0e/_f_x29_8h_source.html#l00119">FX29_STALE_DATA</a>, <a class="el" href="../../df/d0e/_f_x29_8h_source.html#l00096">FX29_TARE_DELAY_MS</a>, <a class="el" href="../../df/d0e/_f_x29_8h_source.html#l00095">FX29_TARE_SAMPLES</a>, <a class="el" href="../../df/d0e/_f_x29_8h_source.html#l00134">FX29_t::is_tared</a>, <a class="el" href="../../d5/d04/defs_8h_source.html#l00159">LOADCELL_t::raw_counts</a>, <a class="el" href="../../d5/d04/defs_8h_source.html#l00161">LOADCELL_t::status</a>, and <a class="el" href="../../df/d0e/_f_x29_8h_source.html#l00133">FX29_t::tare_offset</a>.</p>
+<p class="reference">References <a class="el" href="../../df/d0e/_f_x29_8h_source.html#l00118">FX29_OK</a>, <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00071">FX29_Read()</a>, <a class="el" href="../../df/d0e/_f_x29_8h_source.html#l00119">FX29_STALE_DATA</a>, <a class="el" href="../../df/d0e/_f_x29_8h_source.html#l00096">FX29_TARE_DELAY_MS</a>, <a class="el" href="../../df/d0e/_f_x29_8h_source.html#l00095">FX29_TARE_SAMPLES</a>, <a class="el" href="../../df/d0e/_f_x29_8h_source.html#l00134">FX29_t::is_tared</a>, <a class="el" href="../../d5/d04/defs_8h_source.html#l00159">LOADCELL_t::raw_counts</a>, <a class="el" href="../../d5/d04/defs_8h_source.html#l00161">LOADCELL_t::status</a>, and <a class="el" href="../../df/d0e/_f_x29_8h_source.html#l00133">FX29_t::tare_offset</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../d6/d01/static__thrust__test_8c_source.html#l00082">StaticTest_Update()</a>.</p>
-<div id="dynsection-0" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the call graph for this function:</div>
-<div id="dynsection-0-summary" class="dynsummary" style="display:block;">
-</div>
-<div id="dynsection-0-content" class="dyncontent" style="display:none;">
-<div class="center"><iframe scrolling="no" loading="lazy" frameborder="0" src="../../d1/d0d/group___f_x29_tare_gaa05db571a1478d924a9d8201fe3976eb_cgraph.svg" width="644" height="151"><p><b>This browser is not able to show SVG: try Firefox, Chrome, Safari, or Opera instead.</b></p></iframe></div>
-</div>
-<div id="dynsection-1" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the caller graph for this function:</div>
+<p class="reference">Referenced by <a class="el" href="../../d6/d01/static__thrust__test_8c_source.html#l00101">StaticTest_Update()</a>.</p>
+<div id="dynsection-1" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the call graph for this function:</div>
 <div id="dynsection-1-summary" class="dynsummary" style="display:block;">
 </div>
 <div id="dynsection-1-content" class="dyncontent" style="display:none;">
+<div class="center"><iframe scrolling="no" loading="lazy" frameborder="0" src="../../d1/d0d/group___f_x29_tare_gaa05db571a1478d924a9d8201fe3976eb_cgraph.svg" width="644" height="151"><p><b>This browser is not able to show SVG: try Firefox, Chrome, Safari, or Opera instead.</b></p></iframe></div>
+</div>
+<div id="dynsection-2" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the caller graph for this function:</div>
+<div id="dynsection-2-summary" class="dynsummary" style="display:block;">
+</div>
+<div id="dynsection-2-content" class="dyncontent" style="display:none;">
 <div class="center"><div class="zoom"><iframe scrolling="no" loading="lazy" frameborder="0" src="../../d1/d0d/group___f_x29_tare_gaa05db571a1478d924a9d8201fe3976eb_icgraph.svg" width="100%" height="300"><p><b>This browser is not able to show SVG: try Firefox, Chrome, Safari, or Opera instead.</b></p></iframe></div></div>
 </div>
 

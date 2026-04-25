@@ -20,5 +20,6 @@ var searchData=
   ['demo_5fstream_17',['demo_stream',['../d9/d01/namespaceserver.html#ae3e81347d0e7bdc2435a6cd654ad2c24',1,'server']]],
   ['deselect_18',['DESELECT',['../d3/d00/fatfs__sd_8c.html#a25e02edc35f466279682dad7ad51b266',1,'fatfs_sd.c']]],
   ['disconnect_19',['disconnect',['../dd/d06/classserver_1_1_connection_manager.html#ab5dd585b6723d9e833c54204187fac6b',1,'server.ConnectionManager.disconnect()'],['../d5/d0f/classserver_1_1_serial_reader.html#a54a953c628d5495703e2e92a1d7293d0',1,'server.SerialReader.disconnect()']]],
-  ['distribute_5fdata_5fpacket_20',['distribute_data_packet',['../de/d08/flash__data__handler_8c.html#a6836d9b7dd5ea3ad06fe2ac9ec0c292d',1,'flash_data_handler.c']]]
+  ['dispatch_20',['dispatch',['../d1/d0b/classserver_1_1_no_cache_middleware.html#a14c3158d651c955a5c9962845a48efcb',1,'server::NoCacheMiddleware']]],
+  ['distribute_5fdata_5fpacket_21',['distribute_data_packet',['../de/d08/flash__data__handler_8c.html#a6836d9b7dd5ea3ad06fe2ac9ec0c292d',1,'flash_data_handler.c']]]
 ];

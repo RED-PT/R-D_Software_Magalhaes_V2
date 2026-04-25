@@ -25,7 +25,58 @@
 var NAVTREE =
 [
   [ "Magalhães Flight Computer", "index.html", [
-    [ "Magalhães Flight Computer Documentation", "index.html", "index" ],
+    [ "Start here", "index.html#autotoc_md98", null ],
+    [ "Reference", "index.html#autotoc_md99", null ],
+    [ "At a glance", "index.html#autotoc_md101", null ],
+    [ "Hardware", "index.html#autotoc_md103", null ],
+    [ "Authors and licence", "index.html#autotoc_md105", null ],
+    [ "Getting Started", "d1/d06/getting_started.html", [
+      [ "Prerequisites", "d1/d06/getting_started.html#autotoc_md84", null ],
+      [ "Repository layout", "d1/d06/getting_started.html#autotoc_md85", null ],
+      [ "Building the firmware", "d1/d06/getting_started.html#autotoc_md86", null ],
+      [ "Talking to the board", "d1/d06/getting_started.html#autotoc_md87", null ],
+      [ "Building the documentation", "d1/d06/getting_started.html#autotoc_md88", null ],
+      [ "What to read next", "d1/d06/getting_started.html#autotoc_md89", null ]
+    ] ],
+    [ "Architecture Tour", "d5/d0f/architecture_tour.html", [
+      [ "The big picture", "d5/d0f/architecture_tour.html#autotoc_md61", null ],
+      [ "Thread cheat sheet", "d5/d0f/architecture_tour.html#autotoc_md62", null ],
+      [ "Why these boundaries?", "d5/d0f/architecture_tour.html#autotoc_md63", [
+        [ "Why DMA-driven, not polled?", "d5/d0f/architecture_tour.html#autotoc_md64", null ],
+        [ "Why a separate DataHandler?", "d5/d0f/architecture_tour.html#autotoc_md65", null ],
+        [ "Why TDMA on the radio?", "d5/d0f/architecture_tour.html#autotoc_md66", null ],
+        [ "Why SPI on H743 but UART on F446ZE?", "d5/d0f/architecture_tour.html#autotoc_md67", null ],
+        [ "Why no global state?", "d5/d0f/architecture_tour.html#autotoc_md68", null ]
+      ] ],
+      [ "Cortex-M7 gotcha (Buzz V4 only)", "d5/d0f/architecture_tour.html#autotoc_md69", null ],
+      [ "Where things actually live", "d5/d0f/architecture_tour.html#autotoc_md70", null ],
+      [ "Read next", "d5/d0f/architecture_tour.html#autotoc_md71", null ]
+    ] ],
+    [ "Flight Lifecycle", "dd/d01/flight_lifecycle.html", [
+      [ "State diagram", "dd/d01/flight_lifecycle.html#autotoc_md72", null ],
+      [ "State by state", "dd/d01/flight_lifecycle.html#autotoc_md73", [
+        [ "BOOT", "dd/d01/flight_lifecycle.html#autotoc_md74", null ],
+        [ "IDLE", "dd/d01/flight_lifecycle.html#autotoc_md75", null ],
+        [ "CONFIGED", "dd/d01/flight_lifecycle.html#autotoc_md76", null ],
+        [ "ARMED", "dd/d01/flight_lifecycle.html#autotoc_md77", null ],
+        [ "TEST_STAND", "dd/d01/flight_lifecycle.html#autotoc_md78", null ],
+        [ "FLIGHT", "dd/d01/flight_lifecycle.html#autotoc_md79", null ],
+        [ "ABORT", "dd/d01/flight_lifecycle.html#autotoc_md80", null ],
+        [ "SAFE", "dd/d01/flight_lifecycle.html#autotoc_md81", null ]
+      ] ],
+      [ "What \"an event\" means", "dd/d01/flight_lifecycle.html#autotoc_md82", null ],
+      [ "When you're modifying the FSM", "dd/d01/flight_lifecycle.html#autotoc_md83", null ]
+    ] ],
+    [ "Porting Guide", "d0/d07/porting_guide.html", [
+      [ "The abstraction contract", "d0/d07/porting_guide.html#autotoc_md90", [
+        [ "Current macro contract", "d0/d07/porting_guide.html#autotoc_md91", null ]
+      ] ],
+      [ "Adding a new MCU target", "d0/d07/porting_guide.html#autotoc_md92", null ],
+      [ "Swapping a sensor", "d0/d07/porting_guide.html#autotoc_md93", null ],
+      [ "Changing peripheral mapping on an existing board", "d0/d07/porting_guide.html#autotoc_md94", null ],
+      [ "Documentation auto-regeneration", "d0/d07/porting_guide.html#autotoc_md95", null ],
+      [ "Where the doc structure itself is defined", "d0/d07/porting_guide.html#autotoc_md96", null ]
+    ] ],
     [ "Todo List", "dd/d00/todo.html", null ],
     [ "Topics", "topics.html", "topics" ],
     [ "Namespaces", "namespaces.html", [
@@ -39,6 +90,7 @@ var NAVTREE =
     [ "Data Structures", "annotated.html", [
       [ "Data Structures", "annotated.html", "annotated_dup" ],
       [ "Data Structure Index", "classes.html", null ],
+      [ "Class Hierarchy", "hierarchy.html", "hierarchy" ],
       [ "Data Fields", "functions.html", [
         [ "All", "functions.html", "functions_dup" ],
         [ "Functions", "functions_func.html", null ],
@@ -63,22 +115,23 @@ var NAVTREE =
 var NAVTREEINDEX =
 [
 "annotated.html",
-"d1/d0f/structasm330lhhx__sensor__hub__11__t.html#a44d5b45dab1fb3f3eff24de22ba317d1",
-"d2/d04/group___a_s_m330_l_h_h_x.html#ga3d65ef85d19d6bae850c93878362794b",
-"d2/d04/group___a_s_m330_l_h_h_x.html#gabfa7689d3d9ece1dba130d8871539d5b",
-"d2/d04/group___a_s_m330_l_h_h_x.html#gga91b2a5f3c71d4e7de587cbae3bad0e35af8ac8e1f880b9d18a1528a763de62f8a",
-"d3/d01/_m_m_c5983_m_a_8c_source.html",
-"d4/d0f/_p_w_m___f_u_n_c_t_i_o_n_s_8c_source.html",
-"d6/d02/group___m_m_c_registers.html#ga5a33432549c1b6de708426a8707f0645",
-"d7/d05/structcontroller__state__t.html#a6b40dee549a43506668fea2184f295b7",
-"d9/d01/structasm330lhhx__fsm__outs10__t.html#a316185358b79ef2dac55d4061e77513e",
-"da/d0a/structasm330lhhx__fsm__outs7__t.html#afe4dd06c2108c4d4cf4649d11fd32d16",
-"db/d05/lora__sx126x_8h.html#ae7c1eb120c2dc051bc181ae84d274826",
-"dd/d01/group___f_s_m.html#ga06ba7c6a43be047785413ac271e62008",
-"de/d03/_free_r_t_o_s_config_8h.html#a1f83ae13f34409a19d3ce087850270ec",
-"de/d0a/structasm330lhhx__fsm__int1__b__t.html#aa6411b22828ffd697cd14b5389ecf94f",
-"df/d04/lora__sx1276_8h.html#a7738d84f7a4c37eccab4c47ce237a019",
-"functions_z.html"
+"d1/d0d/lora__sx1276_8c.html#ac51cadc7c87c3b4ae21faebe2ccc8e27ae6e79fc4e02584bc3d353ac9c9c6e864",
+"d2/d04/group___a_s_m330_l_h_h_x.html#ga3378cba44ba177f56262c6c0b799d492",
+"d2/d04/group___a_s_m330_l_h_h_x.html#gab26ee77773af863d89ec068acfe1bb88",
+"d2/d04/group___a_s_m330_l_h_h_x.html#gga7dc70b6766ad581b9658c7ff3f35d703a4fa86c0948bb08dadd1730a00a21171f",
+"d3/d00/fatfs__sd_8c.html#a4547fab04380ea98a80691b8bdc8fc0e",
+"d4/d0c/_s_t_m32_h743_z_i_t6___magalhaes_2_core_2_inc_2config_8h.html#a35c0a44611f4a31b6424c1cc3186513c",
+"d5/d08/structasm330lhhx__wake__up__src__t.html#a52a6809d46b832dd1057f7f27c7197d4",
+"d6/d0a/flash__data__handler_8h.html#a1520311fbbe175f79d33d9849971d580",
+"d7/d0d/group___a_s_m330_l_h_h_x__free__fall.html#ga986c443c0af8aebbfee819869b15f303",
+"d9/d0c/structasm330lhhx__mlc__status__mainpage__t.html",
+"db/d02/structasm330lhhx__sh__cfg__read__t.html#abd40dec5c361031c89dacbdfad53083e",
+"db/d0e/group___f_s_m_functions.html#ga351aabdf620e21f15f86191d9c1181f8",
+"dd/d01/group___f_s_m.html#gga7dd5f9906807cad8b16104a7501a95cfa3c9a5c5ad3a321d90bb1395127b4f4b7",
+"de/d03/_free_r_t_o_s_config_8h.html#ae8f3fd645e6e78dfeb8a6e874af6195a",
+"de/d0b/unionasm330lhhx__reg__t.html#a70fa0cdb6ebd20d6881c19260852f580",
+"df/d04/lora__sx1276_8h.html#ae783b6f8772e6fa497e29520b0a6606ba773e22108e9bbb59e0ad790484e44e35",
+"dir_aa389fa14933c713f0e09709e6a0a834.html"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronization';

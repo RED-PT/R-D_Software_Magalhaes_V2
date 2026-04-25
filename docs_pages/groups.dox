@@ -1,0 +1,116 @@
+/**
+ * @file groups.dox
+ * @brief Top-level module hierarchy for the Magalhaes documentation.
+ *
+ * Defines the parent groups that organise the API reference. Children
+ * (existing @defgroup declarations across the source tree) are attached
+ * via @ref lists below — this keeps the source files untouched while
+ * giving the sidebar a clean, learning-oriented structure.
+ */
+
+/**
+ * @defgroup HardwareAbstraction Hardware Abstraction
+ * @brief Board-specific configuration and HAL glue.
+ *
+ * Two MCU targets share the `Codigo/` codebase. Hardware differences
+ * are resolved at compile time through `config.h` macros and the
+ * `RADIO_INTERFACE_*` selector.
+ *
+ * - @ref HAL_Callbacks
+ * - See `STM32H743ZIT6_Magalhaes/Core/Inc/config.h` (Buzz V4)
+ * - See `STM32F446ZE_Magalhaes/Core/Inc/config.h` (Nucleo dev board)
+ */
+
+/**
+ * @defgroup Sensors Sensors
+ * @brief Drivers and acquisition threads for every onboard sensor.
+ *
+ * Each driver wraps a single device behind a uniform `_Init / _Read`
+ * style API. The sensors thread orchestrates all reads, dispatching
+ * via DMA where the bus supports it.
+ *
+ * - @ref SensorThreadAPI — main thread entry points
+ * - @ref SensorInstances — global device handles
+ * - @ref SensorTimingConfig — per-sensor sample rates
+ * - @ref ASM330API — IMU
+ * - @ref BNOAPI — 9-DOF orientation
+ * - @ref MS5607API — barometer
+ * - @ref MMCAPI — magnetometer
+ * - @ref GPSAPI — u-blox GNSS
+ * - @ref FX29API — load cell
+ * - @ref INA219_API — power monitor
+ */
+
+/**
+ * @defgroup Estimation State Estimation
+ * @brief Fuses sensor data into a flight state vector.
+ *
+ * - @ref Estimator
+ */
+
+/**
+ * @defgroup Control Control
+ * @brief TVC and motor control loops.
+ *
+ * - @ref CtrlThread
+ * - @ref CtrlMotorAPI
+ * - @ref CtrlModeAPI
+ * - @ref CtrlStateAPI
+ * - @ref CtrlRampAPI
+ * - @ref PWMCore
+ */
+
+/**
+ * @defgroup Comms Communications
+ * @brief Radio link and telemetry packet plumbing.
+ *
+ * The TDMA superframe is shared across both radio backends. The
+ * `RADIO_INTERFACE_*` macro picks SPI direct (SX1262) or UART
+ * transparent mode (E22) at compile time.
+ *
+ * - @ref Radio_Communication
+ * - @ref RadioTDMA
+ * - @ref RadioFunctions
+ * - @ref Telemetry
+ * - @ref TDMAConfig
+ * - @ref TelemetryPackets
+ * - @ref TelemetryBuild
+ * - @ref E22API
+ */
+
+/**
+ * @defgroup DataPipeline Data Pipeline
+ * @brief How sensor samples reach storage and telemetry.
+ *
+ * - @ref Data_Handler
+ * - @ref Storage
+ * - @ref SDCardAPI
+ */
+
+/**
+ * @defgroup FlightCore Flight Core
+ * @brief Top-level state machine and command processing.
+ *
+ * - @ref Flight_Computer
+ * - @ref FSM
+ * - @ref Commands
+ * - @ref Events
+ * - @ref FSMFunctions
+ */
+
+/**
+ * @defgroup Tests Tests & Bench
+ * @brief Static thrust testing and other bench-only modes.
+ *
+ * - @ref StaticTestAPI
+ * - @ref StaticTestConfig
+ */
+
+/**
+ * @defgroup Infrastructure Infrastructure
+ * @brief Threading, build, and shared definitions.
+ *
+ * - @ref Thread_Management
+ * - @ref Core_Definitions
+ * - @ref SensorStructures
+ */

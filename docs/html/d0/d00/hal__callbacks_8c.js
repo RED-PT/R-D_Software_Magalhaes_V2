@@ -16,5 +16,5 @@ var hal__callbacks_8c =
     [ "mag_device", "d0/d00/hal__callbacks_8c.html#a9bb445c821c8850eb07afc9c7a4ec717", null ],
     [ "sensors_thread_id", "d0/d00/hal__callbacks_8c.html#a10a42a05fa5a5937eb0a797ec4a2d30f", null ],
     [ "spi1_active_sensor", "d0/d00/hal__callbacks_8c.html#a9341c303ff0629cc51ba13cdd7e0c21b", null ],
-    [ "spi3_active_sensor", "d0/d00/hal__callbacks_8c.html#a70b8d7beeada26526dc6ca712893863c", null ]
+    [ "spi_mag_active_sensor", "d0/d00/hal__callbacks_8c.html#a45603ab2dbaf4b2eb8d988b176304974", null ]
 ];

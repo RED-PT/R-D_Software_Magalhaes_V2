@@ -127,14 +127,14 @@ Variables</h2></td></tr>
 Sensor Device Instances</h2></td></tr>
 <tr><td class="ititle" colspan="2"><p>Global sensor device structures </p>
 </td></tr>
-<tr class="memitem:ga9bb445c821c8850eb07afc9c7a4ec717" id="r_ga9bb445c821c8850eb07afc9c7a4ec717"><td class="memItemLeft"><a class="el" href="../../d0/d0b/struct_m_m_c5983_m_a__t.html">MMC5983MA_t</a>&#160;</td><td class="memItemRight"><a class="el" href="#ga9bb445c821c8850eb07afc9c7a4ec717">mag_device</a></td></tr>
-<tr class="memdesc:ga9bb445c821c8850eb07afc9c7a4ec717"><td class="mdescLeft">&#160;</td><td class="mdescRight">3-axis magnetometer  <br /></td></tr>
+<tr class="memitem:gaa0d3123b6874344a82a840b00af4c62a" id="r_gaa0d3123b6874344a82a840b00af4c62a"><td class="memItemLeft"><a class="el" href="../../df/d0c/_s_t_m32_f446_z_e___magalhaes_2_core_2_inc_2config_8h.html#a6e89be99b71fb28fb078577fd2ab3ca1">BDMA_BUFFER</a> <a class="el" href="../../d0/d0b/struct_m_m_c5983_m_a__t.html">MMC5983MA_t</a>&#160;</td><td class="memItemRight"><a class="el" href="#gaa0d3123b6874344a82a840b00af4c62a">mag_device</a></td></tr>
+<tr class="memdesc:gaa0d3123b6874344a82a840b00af4c62a"><td class="mdescLeft">&#160;</td><td class="mdescRight">3-axis magnetometer — SPI_MAG BDMA  <br /></td></tr>
 <tr class="memitem:ga830ee068f58337e1f2d76e1e307fda6f" id="r_ga830ee068f58337e1f2d76e1e307fda6f"><td class="memItemLeft"><a class="el" href="../../de/d04/struct_m_s5607__t.html">MS5607_t</a>&#160;</td><td class="memItemRight"><a class="el" href="#ga830ee068f58337e1f2d76e1e307fda6f">baro_device</a></td></tr>
-<tr class="memdesc:ga830ee068f58337e1f2d76e1e307fda6f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Barometric pressure sensor.  <br /></td></tr>
-<tr class="memitem:ga2b12a45ed39404d58674cd4f03c98b67" id="r_ga2b12a45ed39404d58674cd4f03c98b67"><td class="memItemLeft"><a class="el" href="../../d6/d09/struct_b_n_o055__t.html">BNO055_t</a>&#160;</td><td class="memItemRight"><a class="el" href="#ga2b12a45ed39404d58674cd4f03c98b67">bno_device</a></td></tr>
-<tr class="memdesc:ga2b12a45ed39404d58674cd4f03c98b67"><td class="mdescLeft">&#160;</td><td class="mdescRight">9-DOF orientation sensor  <br /></td></tr>
-<tr class="memitem:ga00e36748cb36d619521181907dc231fd" id="r_ga00e36748cb36d619521181907dc231fd"><td class="memItemLeft"><a class="el" href="../../dd/d09/struct_u_b_l_o_x___g_p_s__t.html">UBLOX_GPS_t</a>&#160;</td><td class="memItemRight"><a class="el" href="#ga00e36748cb36d619521181907dc231fd">gps_device</a></td></tr>
-<tr class="memdesc:ga00e36748cb36d619521181907dc231fd"><td class="mdescLeft">&#160;</td><td class="mdescRight">u-blox GPS receiver  <br /></td></tr>
+<tr class="memdesc:ga830ee068f58337e1f2d76e1e307fda6f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Barometric pressure sensor — SPI_IMU_BARO blocking.  <br /></td></tr>
+<tr class="memitem:ga81bf5dbfc3b57fca6bf874a69b506254" id="r_ga81bf5dbfc3b57fca6bf874a69b506254"><td class="memItemLeft"><a class="el" href="../../df/d0c/_s_t_m32_f446_z_e___magalhaes_2_core_2_inc_2config_8h.html#a25275ca8d891f2f3f25504218e2bb720">DMA_BUFFER</a> <a class="el" href="../../d6/d09/struct_b_n_o055__t.html">BNO055_t</a>&#160;</td><td class="memItemRight"><a class="el" href="#ga81bf5dbfc3b57fca6bf874a69b506254">bno_device</a></td></tr>
+<tr class="memdesc:ga81bf5dbfc3b57fca6bf874a69b506254"><td class="mdescLeft">&#160;</td><td class="mdescRight">9-DOF orientation sensor — I2C_BNO DMA  <br /></td></tr>
+<tr class="memitem:ga4f384dcc1ec1ef30bc13e555fa49343f" id="r_ga4f384dcc1ec1ef30bc13e555fa49343f"><td class="memItemLeft"><a class="el" href="../../df/d0c/_s_t_m32_f446_z_e___magalhaes_2_core_2_inc_2config_8h.html#a25275ca8d891f2f3f25504218e2bb720">DMA_BUFFER</a> <a class="el" href="../../dd/d09/struct_u_b_l_o_x___g_p_s__t.html">UBLOX_GPS_t</a>&#160;</td><td class="memItemRight"><a class="el" href="#ga4f384dcc1ec1ef30bc13e555fa49343f">gps_device</a></td></tr>
+<tr class="memdesc:ga4f384dcc1ec1ef30bc13e555fa49343f"><td class="mdescLeft">&#160;</td><td class="mdescRight">u-blox GPS receiver — UART_UBLOX DMA  <br /></td></tr>
 </table>
 <a name="details" id="details"></a><h2 id="header-details" class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Global sensor device structures. </p>
@@ -151,12 +151,12 @@ Sensor Device Instances</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p>Barometric pressure sensor. </p>
+<p>Barometric pressure sensor — SPI_IMU_BARO blocking. </p>
 <p>MS5607 barometer device instance. </p>
 
-<p class="definition">Definition at line <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00059">59</a> of file <a class="el" href="../../d3/d05/sensors__thread_8c_source.html">sensors_thread.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00062">62</a> of file <a class="el" href="../../d3/d05/sensors__thread_8c_source.html">sensors_thread.c</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../de/d09/flight__computer__thread_8c_source.html#l00726">handle_cmd_calibrate_baro()</a>, <a class="el" href="../../de/d09/flight__computer__thread_8c_source.html#l00950">process_calibration()</a>, <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00227">sensors_thread_function()</a>, and <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00133">sensors_thread_init()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../de/d09/flight__computer__thread_8c_source.html#l00726">handle_cmd_calibrate_baro()</a>, <a class="el" href="../../de/d09/flight__computer__thread_8c_source.html#l00965">process_calibration()</a>, <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00230">sensors_thread_function()</a>, and <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00136">sensors_thread_init()</a>.</p>
 
 </div>
 </div>
@@ -183,29 +183,29 @@ Sensor Device Instances</h2></td></tr>
 <p>MS5607 barometer device instance. </p>
 <p>MS5607 barometer device instance. </p>
 
-<p class="definition">Definition at line <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00059">59</a> of file <a class="el" href="../../d3/d05/sensors__thread_8c_source.html">sensors_thread.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00062">62</a> of file <a class="el" href="../../d3/d05/sensors__thread_8c_source.html">sensors_thread.c</a>.</p>
 
 </div>
 </div>
-<a id="ga2b12a45ed39404d58674cd4f03c98b67" name="ga2b12a45ed39404d58674cd4f03c98b67"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ga2b12a45ed39404d58674cd4f03c98b67">&#9670;&#160;</a></span>bno_device <span class="overload">[1/2]</span></h2>
+<a id="ga81bf5dbfc3b57fca6bf874a69b506254" name="ga81bf5dbfc3b57fca6bf874a69b506254"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ga81bf5dbfc3b57fca6bf874a69b506254">&#9670;&#160;</a></span>bno_device <span class="overload">[1/2]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname"><a class="el" href="../../d6/d09/struct_b_n_o055__t.html">BNO055_t</a> bno_device</td>
+          <td class="memname"><a class="el" href="../../df/d0c/_s_t_m32_f446_z_e___magalhaes_2_core_2_inc_2config_8h.html#a25275ca8d891f2f3f25504218e2bb720">DMA_BUFFER</a> <a class="el" href="../../d6/d09/struct_b_n_o055__t.html">BNO055_t</a> bno_device</td>
         </tr>
       </table>
 </div><div class="memdoc">
 
-<p>9-DOF orientation sensor </p>
+<p>9-DOF orientation sensor — I2C_BNO DMA </p>
 <p>BNO055 9-DOF IMU device instance.</p>
 <p>9-DOF orientation sensor instance </p>
 
-<p class="definition">Definition at line <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00060">60</a> of file <a class="el" href="../../d3/d05/sensors__thread_8c_source.html">sensors_thread.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00063">63</a> of file <a class="el" href="../../d3/d05/sensors__thread_8c_source.html">sensors_thread.c</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html#l00253">HAL_I2C_MemRxCpltCallback()</a>, <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00227">sensors_thread_function()</a>, and <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00133">sensors_thread_init()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html#l00262">HAL_I2C_MemRxCpltCallback()</a>, <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00230">sensors_thread_function()</a>, and <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00136">sensors_thread_init()</a>.</p>
 
 </div>
 </div>
@@ -233,28 +233,28 @@ Sensor Device Instances</h2></td></tr>
 <p>BNO055 9-DOF IMU device instance.</p>
 <p>9-DOF orientation sensor instance </p>
 
-<p class="definition">Definition at line <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00060">60</a> of file <a class="el" href="../../d3/d05/sensors__thread_8c_source.html">sensors_thread.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00063">63</a> of file <a class="el" href="../../d3/d05/sensors__thread_8c_source.html">sensors_thread.c</a>.</p>
 
 </div>
 </div>
-<a id="ga00e36748cb36d619521181907dc231fd" name="ga00e36748cb36d619521181907dc231fd"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ga00e36748cb36d619521181907dc231fd">&#9670;&#160;</a></span>gps_device <span class="overload">[1/2]</span></h2>
+<a id="ga4f384dcc1ec1ef30bc13e555fa49343f" name="ga4f384dcc1ec1ef30bc13e555fa49343f"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ga4f384dcc1ec1ef30bc13e555fa49343f">&#9670;&#160;</a></span>gps_device <span class="overload">[1/2]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname"><a class="el" href="../../dd/d09/struct_u_b_l_o_x___g_p_s__t.html">UBLOX_GPS_t</a> gps_device</td>
+          <td class="memname"><a class="el" href="../../df/d0c/_s_t_m32_f446_z_e___magalhaes_2_core_2_inc_2config_8h.html#a25275ca8d891f2f3f25504218e2bb720">DMA_BUFFER</a> <a class="el" href="../../dd/d09/struct_u_b_l_o_x___g_p_s__t.html">UBLOX_GPS_t</a> gps_device</td>
         </tr>
       </table>
 </div><div class="memdoc">
 
-<p>u-blox GPS receiver </p>
+<p>u-blox GPS receiver — UART_UBLOX DMA </p>
 <p>UBLOX GPS device instance. </p>
 
-<p class="definition">Definition at line <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00061">61</a> of file <a class="el" href="../../d3/d05/sensors__thread_8c_source.html">sensors_thread.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00064">64</a> of file <a class="el" href="../../d3/d05/sensors__thread_8c_source.html">sensors_thread.c</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00227">sensors_thread_function()</a>, and <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00133">sensors_thread_init()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00230">sensors_thread_function()</a>, and <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00136">sensors_thread_init()</a>.</p>
 
 </div>
 </div>
@@ -281,9 +281,9 @@ Sensor Device Instances</h2></td></tr>
 <p>UBLOX GPS device instance. </p>
 <p>UBLOX GPS device instance. </p>
 
-<p class="definition">Definition at line <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00061">61</a> of file <a class="el" href="../../d3/d05/sensors__thread_8c_source.html">sensors_thread.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00064">64</a> of file <a class="el" href="../../d3/d05/sensors__thread_8c_source.html">sensors_thread.c</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00227">sensors_thread_function()</a>, and <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00133">sensors_thread_init()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00230">sensors_thread_function()</a>, and <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00136">sensors_thread_init()</a>.</p>
 
 </div>
 </div>
@@ -311,29 +311,29 @@ Sensor Device Instances</h2></td></tr>
 <p>ASM330LHHX 6-axis IMU device instance.</p>
 <p>6-axis IMU device instance </p>
 
-<p class="definition">Definition at line <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00057">57</a> of file <a class="el" href="../../d3/d05/sensors__thread_8c_source.html">sensors_thread.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00060">60</a> of file <a class="el" href="../../d3/d05/sensors__thread_8c_source.html">sensors_thread.c</a>.</p>
 
 </div>
 </div>
-<a id="ga9bb445c821c8850eb07afc9c7a4ec717" name="ga9bb445c821c8850eb07afc9c7a4ec717"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ga9bb445c821c8850eb07afc9c7a4ec717">&#9670;&#160;</a></span>mag_device <span class="overload">[1/2]</span></h2>
+<a id="gaa0d3123b6874344a82a840b00af4c62a" name="gaa0d3123b6874344a82a840b00af4c62a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#gaa0d3123b6874344a82a840b00af4c62a">&#9670;&#160;</a></span>mag_device <span class="overload">[1/2]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname"><a class="el" href="../../d0/d0b/struct_m_m_c5983_m_a__t.html">MMC5983MA_t</a> mag_device</td>
+          <td class="memname"><a class="el" href="../../df/d0c/_s_t_m32_f446_z_e___magalhaes_2_core_2_inc_2config_8h.html#a6e89be99b71fb28fb078577fd2ab3ca1">BDMA_BUFFER</a> <a class="el" href="../../d0/d0b/struct_m_m_c5983_m_a__t.html">MMC5983MA_t</a> mag_device</td>
         </tr>
       </table>
 </div><div class="memdoc">
 
-<p>3-axis magnetometer </p>
+<p>3-axis magnetometer — SPI_MAG BDMA </p>
 <p>MMC5983MA magnetometer device instance.</p>
 <p>Magnetometer device instance. </p>
 
-<p class="definition">Definition at line <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00058">58</a> of file <a class="el" href="../../d3/d05/sensors__thread_8c_source.html">sensors_thread.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00061">61</a> of file <a class="el" href="../../d3/d05/sensors__thread_8c_source.html">sensors_thread.c</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html#l00149">HAL_SPI_TxRxCpltCallback()</a>, <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00227">sensors_thread_function()</a>, and <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00133">sensors_thread_init()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../d0/d00/hal__callbacks_8c_source.html#l00158">HAL_SPI_TxRxCpltCallback()</a>, <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00230">sensors_thread_function()</a>, and <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00136">sensors_thread_init()</a>.</p>
 
 </div>
 </div>
@@ -361,7 +361,7 @@ Sensor Device Instances</h2></td></tr>
 <p>MMC5983MA magnetometer device instance.</p>
 <p>Magnetometer device instance. </p>
 
-<p class="definition">Definition at line <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00058">58</a> of file <a class="el" href="../../d3/d05/sensors__thread_8c_source.html">sensors_thread.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d3/d05/sensors__thread_8c_source.html#l00061">61</a> of file <a class="el" href="../../d3/d05/sensors__thread_8c_source.html">sensors_thread.c</a>.</p>
 
 </div>
 </div>

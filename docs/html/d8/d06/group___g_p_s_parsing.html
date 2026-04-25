@@ -151,11 +151,20 @@ Functions</h2></td></tr>
   </table>
   </dd>
 </dl>
-<dl class="section return"><dt>Returns</dt><dd>Decimal degrees (negative for S/W) </dd></dl>
+<dl class="section return"><dt>Returns</dt><dd>Decimal degrees (negative for S/W)</dd></dl>
+<p>Convert NMEA coordinate to decimal degrees.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramdir">[in]</td><td class="paramname">deg_coord</td><td>NMEA-format coordinate value </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">nsew</td><td>Hemisphere indicator ('N','S','E','W'); S/W yield negative result </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>Coordinate in decimal degrees </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="../../d9/d0a/_g_p_s_8c_source.html#l00027">27</a> of file <a class="el" href="../../d9/d0a/_g_p_s_8c_source.html">GPS.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d9/d0a/_g_p_s_8c_source.html#l00046">46</a> of file <a class="el" href="../../d9/d0a/_g_p_s_8c_source.html">GPS.c</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../d9/d0a/_g_p_s_8c_source.html#l00069">GPS_parse()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../d9/d0a/_g_p_s_8c_source.html#l00102">GPS_parse()</a>.</p>
 <div id="dynsection-0" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the caller graph for this function:</div>
 <div id="dynsection-0-summary" class="dynsummary" style="display:block;">
 </div>
@@ -188,16 +197,25 @@ Functions</h2></td></tr>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramdir">[out]</td><td class="paramname">gps</td><td>GPS data structure to populate </td></tr>
-    <tr><td class="paramdir">[in]</td><td class="paramname">GPSstrParse</td><td>NMEA sentence to parse </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">GPSstrParse</td><td>NMEA sentence to parse</td></tr>
+  </table>
+  </dd>
+</dl>
+<p>Parse NMEA sentence into GPS structure.</p>
+<p>Supports $GNGGA, $GPGGA, and $GPRMC sentence types. Coordinates are converted from NMEA DDDMM.MMMM format to decimal degrees.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramdir">[out]</td><td class="paramname">gps</td><td>GPS data structure to populate </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">GPSstrParse</td><td>Null-terminated, checksum-validated NMEA sentence </td></tr>
   </table>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="../../d9/d0a/_g_p_s_8c_source.html#l00069">69</a> of file <a class="el" href="../../d9/d0a/_g_p_s_8c_source.html">GPS.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d9/d0a/_g_p_s_8c_source.html#l00102">102</a> of file <a class="el" href="../../d9/d0a/_g_p_s_8c_source.html">GPS.c</a>.</p>
 
-<p class="reference">References <a class="el" href="../../d5/d04/defs_8h_source.html#l00137">GPS_t::course_d</a>, <a class="el" href="../../d5/d04/defs_8h_source.html#l00131">GPS_t::dec_latitude</a>, <a class="el" href="../../d5/d04/defs_8h_source.html#l00132">GPS_t::dec_longitude</a>, <a class="el" href="../../d9/d0a/_g_p_s_8c_source.html#l00027">GPS_nmea_to_dec()</a>, <a class="el" href="../../d5/d04/defs_8h_source.html#l00142">GPS_t::hdop</a>, <a class="el" href="../../d5/d04/defs_8h_source.html#l00140">GPS_t::lock</a>, <a class="el" href="../../d5/d04/defs_8h_source.html#l00133">GPS_t::msl_altitude</a>, <a class="el" href="../../d5/d04/defs_8h_source.html#l00141">GPS_t::satellites</a>, <a class="el" href="../../d5/d04/defs_8h_source.html#l00136">GPS_t::speed_k</a>, and <a class="el" href="../../d5/d04/defs_8h_source.html#l00145">GPS_t::utc_time</a>.</p>
+<p class="reference">References <a class="el" href="../../d5/d04/defs_8h_source.html#l00137">GPS_t::course_d</a>, <a class="el" href="../../d5/d04/defs_8h_source.html#l00131">GPS_t::dec_latitude</a>, <a class="el" href="../../d5/d04/defs_8h_source.html#l00132">GPS_t::dec_longitude</a>, <a class="el" href="../../d9/d0a/_g_p_s_8c_source.html#l00046">GPS_nmea_to_dec()</a>, <a class="el" href="../../d5/d04/defs_8h_source.html#l00142">GPS_t::hdop</a>, <a class="el" href="../../d5/d04/defs_8h_source.html#l00140">GPS_t::lock</a>, <a class="el" href="../../d5/d04/defs_8h_source.html#l00133">GPS_t::msl_altitude</a>, <a class="el" href="../../d5/d04/defs_8h_source.html#l00141">GPS_t::satellites</a>, <a class="el" href="../../d5/d04/defs_8h_source.html#l00136">GPS_t::speed_k</a>, and <a class="el" href="../../d5/d04/defs_8h_source.html#l00145">GPS_t::utc_time</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../d9/d0a/_g_p_s_8c_source.html#l00012">GPS_save_data()</a>, and <a class="el" href="../../d9/d0a/_g_p_s_8c_source.html#l00241">UBLOX_GPS_ProcessData()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../d9/d0a/_g_p_s_8c_source.html#l00025">GPS_save_data()</a>, and <a class="el" href="../../d9/d0a/_g_p_s_8c_source.html#l00274">UBLOX_GPS_ProcessData()</a>.</p>
 <div id="dynsection-1" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the call graph for this function:</div>
 <div id="dynsection-1-summary" class="dynsummary" style="display:block;">
 </div>
@@ -227,7 +245,7 @@ Functions</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">char *</td>          <td class="paramname"><span class="paramname"><em>GPS_dma</em></span>&#160;)</td>
+          <td class="paramtype">char *</td>          <td class="paramname"><span class="paramname"><em>gps_buffer</em></span>&#160;)</td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -236,14 +254,22 @@ Functions</h2></td></tr>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramdir">[out]</td><td class="paramname">gps</td><td>GPS data structure to populate </td></tr>
-    <tr><td class="paramdir">[in]</td><td class="paramname">GPS_dma</td><td>Raw NMEA sentence string </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">GPS_dma</td><td>Raw NMEA sentence string</td></tr>
+  </table>
+  </dd>
+</dl>
+<p>Save GPS data from parsed sentence.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramdir">[out]</td><td class="paramname">gps</td><td>GPS data structure to populate </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">gps_buffer</td><td>Raw NMEA sentence string (null-terminated) </td></tr>
   </table>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="../../d9/d0a/_g_p_s_8c_source.html#l00012">12</a> of file <a class="el" href="../../d9/d0a/_g_p_s_8c_source.html">GPS.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d9/d0a/_g_p_s_8c_source.html#l00025">25</a> of file <a class="el" href="../../d9/d0a/_g_p_s_8c_source.html">GPS.c</a>.</p>
 
-<p class="reference">References <a class="el" href="../../de/d08/flash__data__handler_8c_source.html#l00020">gps_buffer</a>, <a class="el" href="../../d9/d0a/_g_p_s_8c_source.html#l00069">GPS_parse()</a>, <a class="el" href="../../d9/d0a/_g_p_s_8c_source.html#l00038">GPS_validate()</a>, and <a class="el" href="../../d5/d04/defs_8h_source.html#l00140">GPS_t::lock</a>.</p>
+<p class="reference">References <a class="el" href="../../de/d08/flash__data__handler_8c_source.html#l00020">gps_buffer</a>, <a class="el" href="../../d9/d0a/_g_p_s_8c_source.html#l00102">GPS_parse()</a>, <a class="el" href="../../d9/d0a/_g_p_s_8c_source.html#l00062">GPS_validate()</a>, and <a class="el" href="../../d5/d04/defs_8h_source.html#l00140">GPS_t::lock</a>.</p>
 <div id="dynsection-3" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the call graph for this function:</div>
 <div id="dynsection-3-summary" class="dynsummary" style="display:block;">
 </div>
@@ -275,11 +301,19 @@ Functions</h2></td></tr>
   </table>
   </dd>
 </dl>
-<dl class="section return"><dt>Returns</dt><dd>1 if valid, 0 if invalid </dd></dl>
+<dl class="section return"><dt>Returns</dt><dd>1 if valid, 0 if invalid</dd></dl>
+<p>Validate NMEA sentence checksum.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramdir">[in]</td><td class="paramname">nmeastr</td><td>Null-terminated NMEA sentence (must start with '$') </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>1 if checksum valid, 0 otherwise </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="../../d9/d0a/_g_p_s_8c_source.html#l00038">38</a> of file <a class="el" href="../../d9/d0a/_g_p_s_8c_source.html">GPS.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d9/d0a/_g_p_s_8c_source.html#l00062">62</a> of file <a class="el" href="../../d9/d0a/_g_p_s_8c_source.html">GPS.c</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../d9/d0a/_g_p_s_8c_source.html#l00012">GPS_save_data()</a>, and <a class="el" href="../../d9/d0a/_g_p_s_8c_source.html#l00241">UBLOX_GPS_ProcessData()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../d9/d0a/_g_p_s_8c_source.html#l00025">GPS_save_data()</a>, and <a class="el" href="../../d9/d0a/_g_p_s_8c_source.html#l00274">UBLOX_GPS_ProcessData()</a>.</p>
 <div id="dynsection-4" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the caller graph for this function:</div>
 <div id="dynsection-4-summary" class="dynsummary" style="display:block;">
 </div>

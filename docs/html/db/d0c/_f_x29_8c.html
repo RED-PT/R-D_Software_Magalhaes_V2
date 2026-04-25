@@ -141,6 +141,14 @@ Functions</h2></td></tr>
 <tr class="memdesc:gaa05db571a1478d924a9d8201fe3976eb"><td class="mdescLeft">&#160;</td><td class="mdescRight">Perform blocking tare calibration.  <br /></td></tr>
 <tr class="memitem:gac2a5ec2de39d70cb7291eda2c38158ab" id="r_gac2a5ec2de39d70cb7291eda2c38158ab"><td class="memItemLeft">void&#160;</td><td class="memItemRight"><a class="el" href="../../d1/d0d/group___f_x29_tare.html#gac2a5ec2de39d70cb7291eda2c38158ab">FX29_ClearTare</a> (<a class="el" href="../../d7/d0f/struct_f_x29__t.html">FX29_t</a> *dev)</td></tr>
 <tr class="memdesc:gac2a5ec2de39d70cb7291eda2c38158ab"><td class="mdescLeft">&#160;</td><td class="mdescRight">Clear tare calibration.  <br /></td></tr>
+<tr class="memitem:gad6b7bc9d822d7bc8c4303153f4ee2180" id="r_gad6b7bc9d822d7bc8c4303153f4ee2180"><td class="memItemLeft"><a class="el" href="../../d3/d00/fatfs__sd_8c.html#abb452686968e48b67397da5f97445f5b">bool</a>&#160;</td><td class="memItemRight"><a class="el" href="../../d1/d0d/group___f_x29_tare.html#gad6b7bc9d822d7bc8c4303153f4ee2180">FX29_Calibrate</a> (<a class="el" href="../../d7/d0f/struct_f_x29__t.html">FX29_t</a> *dev, float known_weight1_n, float measured1_n, float known_weight2_n, float measured2_n)</td></tr>
+<tr class="memdesc:gad6b7bc9d822d7bc8c4303153f4ee2180"><td class="mdescLeft">&#160;</td><td class="mdescRight">Two-point scale factor calibration.  <br /></td></tr>
+<tr class="memitem:ga8544032c1ba91af04bb0bc7329245879" id="r_ga8544032c1ba91af04bb0bc7329245879"><td class="memItemLeft">void&#160;</td><td class="memItemRight"><a class="el" href="../../d1/d0d/group___f_x29_tare.html#ga8544032c1ba91af04bb0bc7329245879">FX29_SetScaleFactor</a> (<a class="el" href="../../d7/d0f/struct_f_x29__t.html">FX29_t</a> *dev, float scale_factor)</td></tr>
+<tr class="memdesc:ga8544032c1ba91af04bb0bc7329245879"><td class="mdescLeft">&#160;</td><td class="mdescRight">Set scale factor directly.  <br /></td></tr>
+<tr class="memitem:gaaf46c8f37d261e7aa603d92756bc1c34" id="r_gaaf46c8f37d261e7aa603d92756bc1c34"><td class="memItemLeft">float&#160;</td><td class="memItemRight"><a class="el" href="../../d1/d0d/group___f_x29_tare.html#gaaf46c8f37d261e7aa603d92756bc1c34">FX29_GetScaleFactor</a> (<a class="el" href="../../d7/d0f/struct_f_x29__t.html">FX29_t</a> *dev)</td></tr>
+<tr class="memdesc:gaaf46c8f37d261e7aa603d92756bc1c34"><td class="mdescLeft">&#160;</td><td class="mdescRight">Get current scale factor.  <br /></td></tr>
+<tr class="memitem:ga5daf4c277f3e9b7b3de24ad8cb042f26" id="r_ga5daf4c277f3e9b7b3de24ad8cb042f26"><td class="memItemLeft">void&#160;</td><td class="memItemRight"><a class="el" href="../../d1/d0d/group___f_x29_tare.html#ga5daf4c277f3e9b7b3de24ad8cb042f26">FX29_ClearCalibration</a> (<a class="el" href="../../d7/d0f/struct_f_x29__t.html">FX29_t</a> *dev)</td></tr>
+<tr class="memdesc:ga5daf4c277f3e9b7b3de24ad8cb042f26"><td class="mdescLeft">&#160;</td><td class="mdescRight">Clear scale calibration.  <br /></td></tr>
 <tr class="memitem:ga4014a7732e08fc730c213c594128d473" id="r_ga4014a7732e08fc730c213c594128d473"><td class="memItemLeft">float&#160;</td><td class="memItemRight"><a class="el" href="../../d4/d00/group___f_x29_utility.html#ga4014a7732e08fc730c213c594128d473">FX29_CountsToForce</a> (<a class="el" href="../../d7/d0f/struct_f_x29__t.html">FX29_t</a> *dev, uint16_t counts)</td></tr>
 <tr class="memdesc:ga4014a7732e08fc730c213c594128d473"><td class="mdescLeft">&#160;</td><td class="mdescRight">Convert raw counts to force.  <br /></td></tr>
 <tr class="memitem:gacdf631e4cc087acc995624e902a41584" id="r_gacdf631e4cc087acc995624e902a41584"><td class="memItemLeft">const char *&#160;</td><td class="memItemRight"><a class="el" href="../../d4/d00/group___f_x29_utility.html#gacdf631e4cc087acc995624e902a41584">FX29_StatusToString</a> (<a class="el" href="../../df/d0e/_f_x29_8h.html#a85ecaa2b3f393640f9e6c93de7873dde">FX29_Status_t</a> status)</td></tr>
@@ -161,7 +169,7 @@ Functions</h2></td></tr>
 
 <p class="definition">Definition at line <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00023">23</a> of file <a class="el" href="../../db/d0c/_f_x29_8c_source.html">FX29.c</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00053">FX29_IsConnected()</a>, and <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00073">FX29_ReadWithPWM()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00055">FX29_IsConnected()</a>, and <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00075">FX29_ReadWithPWM()</a>.</p>
 
 </div>
 </div>
@@ -189,9 +197,9 @@ Functions</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00219">219</a> of file <a class="el" href="../../db/d0c/_f_x29_8c_source.html">FX29.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00272">272</a> of file <a class="el" href="../../db/d0c/_f_x29_8c_source.html">FX29.c</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00073">FX29_ReadWithPWM()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00075">FX29_ReadWithPWM()</a>.</p>
 <div id="dynsection-1" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the caller graph for this function:</div>
 <div id="dynsection-1-summary" class="dynsummary" style="display:block;">
 </div>
@@ -224,11 +232,11 @@ Functions</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00203">203</a> of file <a class="el" href="../../db/d0c/_f_x29_8c_source.html">FX29.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00256">256</a> of file <a class="el" href="../../db/d0c/_f_x29_8c_source.html">FX29.c</a>.</p>
 
 <p class="reference">References <a class="el" href="../../df/d0e/_f_x29_8h_source.html#l00120">FX29_FAULT</a>, <a class="el" href="../../df/d0e/_f_x29_8h_source.html#l00118">FX29_OK</a>, <a class="el" href="../../df/d0e/_f_x29_8h_source.html#l00119">FX29_STALE_DATA</a>, <a class="el" href="../../df/d0e/_f_x29_8h_source.html#l00066">FX29_STATUS_COMMAND</a>, <a class="el" href="../../df/d0e/_f_x29_8h_source.html#l00068">FX29_STATUS_FAULT</a>, <a class="el" href="../../df/d0e/_f_x29_8h_source.html#l00064">FX29_STATUS_MASK</a>, <a class="el" href="../../df/d0e/_f_x29_8h_source.html#l00065">FX29_STATUS_NORMAL</a>, and <a class="el" href="../../df/d0e/_f_x29_8h_source.html#l00067">FX29_STATUS_STALE</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00073">FX29_ReadWithPWM()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../db/d0c/_f_x29_8c_source.html#l00075">FX29_ReadWithPWM()</a>.</p>
 <div id="dynsection-2" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the caller graph for this function:</div>
 <div id="dynsection-2-summary" class="dynsummary" style="display:block;">
 </div>

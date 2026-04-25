@@ -45,6 +45,7 @@ var menudata={children:[
 {text:"Data Structures",url:"annotated.html",children:[
 {text:"Data Structures",url:"annotated.html"},
 {text:"Data Structure Index",url:"classes.html"},
+{text:"Class Hierarchy",url:"inherits.html"},
 {text:"Data Fields",url:"functions.html",children:[
 {text:"All",url:"functions.html",children:[
 {text:"_",url:"functions.html#index__5F"},
@@ -199,6 +200,7 @@ var menudata={children:[
 {text:"d",url:"globals_defs_d.html#index_d"},
 {text:"e",url:"globals_defs_e.html#index_e"},
 {text:"f",url:"globals_defs_f.html#index_f"},
+{text:"g",url:"globals_defs_g.html#index_g"},
 {text:"h",url:"globals_defs_h.html#index_h"},
 {text:"i",url:"globals_defs_i.html#index_i"},
 {text:"l",url:"globals_defs_l.html#index_l"},

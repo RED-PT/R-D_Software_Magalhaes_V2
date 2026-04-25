@@ -106,6 +106,9 @@ $(function() {
   <div class="headertitle"><div class="title">fatfs_sd.c File Reference</div></div>
 </div><!--header-->
 <div class="contents">
+
+<p>Low-level SD card driver over SPI for FatFS.  
+<a href="#details">More...</a></p>
 <div class="textblock"><code>#include &quot;main.h&quot;</code><br />
 <code>#include &quot;diskio.h&quot;</code><br />
 <code>#include &quot;<a class="el" href="../../d2/d04/fatfs__sd_8h_source.html">fatfs_sd.h</a>&quot;</code><br />
@@ -113,7 +116,7 @@ $(function() {
 <div id="dynsection-0-summary" class="dynsummary" style="display:block;">
 </div>
 <div id="dynsection-0-content" class="dyncontent" style="display:none;">
-<div class="center"><iframe scrolling="no" loading="lazy" frameborder="0" src="../../d4/d07/fatfs__sd_8c__incl.svg" width="346" height="199"><p><b>This browser is not able to show SVG: try Firefox, Chrome, Safari, or Opera instead.</b></p></iframe></div>
+<div class="center"><iframe scrolling="no" loading="lazy" frameborder="0" src="../../d4/d07/fatfs__sd_8c__incl.svg" width="346" height="278"><p><b>This browser is not able to show SVG: try Firefox, Chrome, Safari, or Opera instead.</b></p></iframe></div>
 </div>
 </div>
 <p><a href="../../d3/d00/fatfs__sd_8c_source.html">Go to the source code of this file.</a></p>
@@ -151,7 +154,19 @@ Variables</h2></td></tr>
 <tr class="memitem:a67495619ec3a85b0548d1330220839ac" id="r_a67495619ec3a85b0548d1330220839ac"><td class="memItemLeft">static uint8_t&#160;</td><td class="memItemRight"><a class="el" href="#a67495619ec3a85b0548d1330220839ac">CardType</a></td></tr>
 <tr class="memitem:ad79273af98e5fd4d34910b7e90ca3d0b" id="r_ad79273af98e5fd4d34910b7e90ca3d0b"><td class="memItemLeft">static uint8_t&#160;</td><td class="memItemRight"><a class="el" href="#ad79273af98e5fd4d34910b7e90ca3d0b">PowerFlag</a> = 0</td></tr>
 </table>
-<a name="doc-define-members" id="doc-define-members"></a><h2 id="header-doc-define-members" class="groupheader">Macro Definition Documentation</h2>
+<a name="details" id="details"></a><h2 id="header-details" class="groupheader">Detailed Description</h2>
+<div class="textblock"><p>Low-level SD card driver over SPI for FatFS. </p>
+<p>Provides the disk I/O layer (disk_initialize, disk_read, disk_write, disk_ioctl) that FatFS calls internally. Communication uses the SPI peripheral defined by HSPI_SDCARD in <a class="el" href="../../d2/d04/fatfs__sd_8h.html">fatfs_sd.h</a> / config.h.</p>
+<h1 class="doxsection"><a class="anchor" id="fatfs_sd_speed"></a>
+SPI Baud Rate Switch</h1>
+<p>SD card initialisation must run at a slow SPI clock (&lt;=400 kHz per SD spec). After successful initialisation, if the board's config.h defines <code>SD_SPI_PRESCALER_FAST</code>, the prescaler is lowered to increase throughput for subsequent read/write operations. On the Buzz V4 (H743) this is SPI_BAUDRATEPRESCALER_4; on the F446ZE dev board the macro is not defined so the init prescaler is kept.</p>
+<dl class="section note"><dt>Note</dt><dd>Based on elm-chan's generic MMC/SD SPI driver. </dd></dl>
+<dl class="section see"><dt>See also</dt><dd><a class="el" href="../../d2/d04/fatfs__sd_8h.html">fatfs_sd.h</a> for SPI pin/port macros </dd>
+<dd>
+config.h for <a class="el" href="../../d4/d0c/_s_t_m32_h743_z_i_t6___magalhaes_2_core_2_inc_2config_8h.html#ac7b567969236e12da048bda02c416e92">SD_SPI_PRESCALER_FAST</a> definition </dd></dl>
+
+<p class="definition">Definition in file <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html">fatfs_sd.c</a>.</p>
+</div><a name="doc-define-members" id="doc-define-members"></a><h2 id="header-doc-define-members" class="groupheader">Macro Definition Documentation</h2>
 <a id="abb452686968e48b67397da5f97445f5b" name="abb452686968e48b67397da5f97445f5b"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#abb452686968e48b67397da5f97445f5b">&#9670;&#160;</a></span>bool</h2>
 
@@ -164,7 +179,7 @@ Variables</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00004">4</a> of file <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html">fatfs_sd.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00024">24</a> of file <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html">fatfs_sd.c</a>.</p>
 
 </div>
 </div>
@@ -180,9 +195,9 @@ Variables</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00003">3</a> of file <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html">fatfs_sd.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00023">23</a> of file <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html">fatfs_sd.c</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00138">SD_RxDataBlock()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00158">SD_RxDataBlock()</a>.</p>
 
 </div>
 </div>
@@ -198,9 +213,9 @@ Variables</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00002">2</a> of file <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html">fatfs_sd.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00022">22</a> of file <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html">fatfs_sd.c</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00138">SD_RxDataBlock()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00158">SD_RxDataBlock()</a>.</p>
 
 </div>
 </div>
@@ -228,11 +243,11 @@ Variables</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00029">29</a> of file <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html">fatfs_sd.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00049">49</a> of file <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html">fatfs_sd.c</a>.</p>
 
 <p class="reference">References <a class="el" href="../../d2/d04/fatfs__sd_8h_source.html#l00044">SD_CS_PIN</a>, and <a class="el" href="../../d2/d04/fatfs__sd_8h_source.html#l00043">SD_CS_PORT</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00248">SD_disk_initialize()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00452">SD_disk_ioctl()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00355">SD_disk_read()</a>, and <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00088">SD_PowerOn()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00268">SD_disk_initialize()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00483">SD_disk_ioctl()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00386">SD_disk_read()</a>, and <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00108">SD_PowerOn()</a>.</p>
 <div id="dynsection-1" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the caller graph for this function:</div>
 <div id="dynsection-1-summary" class="dynsummary" style="display:block;">
 </div>
@@ -265,11 +280,11 @@ Variables</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00132">132</a> of file <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html">fatfs_sd.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00152">152</a> of file <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html">fatfs_sd.c</a>.</p>
 
-<p class="reference">References <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00015">PowerFlag</a>.</p>
+<p class="reference">References <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00035">PowerFlag</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00452">SD_disk_ioctl()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00483">SD_disk_ioctl()</a>.</p>
 <div id="dynsection-2" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the caller graph for this function:</div>
 <div id="dynsection-2-summary" class="dynsummary" style="display:block;">
 </div>
@@ -294,9 +309,9 @@ Variables</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00248">248</a> of file <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html">fatfs_sd.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00268">268</a> of file <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html">fatfs_sd.c</a>.</p>
 
-<p class="reference">References <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00014">CardType</a>, <a class="el" href="../../d2/d04/fatfs__sd_8h_source.html#l00009">CMD0</a>, <a class="el" href="../../d2/d04/fatfs__sd_8h_source.html#l00010">CMD1</a>, <a class="el" href="../../d2/d04/fatfs__sd_8h_source.html#l00015">CMD16</a>, <a class="el" href="../../d2/d04/fatfs__sd_8h_source.html#l00021">CMD41</a>, <a class="el" href="../../d2/d04/fatfs__sd_8h_source.html#l00022">CMD55</a>, <a class="el" href="../../d2/d04/fatfs__sd_8h_source.html#l00023">CMD58</a>, <a class="el" href="../../d2/d04/fatfs__sd_8h_source.html#l00011">CMD8</a>, <a class="el" href="../../d2/d04/fatfs__sd_8h_source.html#l00030">CT_BLOCK</a>, <a class="el" href="../../d2/d04/fatfs__sd_8h_source.html#l00026">CT_MMC</a>, <a class="el" href="../../d2/d04/fatfs__sd_8h_source.html#l00027">CT_SD1</a>, <a class="el" href="../../d2/d04/fatfs__sd_8h_source.html#l00028">CT_SD2</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00029">DESELECT()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00126">SD_PowerOff()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00088">SD_PowerOn()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00209">SD_SendCmd()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00022">SELECT()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00050">SPI_RxByte()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00013">Stat</a>, and <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00011">Timer1</a>.</p>
+<p class="reference">References <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00034">CardType</a>, <a class="el" href="../../d2/d04/fatfs__sd_8h_source.html#l00009">CMD0</a>, <a class="el" href="../../d2/d04/fatfs__sd_8h_source.html#l00010">CMD1</a>, <a class="el" href="../../d2/d04/fatfs__sd_8h_source.html#l00015">CMD16</a>, <a class="el" href="../../d2/d04/fatfs__sd_8h_source.html#l00021">CMD41</a>, <a class="el" href="../../d2/d04/fatfs__sd_8h_source.html#l00022">CMD55</a>, <a class="el" href="../../d2/d04/fatfs__sd_8h_source.html#l00023">CMD58</a>, <a class="el" href="../../d2/d04/fatfs__sd_8h_source.html#l00011">CMD8</a>, <a class="el" href="../../d2/d04/fatfs__sd_8h_source.html#l00030">CT_BLOCK</a>, <a class="el" href="../../d2/d04/fatfs__sd_8h_source.html#l00026">CT_MMC</a>, <a class="el" href="../../d2/d04/fatfs__sd_8h_source.html#l00027">CT_SD1</a>, <a class="el" href="../../d2/d04/fatfs__sd_8h_source.html#l00028">CT_SD2</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00049">DESELECT()</a>, <a class="el" href="../../d2/d04/fatfs__sd_8h_source.html#l00042">HSPI_SDCARD</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00146">SD_PowerOff()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00108">SD_PowerOn()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00229">SD_SendCmd()</a>, <a class="el" href="../../d4/d0c/_s_t_m32_h743_z_i_t6___magalhaes_2_core_2_inc_2config_8h_source.html#l00118">SD_SPI_PRESCALER_FAST</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00042">SELECT()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00070">SPI_RxByte()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00033">Stat</a>, and <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00031">Timer1</a>.</p>
 
 <p class="reference">Referenced by <a class="el" href="../../d0/d03/user__diskio_8c_source.html#l00060">USER_initialize()</a>.</p>
 <div id="dynsection-3" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the call graph for this function:</div>
@@ -338,9 +353,9 @@ Variables</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00452">452</a> of file <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html">fatfs_sd.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00483">483</a> of file <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html">fatfs_sd.c</a>.</p>
 
-<p class="reference">References <a class="el" href="../../d2/d04/fatfs__sd_8h_source.html#l00013">CMD10</a>, <a class="el" href="../../d2/d04/fatfs__sd_8h_source.html#l00023">CMD58</a>, <a class="el" href="../../d2/d04/fatfs__sd_8h_source.html#l00012">CMD9</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00029">DESELECT()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00132">SD_CheckPower()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00126">SD_PowerOff()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00088">SD_PowerOn()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00072">SD_ReadyWait()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00138">SD_RxDataBlock()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00209">SD_SendCmd()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00022">SELECT()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00050">SPI_RxByte()</a>, and <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00013">Stat</a>.</p>
+<p class="reference">References <a class="el" href="../../d2/d04/fatfs__sd_8h_source.html#l00013">CMD10</a>, <a class="el" href="../../d2/d04/fatfs__sd_8h_source.html#l00023">CMD58</a>, <a class="el" href="../../d2/d04/fatfs__sd_8h_source.html#l00012">CMD9</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00049">DESELECT()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00152">SD_CheckPower()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00146">SD_PowerOff()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00108">SD_PowerOn()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00092">SD_ReadyWait()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00158">SD_RxDataBlock()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00229">SD_SendCmd()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00042">SELECT()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00070">SPI_RxByte()</a>, and <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00033">Stat</a>.</p>
 <div id="dynsection-5" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the call graph for this function:</div>
 <div id="dynsection-5-summary" class="dynsummary" style="display:block;">
 </div>
@@ -379,9 +394,9 @@ Variables</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00355">355</a> of file <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html">fatfs_sd.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00386">386</a> of file <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html">fatfs_sd.c</a>.</p>
 
-<p class="reference">References <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00014">CardType</a>, <a class="el" href="../../d2/d04/fatfs__sd_8h_source.html#l00014">CMD12</a>, <a class="el" href="../../d2/d04/fatfs__sd_8h_source.html#l00016">CMD17</a>, <a class="el" href="../../d2/d04/fatfs__sd_8h_source.html#l00017">CMD18</a>, <a class="el" href="../../d2/d04/fatfs__sd_8h_source.html#l00028">CT_SD2</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00029">DESELECT()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00138">SD_RxDataBlock()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00209">SD_SendCmd()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00022">SELECT()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00050">SPI_RxByte()</a>, and <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00013">Stat</a>.</p>
+<p class="reference">References <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00034">CardType</a>, <a class="el" href="../../d2/d04/fatfs__sd_8h_source.html#l00014">CMD12</a>, <a class="el" href="../../d2/d04/fatfs__sd_8h_source.html#l00016">CMD17</a>, <a class="el" href="../../d2/d04/fatfs__sd_8h_source.html#l00017">CMD18</a>, <a class="el" href="../../d2/d04/fatfs__sd_8h_source.html#l00028">CT_SD2</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00049">DESELECT()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00158">SD_RxDataBlock()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00229">SD_SendCmd()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00042">SELECT()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00070">SPI_RxByte()</a>, and <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00033">Stat</a>.</p>
 
 <p class="reference">Referenced by <a class="el" href="../../d0/d03/user__diskio_8c_source.html#l00085">USER_read()</a>.</p>
 <div id="dynsection-6" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the call graph for this function:</div>
@@ -414,9 +429,9 @@ Variables</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00348">348</a> of file <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html">fatfs_sd.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00379">379</a> of file <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html">fatfs_sd.c</a>.</p>
 
-<p class="reference">References <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00013">Stat</a>.</p>
+<p class="reference">References <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00033">Stat</a>.</p>
 
 <p class="reference">Referenced by <a class="el" href="../../d0/d03/user__diskio_8c_source.html#l00071">USER_status()</a>.</p>
 <div id="dynsection-8" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the caller graph for this function:</div>
@@ -451,11 +466,11 @@ Variables</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00126">126</a> of file <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html">fatfs_sd.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00146">146</a> of file <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html">fatfs_sd.c</a>.</p>
 
-<p class="reference">References <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00015">PowerFlag</a>.</p>
+<p class="reference">References <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00035">PowerFlag</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00248">SD_disk_initialize()</a>, and <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00452">SD_disk_ioctl()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00268">SD_disk_initialize()</a>, and <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00483">SD_disk_ioctl()</a>.</p>
 <div id="dynsection-9" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the caller graph for this function:</div>
 <div id="dynsection-9-summary" class="dynsummary" style="display:block;">
 </div>
@@ -488,11 +503,11 @@ Variables</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00088">88</a> of file <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html">fatfs_sd.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00108">108</a> of file <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html">fatfs_sd.c</a>.</p>
 
-<p class="reference">References <a class="el" href="../../d2/d04/fatfs__sd_8h_source.html#l00009">CMD0</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00029">DESELECT()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00015">PowerFlag</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00022">SELECT()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00050">SPI_RxByte()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00043">SPI_TxBuffer()</a>, and <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00036">SPI_TxByte()</a>.</p>
+<p class="reference">References <a class="el" href="../../d2/d04/fatfs__sd_8h_source.html#l00009">CMD0</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00049">DESELECT()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00035">PowerFlag</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00042">SELECT()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00070">SPI_RxByte()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00063">SPI_TxBuffer()</a>, and <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00056">SPI_TxByte()</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00248">SD_disk_initialize()</a>, and <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00452">SD_disk_ioctl()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00268">SD_disk_initialize()</a>, and <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00483">SD_disk_ioctl()</a>.</p>
 <div id="dynsection-10" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the call graph for this function:</div>
 <div id="dynsection-10-summary" class="dynsummary" style="display:block;">
 </div>
@@ -531,11 +546,11 @@ Variables</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00072">72</a> of file <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html">fatfs_sd.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00092">92</a> of file <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html">fatfs_sd.c</a>.</p>
 
-<p class="reference">References <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00050">SPI_RxByte()</a>, and <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00011">Timer2</a>.</p>
+<p class="reference">References <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00070">SPI_RxByte()</a>, and <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00031">Timer2</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00452">SD_disk_ioctl()</a>, and <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00209">SD_SendCmd()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00483">SD_disk_ioctl()</a>, and <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00229">SD_SendCmd()</a>.</p>
 <div id="dynsection-12" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the call graph for this function:</div>
 <div id="dynsection-12-summary" class="dynsummary" style="display:block;">
 </div>
@@ -578,11 +593,11 @@ Variables</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00138">138</a> of file <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html">fatfs_sd.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00158">158</a> of file <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html">fatfs_sd.c</a>.</p>
 
-<p class="reference">References <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00003">FALSE</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00050">SPI_RxByte()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00062">SPI_RxBytePtr()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00011">Timer1</a>, and <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00002">TRUE</a>.</p>
+<p class="reference">References <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00023">FALSE</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00070">SPI_RxByte()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00082">SPI_RxBytePtr()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00031">Timer1</a>, and <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00022">TRUE</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00452">SD_disk_ioctl()</a>, and <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00355">SD_disk_read()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00483">SD_disk_ioctl()</a>, and <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00386">SD_disk_read()</a>.</p>
 <div id="dynsection-14" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the call graph for this function:</div>
 <div id="dynsection-14-summary" class="dynsummary" style="display:block;">
 </div>
@@ -625,11 +640,11 @@ Variables</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00209">209</a> of file <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html">fatfs_sd.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00229">229</a> of file <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html">fatfs_sd.c</a>.</p>
 
-<p class="reference">References <a class="el" href="../../d2/d04/fatfs__sd_8h_source.html#l00009">CMD0</a>, <a class="el" href="../../d2/d04/fatfs__sd_8h_source.html#l00014">CMD12</a>, <a class="el" href="../../d2/d04/fatfs__sd_8h_source.html#l00011">CMD8</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00072">SD_ReadyWait()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00050">SPI_RxByte()</a>, and <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00036">SPI_TxByte()</a>.</p>
+<p class="reference">References <a class="el" href="../../d2/d04/fatfs__sd_8h_source.html#l00009">CMD0</a>, <a class="el" href="../../d2/d04/fatfs__sd_8h_source.html#l00014">CMD12</a>, <a class="el" href="../../d2/d04/fatfs__sd_8h_source.html#l00011">CMD8</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00092">SD_ReadyWait()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00070">SPI_RxByte()</a>, and <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00056">SPI_TxByte()</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00248">SD_disk_initialize()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00452">SD_disk_ioctl()</a>, and <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00355">SD_disk_read()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00268">SD_disk_initialize()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00483">SD_disk_ioctl()</a>, and <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00386">SD_disk_read()</a>.</p>
 <div id="dynsection-16" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the call graph for this function:</div>
 <div id="dynsection-16-summary" class="dynsummary" style="display:block;">
 </div>
@@ -668,11 +683,11 @@ Variables</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00022">22</a> of file <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html">fatfs_sd.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00042">42</a> of file <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html">fatfs_sd.c</a>.</p>
 
 <p class="reference">References <a class="el" href="../../d2/d04/fatfs__sd_8h_source.html#l00044">SD_CS_PIN</a>, and <a class="el" href="../../d2/d04/fatfs__sd_8h_source.html#l00043">SD_CS_PORT</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00248">SD_disk_initialize()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00452">SD_disk_ioctl()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00355">SD_disk_read()</a>, and <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00088">SD_PowerOn()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00268">SD_disk_initialize()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00483">SD_disk_ioctl()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00386">SD_disk_read()</a>, and <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00108">SD_PowerOn()</a>.</p>
 <div id="dynsection-18" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the caller graph for this function:</div>
 <div id="dynsection-18-summary" class="dynsummary" style="display:block;">
 </div>
@@ -705,11 +720,11 @@ Variables</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00050">50</a> of file <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html">fatfs_sd.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00070">70</a> of file <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html">fatfs_sd.c</a>.</p>
 
 <p class="reference">References <a class="el" href="../../d2/d04/fatfs__sd_8h_source.html#l00042">HSPI_SDCARD</a>, and <a class="el" href="../../d2/d04/fatfs__sd_8h_source.html#l00039">SPI_TIMEOUT</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00248">SD_disk_initialize()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00452">SD_disk_ioctl()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00355">SD_disk_read()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00088">SD_PowerOn()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00072">SD_ReadyWait()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00138">SD_RxDataBlock()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00209">SD_SendCmd()</a>, and <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00062">SPI_RxBytePtr()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00268">SD_disk_initialize()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00483">SD_disk_ioctl()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00386">SD_disk_read()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00108">SD_PowerOn()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00092">SD_ReadyWait()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00158">SD_RxDataBlock()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00229">SD_SendCmd()</a>, and <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00082">SPI_RxBytePtr()</a>.</p>
 <div id="dynsection-19" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the caller graph for this function:</div>
 <div id="dynsection-19-summary" class="dynsummary" style="display:block;">
 </div>
@@ -742,11 +757,11 @@ Variables</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00062">62</a> of file <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html">fatfs_sd.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00082">82</a> of file <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html">fatfs_sd.c</a>.</p>
 
-<p class="reference">References <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00050">SPI_RxByte()</a>.</p>
+<p class="reference">References <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00070">SPI_RxByte()</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00138">SD_RxDataBlock()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00158">SD_RxDataBlock()</a>.</p>
 <div id="dynsection-20" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the call graph for this function:</div>
 <div id="dynsection-20-summary" class="dynsummary" style="display:block;">
 </div>
@@ -789,11 +804,11 @@ Variables</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00043">43</a> of file <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html">fatfs_sd.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00063">63</a> of file <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html">fatfs_sd.c</a>.</p>
 
 <p class="reference">References <a class="el" href="../../d2/d04/fatfs__sd_8h_source.html#l00042">HSPI_SDCARD</a>, and <a class="el" href="../../d2/d04/fatfs__sd_8h_source.html#l00039">SPI_TIMEOUT</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00088">SD_PowerOn()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00108">SD_PowerOn()</a>.</p>
 <div id="dynsection-22" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the caller graph for this function:</div>
 <div id="dynsection-22-summary" class="dynsummary" style="display:block;">
 </div>
@@ -826,11 +841,11 @@ Variables</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00036">36</a> of file <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html">fatfs_sd.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00056">56</a> of file <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html">fatfs_sd.c</a>.</p>
 
 <p class="reference">References <a class="el" href="../../d2/d04/fatfs__sd_8h_source.html#l00042">HSPI_SDCARD</a>, and <a class="el" href="../../d2/d04/fatfs__sd_8h_source.html#l00039">SPI_TIMEOUT</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00088">SD_PowerOn()</a>, and <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00209">SD_SendCmd()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00108">SD_PowerOn()</a>, and <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00229">SD_SendCmd()</a>.</p>
 <div id="dynsection-23" onclick="return dynsection.toggleVisibility(this)" class="dynheader closed" style="cursor:pointer;"><span class="dynarrow"><span class="arrowhead closed"></span></span>Here is the caller graph for this function:</div>
 <div id="dynsection-23-summary" class="dynsummary" style="display:block;">
 </div>
@@ -861,9 +876,9 @@ Variables</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00014">14</a> of file <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html">fatfs_sd.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00034">34</a> of file <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html">fatfs_sd.c</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00248">SD_disk_initialize()</a>, and <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00355">SD_disk_read()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00268">SD_disk_initialize()</a>, and <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00386">SD_disk_read()</a>.</p>
 
 </div>
 </div>
@@ -887,9 +902,9 @@ Variables</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00015">15</a> of file <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html">fatfs_sd.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00035">35</a> of file <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html">fatfs_sd.c</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00132">SD_CheckPower()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00126">SD_PowerOff()</a>, and <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00088">SD_PowerOn()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00152">SD_CheckPower()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00146">SD_PowerOff()</a>, and <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00108">SD_PowerOn()</a>.</p>
 
 </div>
 </div>
@@ -913,9 +928,9 @@ Variables</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00013">13</a> of file <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html">fatfs_sd.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00033">33</a> of file <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html">fatfs_sd.c</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00248">SD_disk_initialize()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00452">SD_disk_ioctl()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00355">SD_disk_read()</a>, and <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00348">SD_disk_status()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00268">SD_disk_initialize()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00483">SD_disk_ioctl()</a>, <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00386">SD_disk_read()</a>, and <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00379">SD_disk_status()</a>.</p>
 
 </div>
 </div>
@@ -931,9 +946,9 @@ Variables</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00011">11</a> of file <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html">fatfs_sd.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00031">31</a> of file <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html">fatfs_sd.c</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00248">SD_disk_initialize()</a>, and <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00138">SD_RxDataBlock()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00268">SD_disk_initialize()</a>, and <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00158">SD_RxDataBlock()</a>.</p>
 
 </div>
 </div>
@@ -949,9 +964,9 @@ Variables</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00011">11</a> of file <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html">fatfs_sd.c</a>.</p>
+<p class="definition">Definition at line <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00031">31</a> of file <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html">fatfs_sd.c</a>.</p>
 
-<p class="reference">Referenced by <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00072">SD_ReadyWait()</a>.</p>
+<p class="reference">Referenced by <a class="el" href="../../d3/d00/fatfs__sd_8c_source.html#l00092">SD_ReadyWait()</a>.</p>
 
 </div>
 </div>

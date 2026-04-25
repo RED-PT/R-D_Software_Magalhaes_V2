@@ -25,5 +25,5 @@ var lora__sx126x_8c =
     [ "SX126x_WriteCommand", "de/d0a/lora__sx126x_8c.html#a87010ae2647bc5313695171e422e5814", null ],
     [ "SX126x_WriteRegister", "de/d0a/lora__sx126x_8c.html#a7b6d951c964e89f56e77c9eab4d73f26", null ],
     [ "wait_not_busy", "de/d0a/lora__sx126x_8c.html#ad7fae6d7baadf73a19673dac57f5d0e7", null ],
-    [ "sx126x_state", "de/d0a/lora__sx126x_8c.html#a3457bc98a50c76e432291737a2eb12bd", null ]
+    [ "sx126x_state", "de/d0a/lora__sx126x_8c.html#a0d1dff2359f66db7611ea0b47e4cdb16", null ]
 ];

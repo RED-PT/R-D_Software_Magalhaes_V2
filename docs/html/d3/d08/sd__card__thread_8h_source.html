@@ -114,26 +114,26 @@ $(function() {
 <div class="line"><a id="l00034" name="l00034"></a><span class="lineno">   34</span><span class="preprocessor">#include &quot;FreeRTOS.h&quot;</span></div>
 <div class="line"><a id="l00035" name="l00035"></a><span class="lineno">   35</span><span class="preprocessor">#include &quot;task.h&quot;</span></div>
 <div class="line"><a id="l00036" name="l00036"></a><span class="lineno">   36</span><span class="preprocessor">#include &quot;queue.h&quot;</span></div>
-<div class="line"><a id="l00037" name="l00037"></a><span class="lineno">   37</span><span class="preprocessor">#include &quot;config.h&quot;</span></div>
+<div class="line"><a id="l00037" name="l00037"></a><span class="lineno">   37</span><span class="preprocessor">#include &quot;<a class="code" href="../../df/d0c/_s_t_m32_f446_z_e___magalhaes_2_core_2_inc_2config_8h.html">config.h</a>&quot;</span></div>
 <div class="line"><a id="l00038" name="l00038"></a><span class="lineno">   38</span><span class="preprocessor">#include &quot;<a class="code" href="../../d5/d04/defs_8h.html">defs.h</a>&quot;</span></div>
-<div class="line"><a id="l00039" name="l00039"></a><span class="lineno">   39</span><span class="preprocessor">#include &quot;stm32f4xx_hal.h&quot;</span></div>
-<div class="line"><a id="l00040" name="l00040"></a><span class="lineno">   40</span><span class="preprocessor">#include &quot;print.h&quot;</span></div>
-<div class="line"><a id="l00041" name="l00041"></a><span class="lineno">   41</span></div>
-<div class="line"><a id="l00047" name="l00047"></a><span class="lineno">   47</span></div>
-<div class="line"><a id="l00059" name="l00059"></a><span class="lineno">   59</span><span class="keywordtype">void</span> <a class="code hl_function" href="../../d8/d0a/group___s_d_card_a_p_i.html#ga90e3c87629cdf2f7b0497eb3f6298211">sd_card_thread_function</a>(<span class="keywordtype">void</span> *argument);</div>
-<div class="line"><a id="l00060" name="l00060"></a><span class="lineno">   60</span></div>
-<div class="line"><a id="l00069" name="l00069"></a><span class="lineno">   69</span><span class="keywordtype">void</span> <a class="code hl_function" href="../../d8/d0a/group___s_d_card_a_p_i.html#gac2f186f0eeb1576380cc9be47b287ab8">sd_card_close</a>(<span class="keywordtype">void</span>);</div>
-<div class="line"><a id="l00070" name="l00070"></a><span class="lineno">   70</span></div>
-<div class="line"><a id="l00072" name="l00072"></a><span class="lineno">   72</span></div>
-<div class="line"><a id="l00082" name="l00082"></a><span class="lineno">   82</span></div>
-<div class="line"><a id="l00092" name="l00092"></a><span class="lineno">   92</span><span class="keywordtype">void</span> <a class="code hl_function" href="../../d0/d00/group___s_d_card_pause.html#gaf426aba7564a5c6bc5fdf46692ce3e2f">sd_card_pause</a>(<span class="keywordtype">void</span>);</div>
-<div class="line"><a id="l00093" name="l00093"></a><span class="lineno">   93</span></div>
-<div class="line"><a id="l00102" name="l00102"></a><span class="lineno">  102</span><span class="keywordtype">void</span> <a class="code hl_function" href="../../d0/d00/group___s_d_card_pause.html#ga8b56a6214a198ecdae52d537fe19f84a">sd_card_resume</a>(<span class="keywordtype">void</span>);</div>
-<div class="line"><a id="l00103" name="l00103"></a><span class="lineno">  103</span></div>
-<div class="line"><a id="l00110" name="l00110"></a><span class="lineno">  110</span><span class="keywordtype">bool</span> <a class="code hl_function" href="../../d0/d00/group___s_d_card_pause.html#gaf8bbd36c5d24031c56787d763aa63258">sd_card_is_paused</a>(<span class="keywordtype">void</span>);</div>
-<div class="line"><a id="l00111" name="l00111"></a><span class="lineno">  111</span></div>
-<div class="line"><a id="l00113" name="l00113"></a><span class="lineno">  113</span> </div>
-<div class="line"><a id="l00114" name="l00114"></a><span class="lineno">  114</span><span class="preprocessor">#endif </span><span class="comment">/* STORAGE_SD_CARD_THREAD_H_ */</span><span class="preprocessor"></span></div>
+<div class="line"><a id="l00039" name="l00039"></a><span class="lineno">   39</span><span class="preprocessor">#include &quot;print.h&quot;</span></div>
+<div class="line"><a id="l00040" name="l00040"></a><span class="lineno">   40</span></div>
+<div class="line"><a id="l00046" name="l00046"></a><span class="lineno">   46</span></div>
+<div class="line"><a id="l00058" name="l00058"></a><span class="lineno">   58</span><span class="keywordtype">void</span> <a class="code hl_function" href="../../d8/d0a/group___s_d_card_a_p_i.html#ga90e3c87629cdf2f7b0497eb3f6298211">sd_card_thread_function</a>(<span class="keywordtype">void</span> *argument);</div>
+<div class="line"><a id="l00059" name="l00059"></a><span class="lineno">   59</span></div>
+<div class="line"><a id="l00068" name="l00068"></a><span class="lineno">   68</span><span class="keywordtype">void</span> <a class="code hl_function" href="../../d8/d0a/group___s_d_card_a_p_i.html#gac2f186f0eeb1576380cc9be47b287ab8">sd_card_close</a>(<span class="keywordtype">void</span>);</div>
+<div class="line"><a id="l00069" name="l00069"></a><span class="lineno">   69</span></div>
+<div class="line"><a id="l00071" name="l00071"></a><span class="lineno">   71</span></div>
+<div class="line"><a id="l00081" name="l00081"></a><span class="lineno">   81</span></div>
+<div class="line"><a id="l00091" name="l00091"></a><span class="lineno">   91</span><span class="keywordtype">void</span> <a class="code hl_function" href="../../d0/d00/group___s_d_card_pause.html#gaf426aba7564a5c6bc5fdf46692ce3e2f">sd_card_pause</a>(<span class="keywordtype">void</span>);</div>
+<div class="line"><a id="l00092" name="l00092"></a><span class="lineno">   92</span></div>
+<div class="line"><a id="l00101" name="l00101"></a><span class="lineno">  101</span><span class="keywordtype">void</span> <a class="code hl_function" href="../../d0/d00/group___s_d_card_pause.html#ga8b56a6214a198ecdae52d537fe19f84a">sd_card_resume</a>(<span class="keywordtype">void</span>);</div>
+<div class="line"><a id="l00102" name="l00102"></a><span class="lineno">  102</span></div>
+<div class="line"><a id="l00109" name="l00109"></a><span class="lineno">  109</span><span class="keywordtype">bool</span> <a class="code hl_function" href="../../d0/d00/group___s_d_card_pause.html#gaf8bbd36c5d24031c56787d763aa63258">sd_card_is_paused</a>(<span class="keywordtype">void</span>);</div>
+<div class="line"><a id="l00110" name="l00110"></a><span class="lineno">  110</span></div>
+<div class="line"><a id="l00112" name="l00112"></a><span class="lineno">  112</span> </div>
+<div class="line"><a id="l00113" name="l00113"></a><span class="lineno">  113</span><span class="preprocessor">#endif </span><span class="comment">/* STORAGE_SD_CARD_THREAD_H_ */</span><span class="preprocessor"></span></div>
+<div class="ttc" id="a_s_t_m32_f446_z_e___magalhaes_2_core_2_inc_2config_8h_html"><div class="ttname"><a href="../../df/d0c/_s_t_m32_f446_z_e___magalhaes_2_core_2_inc_2config_8h.html">config.h</a></div></div>
 <div class="ttc" id="adefs_8h_html"><div class="ttname"><a href="../../d5/d04/defs_8h.html">defs.h</a></div><div class="ttdoc">Core data structure definitions for the Magalhaes Flight Computer.</div></div>
 <div class="ttc" id="agroup___s_d_card_a_p_i_html_ga90e3c87629cdf2f7b0497eb3f6298211"><div class="ttname"><a href="../../d8/d0a/group___s_d_card_a_p_i.html#ga90e3c87629cdf2f7b0497eb3f6298211">sd_card_thread_function</a></div><div class="ttdeci">void sd_card_thread_function(void *argument)</div><div class="ttdoc">SD card thread main function.</div><div class="ttdef"><b>Definition</b> <a href="../../d2/d0b/sd__card__thread_8c_source.html#l00263">sd_card_thread.c:263</a></div></div>
 <div class="ttc" id="agroup___s_d_card_a_p_i_html_gac2f186f0eeb1576380cc9be47b287ab8"><div class="ttname"><a href="../../d8/d0a/group___s_d_card_a_p_i.html#gac2f186f0eeb1576380cc9be47b287ab8">sd_card_close</a></div><div class="ttdeci">void sd_card_close(void)</div><div class="ttdoc">Close SD card files.</div><div class="ttdef"><b>Definition</b> <a href="../../d2/d0b/sd__card__thread_8c_source.html#l00337">sd_card_thread.c:337</a></div></div>

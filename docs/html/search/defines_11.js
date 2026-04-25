@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['xportpendsvhandler_0',['xPortPendSVHandler',['../de/d03/_free_r_t_o_s_config_8h.html#a6f30022da7d797dd31f1b8a11cae9a35',1,'FreeRTOSConfig.h']]]
+  ['vportsvchandler_0',['vPortSVCHandler',['../de/d03/_free_r_t_o_s_config_8h.html#ad43047b3ea0a146673e30637488bf754',1,'FreeRTOSConfig.h']]]
 ];
