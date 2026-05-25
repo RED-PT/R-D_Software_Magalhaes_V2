@@ -1,8 +1,19 @@
-/*
- * MMC5983MA.c
+/**
+ * @file MMC5983MA.c
+ * @brief MMC5983MA 3-Axis Magnetometer Driver Implementation
+ * @author Tomas Teixeira
+ * @date October 2025
+ * @version 2.0
  *
- *  Created on: Oct 16, 2025
- *      Author: texman
+ * @details
+ * Implements the driver for the MEMSIC MMC5983MA 3-axis magnetometer.
+ * Uses DMA transfers for non-blocking sensor reads.
+ * Board-agnostic: SPI instance and chip-select pins are resolved via config.h
+ * macros (SPI_MAG, CS_MAG_PORT/PIN). On F446ZE this maps to SPI3, on H743ZI
+ * (Buzz V4) it maps to SPI6.
+ *
+ * @see MMC5983MA.h for interface documentation
+ * @ingroup Sensors
  */
 
 #include "MMC5983MA.h"
@@ -25,7 +36,7 @@ bool MMC5983MA_Init(MMC5983MA_t *dev, SPI_HandleTypeDef *hspi) {
     dev->data_ready = 0;
     memset(dev->read_buffer, 0, sizeof(dev->read_buffer));
 
-    HAL_Delay(10);
+    osDelay(10);
 
     // Read and verify Product ID
     product_id = 0x00;
@@ -44,7 +55,7 @@ bool MMC5983MA_Init(MMC5983MA_t *dev, SPI_HandleTypeDef *hspi) {
         return false;
     }
 
-    HAL_Delay(2);
+    osDelay(2);
 
     return true;
 }
@@ -162,7 +173,7 @@ static bool MMC5983MA_ReadRegister(MMC5983MA_t *dev, uint8_t reg, uint8_t *data)
     tx_buf[1] = 0x00;
 
     HAL_GPIO_WritePin(CS_MAG_PORT, CS_MAG_PIN, GPIO_PIN_RESET);
-    if (HAL_SPI_TransmitReceive(dev->hspi, tx_buf, rx_buf, 2, HAL_MAX_DELAY) != HAL_OK) {
+    if (HAL_SPI_TransmitReceive(dev->hspi, tx_buf, rx_buf, 2, 100) != HAL_OK) {
         HAL_GPIO_WritePin(CS_MAG_PORT, CS_MAG_PIN, GPIO_PIN_SET);
         return false;
     }
@@ -184,7 +195,7 @@ static bool MMC5983MA_WriteRegister(MMC5983MA_t *dev, uint8_t reg, uint8_t data)
     tx_buf[1] = data;
 
     HAL_GPIO_WritePin(CS_MAG_PORT, CS_MAG_PIN, GPIO_PIN_RESET);
-    if (HAL_SPI_TransmitReceive(dev->hspi, tx_buf, rx_buf, 2, HAL_MAX_DELAY) != HAL_OK) {
+    if (HAL_SPI_TransmitReceive(dev->hspi, tx_buf, rx_buf, 2, 100) != HAL_OK) {
         HAL_GPIO_WritePin(CS_MAG_PORT, CS_MAG_PIN, GPIO_PIN_SET);
         return false;
     }

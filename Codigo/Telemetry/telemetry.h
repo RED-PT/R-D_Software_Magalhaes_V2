@@ -47,6 +47,7 @@
 #define TELEM_PACKET_EVENT      0x03    /**< Event notification packet */
 #define TELEM_PACKET_COMMAND    0x04    /**< Command packet from GS to FC */
 #define TELEM_PACKET_SYNC       0x05    /**< Synchronization beacon from GS */
+#define TELEM_PACKET_TEST_CTRL  0x06    /**< Manual test control packet from GS to FC (Phase 2 contract) */
 /** @} */
 
 /**
@@ -61,12 +62,50 @@
  * ```
  * @{
  */
-#define TDMA_SUPERFRAME_MS      1000    /**< Total superframe duration (milliseconds) */
-#define TDMA_SLOT_MS            100     /**< Duration of each slot (milliseconds) */
-#define TDMA_SLOTS_PER_FRAME    10      /**< Number of slots per superframe */
-#define TDMA_TX_SLOTS           8       /**< Number of TX slots for fast telemetry (0-7) */
-#define TDMA_SLOW_SLOT          8       /**< Slot number for slow telemetry */
-#define TDMA_RX_SLOT            9       /**< Slot number for receiving GS commands */
+#define TDMA_SUPERFRAME_MS      1000    /**< Flight superframe duration (milliseconds) */
+#define TDMA_SLOT_MS            100     /**< Flight slot duration (milliseconds) */
+#define TDMA_SLOTS_PER_FRAME    10      /**< Flight slots per superframe */
+#define TDMA_TX_SLOTS           8       /**< Flight: number of FC-TX slots for fast (0-7) */
+#define TDMA_SLOW_SLOT          8       /**< Flight: slot for FC slow telemetry */
+#define TDMA_RX_SLOT            9       /**< Flight: slot for FC RX (GS commands) */
+
+/* ----------------------------------------------------------------------- */
+/*  Phase 3-A (A4): test-interactive TDMA preset                           */
+/* ----------------------------------------------------------------------- */
+/**
+ * @brief Currently active TDMA preset, announced in slow.tdma_mode.
+ *
+ * - FLIGHT          : legacy 1000 ms / 10×100 ms layout (above)
+ * - TEST_INTERACTIVE: 200 ms / 5×40 ms, layout F·R·F·R·S → 10 Hz both ways
+ *                     plus 5 Hz slow. Used during STATE_TEST_<KIND>.
+ *
+ * Mode switches happen at superframe boundaries to avoid mid-frame skew.
+ */
+typedef enum {
+    TDMA_MODE_FLIGHT           = 0,
+    TDMA_MODE_TEST_INTERACTIVE = 1,
+} tdma_mode_t;
+
+/* TEST_INTERACTIVE preset: 5 slots × 40 ms = 200 ms.
+ *   slot 0: FAST (FC tx)
+ *   slot 1: RX   (FC listens for test_control_packet_t)
+ *   slot 2: FAST (FC tx)
+ *   slot 3: RX   (FC listens)
+ *   slot 4: SLOW (FC tx, also re-announces tdma_mode)
+ */
+/* Phase 3-A bugfix: slot widened from 40 ms → 100 ms (superframe 200 → 500 ms).
+ * The 40 ms slot was shorter than the LoRa air-time of even our smallest
+ * packet (sync ≈ 40–100 ms at SF7/BW125; worse on E22 default config), so
+ * every FC TX overran into the next slot and clobbered the GS TX. Net effect
+ * was a permanent "Lost sync (no rx for 5000 ms)" cycle the moment SET_PROFILE
+ * switched TDMA. 100 ms matches the flight preset which is known-good; command
+ * rate drops from 10 Hz → 5 Hz, still fine for manual control. */
+#define TDMA_TI_SUPERFRAME_MS   500
+#define TDMA_TI_SLOT_MS         100
+#define TDMA_TI_SLOTS_PER_FRAME 5
+#define TDMA_TI_SLOW_SLOT       4
+#define TDMA_TI_RX_SLOT_A       1
+#define TDMA_TI_RX_SLOT_B       3
 /** @} */
 
 /**
@@ -162,8 +201,13 @@ typedef struct __attribute__((packed)) {
     uint8_t sd_status;          /**< SD card status: 0=OK, non-zero=error code */
     uint16_t free_heap;         /**< Free RTOS heap memory (bytes) */
 
+    /* Phase 3-A (A4): TDMA mode announce (one of tdma_mode_t).
+     * GS reads this to know which superframe layout to follow. */
+    uint8_t tdma_mode;          /**< Current FC TDMA preset (tdma_mode_t) */
+    uint8_t reserved;           /**< Pad to even length; future use */
+
     uint16_t crc16;             /**< CRC-16 checksum for packet integrity */
-} telemetry_slow_t;  /* 30 bytes */
+} telemetry_slow_t;  /* 32 bytes */
 
 /**
  * @brief Event telemetry packet structure
@@ -206,9 +250,12 @@ typedef struct __attribute__((packed)) {
     uint8_t cmd_id;             /**< Command identifier (see fsm_cmd_id_t) */
     uint8_t cmd_seq;            /**< Command sequence number for ACK matching */
     uint32_t time;              /**< GS timestamp when command was sent */
-    uint8_t params[8];          /**< Command-specific parameters */
+    /* Phase 3-A (A7): bumped 8 → 32 bytes to fit gutter (26 B) and torque_cal
+     * (17 B) profiles in CMD_SET_TEST_PROFILE. Older single-param commands
+     * (CMD_STATIC_TEST, CMD_PROFILE_*) still only use the first few bytes. */
+    uint8_t params[32];         /**< Command-specific parameters */
     uint16_t crc16;             /**< CRC-16 checksum for packet integrity */
-} command_packet_t;  /* 16 bytes */
+} command_packet_t;  /* 40 bytes */
 
 /**
  * @brief Sync beacon packet structure (GS to FC, slot 9)
@@ -226,6 +273,52 @@ typedef struct __attribute__((packed)) {
     uint32_t gs_time;           /**< GS timestamp for synchronization */
     uint16_t crc16;             /**< CRC-16 checksum for packet integrity */
 } sync_packet_t;  /* 10 bytes */
+
+/**
+ * @brief Manual test control packet (GS → FC)
+ *
+ * Sent by the Ground Station every TDMA RX slot during a TEST in Manual
+ * mode (slider-driven control). The FC's heartbeat watchdog tracks
+ * arrival of these packets — if none are received within
+ * `TEST_HEARTBEAT_TIMEOUT_MS`, the test is auto-aborted (motor → 0).
+ *
+ * The `field_mask` lets the GS send only what changed; unset fields are
+ * ignored on the FC side. Encoded values use scaled integers to keep the
+ * packet small (no floats on the wire).
+ *
+ * @note Total size: 17 bytes
+ * @see test_runner.h for the on_run_tick callback that consumes these
+ */
+typedef struct test_control_packet_s {
+    uint8_t  packet_type;       /**< TELEM_PACKET_TEST_CTRL */
+    uint8_t  frame_id;          /**< GS superframe counter */
+    uint8_t  seq;               /**< Per-test sequence counter */
+    uint8_t  field_mask;        /**< bit0=throttle bit1=alpha bit2=h_ref bit3=h_ref_dot */
+    uint16_t throttle_milli;    /**< 0..1000 (0=off, 1000=full) */
+    int16_t  alpha_centideg;    /**< -18000..+18000 (servo angle, centidegrees) */
+    int16_t  h_ref_dm;          /**< 0..32767 (target altitude, decimetres) */
+    int16_t  h_ref_dot_cms;     /**< Optional rate (cm/s) for slew limiting */
+    uint8_t  flags;             /**< bit0=run, bit1=hold, bit2=abort */
+    uint16_t crc16;             /**< CRC-16 checksum */
+} __attribute__((packed)) test_control_packet_t;  /* 17 bytes */
+
+/** @brief Field mask bits for test_control_packet_t.field_mask */
+#define TEST_CTRL_FIELD_THROTTLE    (1u << 0)
+#define TEST_CTRL_FIELD_ALPHA       (1u << 1)
+#define TEST_CTRL_FIELD_H_REF       (1u << 2)
+#define TEST_CTRL_FIELD_H_REF_DOT   (1u << 3)
+
+/** @brief Flag bits for test_control_packet_t.flags */
+#define TEST_CTRL_FLAG_RUN          (1u << 0)
+#define TEST_CTRL_FLAG_HOLD         (1u << 1)
+#define TEST_CTRL_FLAG_ABORT        (1u << 2)
+
+/** @brief How long the FC waits for a fresh test_control_packet_t in
+ *  Manual mode before declaring the GS link dead and aborting.
+ *  Phase 3-A bugfix: bumped 1 s → 2 s. The 1 s budget was too tight when the
+ *  TDMA mode switch (flight → test) takes ~1 superframe to propagate; the
+ *  first ctrl from the GS could land just past 1000 ms after RUNNING entry. */
+#define TEST_HEARTBEAT_TIMEOUT_MS   2000
 
 /** @} */ /* End of TelemetryPackets group */
 
@@ -341,9 +434,12 @@ uint16_t telemetry_build_fast(telemetry_fast_t *pkt, uint8_t frame_id, uint8_t s
  *
  * @note GPS coordinates scaled: degrees × 1e7 for integer representation
  */
+/* Phase 3-A (A4): now also takes the active TDMA mode and the slot id to
+ * embed (so the test-interactive preset can use slot 4 instead of 8). */
 uint16_t telemetry_build_slow(telemetry_slow_t *pkt, uint8_t frame_id, uint8_t seq,
                                const GPS_t *gps, const BARO_t *baro,
-                               uint8_t battery_pct, uint8_t sd_status);
+                               uint8_t battery_pct, uint8_t sd_status,
+                               uint8_t tdma_mode, uint8_t slow_slot);
 
 /**
  * @brief Build an event telemetry packet

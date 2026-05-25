@@ -1,0 +1,175 @@
+---
+title: Tests & bench
+---
+
+import { Callout } from 'nextra/components';
+
+# Tests & bench
+
+Bench-only modes that don't fly. Run from the dashboard while the FC
+is in `ARMED`.
+
+## Static thrust test
+
+<figure style={{ textAlign: 'center', margin: '1.5rem 0' }}>
+  <img
+    src="/images/static-test-rig.svg"
+    alt="Static test rig illustration — motor mounted to a fixed frame pushing against a load cell, FX29 read by the FC, dashboard graph showing thrust vs time"
+    loading="lazy"
+    style={{ maxWidth: '100%', height: 'auto', borderRadius: '0.5rem' }}
+  />
+</figure>
+
+Characterises a motor: step-jumps the throttle to a target, holds for
+a configurable duration, samples the FX29 load cell at 20 Hz, and
+streams progress to the dashboard. The result is a thrust-vs-time CSV.
+
+### Configuration
+
+```c title="Codigo/Tests/static_thrust_test.h"
+#define STATIC_TEST_SAMPLE_RATE_HZ      20      /* samples per second */
+#define STATIC_TEST_HOLD_DURATION_MS    10000   /* 10 seconds at max */
+#define STATIC_TEST_RAMP_DURATION_MS    500     /* unused — step response */
+#define STATIC_TEST_SETTLE_DELAY_MS     500     /* settle before stepping */
+
+/* Auto-sized — change HOLD_DURATION_MS and the buffer follows. */
+#define STATIC_TEST_MAX_SAMPLES \
+    ((STATIC_TEST_HOLD_DURATION_MS / (1000 / STATIC_TEST_SAMPLE_RATE_HZ)) + 20)
+```
+
+### Test states
+
+```c
+typedef enum {
+    STATIC_TEST_IDLE = 0,       /**< no test running */
+    STATIC_TEST_INIT,           /**< load cell init + tare */
+    STATIC_TEST_SETTLE,         /**< 500 ms quiet, then step to max */
+    STATIC_TEST_RAMP_UP,        /**< unused (kept for API compat) */
+    STATIC_TEST_HOLD,           /**< holding at max, sampling */
+    STATIC_TEST_RAMP_DOWN,      /**< unused */
+    STATIC_TEST_SAVING,         /**< write CSV */
+    STATIC_TEST_COMPLETE,
+    STATIC_TEST_FAILED
+} static_test_state_t;
+```
+
+<figure style={{ textAlign: 'center', margin: '1.5rem 0' }}>
+  <img
+    src="/images/static-test-timeline.svg"
+    alt="Static test timeline — settle, step to max, hold (10s), settle back. Throttle and thrust traces aligned"
+    loading="lazy"
+    style={{ maxWidth: '100%', height: 'auto', borderRadius: '0.5rem' }}
+  />
+</figure>
+
+### The state machine
+
+`StaticTest_Update()` is called periodically and dispatches on
+`test_ctx.state`. The tricky parts are visible directly:
+
+```c title="Codigo/Tests/static_thrust_test.c"
+case STATIC_TEST_INIT: {
+    // Bus probe before anything
+    if (HAL_I2C_IsDeviceReady(&hi2c2, (FX29_ADDR_0 << 1), 3, 100) != HAL_OK) {
+        test_ctx.error_msg = "Load cell not connected (I2C2 addr 0x28)";
+        test_ctx.state = STATIC_TEST_FAILED;
+        sd_card_resume();
+        break;
+    }
+
+    if (!FX29_Init(&test_ctx.loadcell, &hi2c2, FX29_ADDR_0, FX29_RANGE_500N)) {
+        test_ctx.error_msg = "Load cell init failed";
+        test_ctx.state = STATIC_TEST_FAILED;
+        sd_card_resume();
+        break;
+    }
+    FX29_SetScaleFactor(&test_ctx.loadcell, LOADCELL_SCALE_FACTOR);
+
+    if (!FX29_Tare(&test_ctx.loadcell)) {
+        test_ctx.error_msg = "Load cell tare failed";
+        test_ctx.state = STATIC_TEST_FAILED;
+        sd_card_resume();
+        break;
+    }
+
+    PWM_SetThrottle(0.0f);                 // motor still at 0
+    test_ctx.state = STATIC_TEST_SETTLE;
+    test_ctx.phase_start_tick = now;
+    break;
+}
+
+case STATIC_TEST_SETTLE: {
+    if (phase_elapsed >= STATIC_TEST_SETTLE_DELAY_MS) {
+        // STEP: instant jump to max — characterises step response
+        test_ctx.current_throttle = (float)test_ctx.config.max_throttle_percent;
+        PWM_SetThrottle(test_ctx.current_throttle);
+        test_ctx.state = STATIC_TEST_HOLD;
+        test_ctx.phase_start_tick = now;
+        test_ctx.last_sample_tick = now;
+    }
+    break;
+}
+
+case STATIC_TEST_HOLD: {
+    // Re-issue PWM every tick (defensive)
+    PWM_SetThrottle((float)test_ctx.config.max_throttle_percent);
+
+    // Sample at the configured rate
+    if ((now - test_ctx.last_sample_tick)
+        >= test_ctx.config.sample_interval_ms) {
+        take_sample();
+        test_ctx.last_sample_tick = now;
+    }
+
+    if (phase_elapsed >= test_ctx.config.hold_duration_ms) {
+        PWM_SetThrottle(0.0f);              // step back down
+        test_ctx.state = STATIC_TEST_SAVING;
+        test_ctx.phase_start_tick = now;
+    }
+    break;
+}
+```
+
+### Why pause SD logging during the test
+
+```c
+sd_card_pause();   // before motor PWM goes high
+// ... run the test ...
+sd_card_resume();  // after motor returns to 0
+```
+
+<Callout type="info" emoji="ℹ️">
+  Brushless ESCs generate enough EMI to corrupt SPI traffic on cheap
+  microSD cards. Pausing logging while the motor runs avoids
+  half-written sectors that hose the FatFS state.
+</Callout>
+
+### Calibration constant
+
+```c
+#define LOADCELL_SCALE_FACTOR  0.4481f
+```
+
+Derived from a linear regression over 11 calibration points (known
+weights). Re-run with new points if the load cell wiring or
+mechanical setup changes.
+
+### Output
+
+CSV columns:
+
+```
+timestamp_ms, thrust_n, pwm_percent, raw_counts
+```
+
+The dashboard plots thrust vs time and computes mean thrust excluding
+the first 5 seconds (settling transient — useful for steady-state
+characterisation).
+
+## Files
+
+```
+Codigo/Tests/static_thrust_test.c   ← state machine
+Codigo/Tests/static_thrust_test.h   ← config + types
+Codigo/Sensors/FX29/FX29.c          ← load cell driver
+```

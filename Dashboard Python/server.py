@@ -205,11 +205,139 @@ def parse_fast_packet(data):
     }
 
 
-def parse_slow_packet(data):
-    if len(data) < 30:
+# Phase 3-A (A5): CRC-16/MODBUS — matches Codigo/Radio/CRC16/crc16.c
+def crc16_modbus(data: bytes) -> int:
+    crc = 0xFFFF
+    for b in data:
+        crc ^= b
+        for _ in range(8):
+            if crc & 1:
+                crc = (crc >> 1) ^ 0xA001
+            else:
+                crc >>= 1
+    return crc & 0xFFFF
+
+
+# Phase 3-A (A5): pack a test_control_packet_t (15 bytes wire) for the GS link.
+# Wire format must match telemetry.h::test_control_packet_t exactly.
+TELEM_PACKET_TEST_CTRL = 0x06
+TEST_CTRL_FIELD_THROTTLE  = 1 << 0
+TEST_CTRL_FIELD_ALPHA     = 1 << 1
+TEST_CTRL_FIELD_H_REF     = 1 << 2
+TEST_CTRL_FIELD_H_REF_DOT = 1 << 3
+TEST_CTRL_FLAG_RUN   = 1 << 0
+TEST_CTRL_FLAG_HOLD  = 1 << 1
+TEST_CTRL_FLAG_ABORT = 1 << 2
+
+_test_ctrl_seq = 0
+
+
+# Phase 3-A (A7): pack the test profile into params[32] for CMD_SET_TEST_PROFILE.
+# Wire layouts must match parse_test_profile_wire() in flight_computer_thread.c.
+PROFILE_KIND_STATIC = 2
+PROFILE_KIND_TORQUE = 3
+PROFILE_KIND_TORQUE_CAL = 4
+PROFILE_KIND_GUTTER = 5
+CURVE_STEP = 0
+CURVE_RAMP = 1
+
+
+def _curve_byte(s):
+    if isinstance(s, (int, float)):
+        return int(s) & 0xFF
+    if isinstance(s, str) and s.upper() == 'RAMP':
+        return CURVE_RAMP
+    return CURVE_STEP
+
+
+def build_set_test_profile_params(profile):
+    """Return a 32-byte buffer for CMD_SET_TEST_PROFILE.params[].
+    The first byte is profile_kind_t; the rest is kind-specific. """
+    buf = bytearray(32)
+    kind = profile.get('kind', 'static')
+    mode = profile.get('mode', 'auto')
+    is_manual = 1 if mode == 'manual' else 0
+
+    if kind == 'static':
+        # JS gives throttle as percent (0..100); wire wants milli (0..1000).
+        if mode == 'auto':
+            throttle_milli = int(round(profile.get('max_throttle', 0) * 10))
+            hold_ms = int(profile.get('hold_ms', 0))
+            curve = _curve_byte(profile.get('curve', 'STEP'))
+        else:
+            throttle_milli = int(round(profile.get('max_throttle_clamp', 0) * 10))
+            hold_ms = 0
+            curve = CURVE_STEP
+        buf[0] = PROFILE_KIND_STATIC
+        buf[1] = is_manual
+        struct.pack_into('<H', buf, 2, max(0, min(1000, throttle_milli)))
+        struct.pack_into('<H', buf, 4, max(0, min(0xFFFF, hold_ms)))
+        buf[6] = curve
+
+    elif kind == 'gutter':
+        # Assumes JS-side inputs are already in wire units (dm, ms, raw float gains).
+        # If labels say "meters", multiply by 10 here.
+        hold_ms       = int(profile.get('hold_ms', 0))
+        h_ref_min_dm  = int(profile.get('h_ref_min', 0))
+        h_ref_max_dm  = int(profile.get('h_ref_max', 0))
+        h_ref_init_dm = int(profile.get('initial_h_ref', h_ref_min_dm))
+        curve = _curve_byte(profile.get('curve', 'STEP'))
+        kp = float(profile.get('kp', 0.5))
+        ki = float(profile.get('ki', 0.1))
+        kd = float(profile.get('kd', 0.2))
+        ilim = float(profile.get('integral_limit', 0.3))
+        buf[0] = PROFILE_KIND_GUTTER
+        buf[1] = is_manual
+        struct.pack_into('<H', buf, 2, max(0, min(0xFFFF, hold_ms)))
+        struct.pack_into('<H', buf, 4, max(0, min(0xFFFF, h_ref_min_dm)))
+        struct.pack_into('<H', buf, 6, max(0, min(0xFFFF, h_ref_max_dm)))
+        struct.pack_into('<h', buf, 8, max(-32768, min(32767, h_ref_init_dm)))
+        buf[10] = curve
+        struct.pack_into('<f', buf, 12, kp)
+        struct.pack_into('<f', buf, 16, ki)
+        struct.pack_into('<f', buf, 20, kd)
+        struct.pack_into('<f', buf, 24, ilim)
+
+    elif kind in ('torque', 'torque_cal'):
+        # B1 / B2: recruta defines wire layout. For now mark as kind only.
+        buf[0] = PROFILE_KIND_TORQUE if kind == 'torque' else PROFILE_KIND_TORQUE_CAL
+        buf[1] = is_manual
+
+    else:
         return None
-    fmt = '<BBBBIiiHBBhhBBHH'
-    u = struct.unpack(fmt, data[:30])
+
+    return bytes(buf)
+
+
+def build_test_control_packet(throttle_milli=0, alpha_centideg=0,
+                              h_ref_dm=0, h_ref_dot_cms=0,
+                              field_mask=0, flags=0):
+    """Pack the 15-byte test_control wire packet (frame_id=0, FC ignores it).
+    Caller is expected to clamp values; we only do the format-level packing. """
+    global _test_ctrl_seq
+    _test_ctrl_seq = (_test_ctrl_seq + 1) & 0xFF
+    body = struct.pack(
+        '<BBBBHhhhB',
+        TELEM_PACKET_TEST_CTRL,
+        0,                                 # frame_id (filled by Arduino if ever needed)
+        _test_ctrl_seq,
+        field_mask & 0xFF,
+        max(0, min(0xFFFF, int(throttle_milli))),
+        max(-32768, min(32767, int(alpha_centideg))),
+        max(-32768, min(32767, int(h_ref_dm))),
+        max(-32768, min(32767, int(h_ref_dot_cms))),
+        flags & 0xFF,
+    )
+    crc = crc16_modbus(body)
+    return body + struct.pack('<H', crc)
+
+
+def parse_slow_packet(data):
+    # Phase 3-A (A4): slow grew from 30 → 32 bytes (added tdma_mode + reserved)
+    if len(data) < 32:
+        return None
+    fmt = '<BBBBIiiHBBhhBBHBBH'
+    u = struct.unpack(fmt, data[:32])
     return {
         'type': 'slow',
         'frame_id': u[1], 'slot_id': u[2], 'seq': u[3], 'time_ms': u[4],
@@ -217,6 +345,7 @@ def parse_slow_packet(data):
         'gps_altitude': u[7] / 10.0, 'gps_lock': u[8], 'satellites': u[9],
         'pressure': (u[10] / 10.0) + 1000.0, 'temperature': u[11] / 10.0,
         'battery': u[12], 'sd_status': u[13], 'free_heap': u[14] * 10,
+        'tdma_mode': u[15],  # 0 = FLIGHT, 1 = TEST_INTERACTIVE
     }
 
 
@@ -279,24 +408,39 @@ class ConnectionManager:
     """
     Manages WebSocket connections to browser clients.
 
-    Supports multiple simultaneous connections and broadcasts telemetry
-    data to all connected clients efficiently.
+    Keeps a small "sticky" snapshot of the latest state per packet type
+    plus a ring buffer of recent events. New clients (e.g. after a browser
+    refresh) receive the snapshot before live broadcast resumes, so they
+    don't miss the boot report or current FSM state.
 
     @note Automatically removes disconnected clients on broadcast errors.
     """
 
+    #: Number of recent events kept for replay to new clients.
+    EVENT_HISTORY_LEN = 64
+
+    #: Packet types we keep "last seen" of for snapshot replay.
+    #: Thread stats arrive as 'event' packets and live in recent_events.
+    STICKY_TYPES = (
+        'fast', 'slow', 'gs_status', 'gs_stats', 'pong',
+    )
+
     def __init__(self):
-        """Initialize with empty connection set."""
+        """Initialize with empty connection set and empty snapshot."""
         self.active = set()  #: Set of active WebSocket connections
+        self.snapshot = {t: None for t in self.STICKY_TYPES}
+        self.recent_events = deque(maxlen=self.EVENT_HISTORY_LEN)
 
     async def connect(self, websocket: WebSocket):
         """
-        Accept and register a new WebSocket connection.
+        Accept and register a new WebSocket connection, and replay the
+        snapshot so the client immediately reflects current FC state.
 
         @param websocket: FastAPI WebSocket instance
         """
         await websocket.accept()
         self.active.add(websocket)
+        await self._send_snapshot(websocket)
 
     def disconnect(self, websocket: WebSocket):
         """
@@ -306,13 +450,34 @@ class ConnectionManager:
         """
         self.active.discard(websocket)
 
+    async def _send_snapshot(self, websocket: WebSocket):
+        """Send last-known state + recent events to a freshly connected client."""
+        try:
+            for val in self.snapshot.values():
+                if val is not None:
+                    await websocket.send_text(json.dumps({**val, 'replay': True}))
+            for evt in self.recent_events:
+                await websocket.send_text(json.dumps({**evt, 'replay': True}))
+            await websocket.send_text(json.dumps({'type': 'snapshot_complete'}))
+        except Exception:
+            self.disconnect(websocket)
+
+    def _update_snapshot(self, message: dict):
+        """Stash the message in the snapshot (sticky types) or event ring."""
+        t = message.get('type')
+        if t in self.snapshot:
+            self.snapshot[t] = message
+        elif t == 'event':
+            self.recent_events.append(message)
+
     async def broadcast(self, message: dict):
         """
-        Send a message to all connected WebSocket clients.
+        Send a message to all connected WebSocket clients and update snapshot.
 
         @param message: Dictionary to send (JSON serialized)
         @note Failed sends result in automatic client disconnect
         """
+        self._update_snapshot(message)
         if not self.active:
             return
         data = json.dumps(message)
@@ -636,8 +801,42 @@ async def websocket_endpoint(websocket: WebSocket):
                 msg = json.loads(data)
             except Exception:
                 continue
-            if msg.get('type') == 'cmd' and app.state.reader:
+
+            kind = msg.get('type')
+            if kind == 'cmd' and app.state.reader:
                 app.state.reader.send_command(msg.get('cmd'))
+
+            elif kind == 'test_cmd' and app.state.reader:
+                # Phase 3-A (A3/A7): translate test-page lifecycle commands to
+                # the matching Arduino magic chars / binary frames.
+                tc = msg.get('cmd', '').upper()
+                if tc == 'SET_PROFILE':
+                    params = build_set_test_profile_params(msg.get('profile') or {})
+                    if params is not None:
+                        app.state.reader.send_command(b'#' + params)
+                elif tc == 'ARM':    app.state.reader.send_command('A')
+                elif tc == 'RUN':    app.state.reader.send_command('T')   # CMD_START_TEST
+                elif tc == 'HOLD':   app.state.reader.send_command('H')
+                elif tc == 'RESUME': app.state.reader.send_command('U')
+                elif tc == 'STOP':   app.state.reader.send_command('K')   # CMD_STOP_TEST
+                elif tc == 'ABORT':  app.state.reader.send_command('X')
+                else:
+                    print(f"[TEST_CMD] unhandled cmd={tc}")
+
+            elif kind == 'test_control' and app.state.reader:
+                # Phase 3-A (A5): pack the slider state into a 15-byte
+                # test_control_packet_t and ship it to the Arduino with the
+                # '~' magic prefix. Arduino queues it for the next test-mode
+                # TX slot; the FC parses it on RX and feeds on_run_tick().
+                pkt = build_test_control_packet(
+                    throttle_milli=msg.get('throttle_milli', 0),
+                    alpha_centideg=msg.get('alpha_centideg', 0),
+                    h_ref_dm=msg.get('h_ref_dm', 0),
+                    h_ref_dot_cms=msg.get('h_ref_dot_cms', 0),
+                    field_mask=msg.get('field_mask', 0),
+                    flags=msg.get('flags', 0),
+                )
+                app.state.reader.send_command(b'~' + pkt)
     except WebSocketDisconnect:
         manager.disconnect(websocket)
 

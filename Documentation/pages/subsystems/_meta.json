@@ -1,0 +1,9 @@
+{
+  "index": "Overview",
+  "sensors": "Sensors",
+  "estimation": "Estimation",
+  "control": "Control & TVC",
+  "radio": "Radio & telemetry",
+  "storage": "Storage",
+  "tests": "Tests & bench"
+}

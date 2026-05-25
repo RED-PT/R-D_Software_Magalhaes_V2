@@ -1,0 +1,158 @@
+---
+title: Architecture
+---
+
+import { Cards } from 'nextra/components';
+
+# Architecture
+
+This page walks the system top-down. Read it once and the rest of the
+codebase becomes findable.
+
+## The big picture
+
+The flight computer is **eight FreeRTOS threads** sharing data through
+queues, not globals. Each thread has one job. If a thread blocks, only
+its own work pauses — the rest keep running.
+
+<figure style={{ textAlign: 'center', margin: '1.5rem 0' }}>
+  <img
+    src="/images/architecture-overview.svg"
+    alt="Full system architecture — eight threads as boxes with priority colour, arrows showing queue/notification flow, ISR in/out, ground station link"
+    loading="lazy"
+    style={{ maxWidth: '100%', height: 'auto', borderRadius: '0.5rem' }}
+  />
+  <figcaption style={{ fontSize: '0.85rem', opacity: 0.7, marginTop: '0.5rem' }}>
+    Full data flow. Sensor DMA fires the chain at the top; control surfaces
+    and SD logging are at the bottom; the radio/FSM/telemetry triangle runs
+    in parallel.
+  </figcaption>
+</figure>
+
+## Why this shape?
+
+A few decisions worth understanding before you change anything.
+
+### Why DMA-driven, not polled?
+
+<figure style={{ textAlign: 'center', margin: '1.5rem 0' }}>
+  <img
+    src="/images/dma-vs-polling.svg"
+    alt="Polled vs DMA comparison — left: thread polls, blocks, wakes, polls. Right: DMA fills buffer, fires IRQ, thread wakes once per batch"
+    loading="lazy"
+    style={{ maxWidth: '100%', height: 'auto', borderRadius: '0.5rem' }}
+  />
+</figure>
+
+The IMU runs at 6.6 kHz. Polling it from a thread means a context
+switch per sample — pure overhead. DMA-into-buffer plus one
+notification per batch is roughly an order of magnitude cheaper.
+
+The DMA-complete IRQs land in `Codigo/hal_callbacks.c`; the sensors
+thread blocks on a notification bit and only wakes when the data is
+already in RAM.
+
+### Why a separate DataHandler?
+
+<figure style={{ textAlign: 'center', margin: '1.5rem 0' }}>
+  <img
+    src="/images/datahandler-fanout.svg"
+    alt="Fan-out illustration — one IMU sample arrow into DataHandler, two arrows out to SD queue and Estimator queue. SD queue shown longer/slower"
+    loading="lazy"
+    style={{ maxWidth: '100%', height: 'auto', borderRadius: '0.5rem' }}
+  />
+</figure>
+
+Two reasons:
+
+1. **One sample, many consumers.** SD card and estimator both want
+   every IMU sample, but they consume at different speeds. The
+   DataHandler pushes into both queues; the slowest consumer doesn't
+   slow the rest.
+2. **The sensors thread should never block on a queue.** If the SD
+   card is busy, the estimator must still get the data. Centralising
+   the routing keeps the sensors thread predictable.
+
+### Why TDMA on the radio?
+
+<figure style={{ textAlign: 'center', margin: '1.5rem 0' }}>
+  <img
+    src="/images/tdma-superframe.svg"
+    alt="TDMA superframe — horizontal bar split into ten 100ms cells. Eight blue (fast telemetry), one orange (slow GPS), one green (ground station RX). Time axis below"
+    loading="lazy"
+    style={{ maxWidth: '100%', height: 'auto', borderRadius: '0.5rem' }}
+  />
+  <figcaption style={{ fontSize: '0.85rem', opacity: 0.7, marginTop: '0.5rem' }}>
+    1000 ms superframe, ten 100 ms slots. Eight for fast telemetry, one for
+    slow GPS, one for the ground-station's transmit window.
+  </figcaption>
+</figure>
+
+No retries, no ACKs, no collisions. Predictable airtime is more useful
+than reliability for a vehicle that's moving — old data is dead data
+anyway.
+
+[Deep dive on TDMA →](/concepts/tdma)
+
+### Why SPI on H743 but UART on F446ZE?
+
+<figure style={{ textAlign: 'center', margin: '1.5rem 0' }}>
+  <img
+    src="/images/radio-backends.svg"
+    alt="Two radio backends side by side — left: Buzz V4 with SX1262 chip on SPI directly accessed by firmware. Right: Nucleo with E22 module on UART running EBYTE transparent firmware"
+    loading="lazy"
+    style={{ maxWidth: '100%', height: 'auto', borderRadius: '0.5rem' }}
+  />
+</figure>
+
+The Buzz V4 PCB carries an **E22-900M22S**: bare SX1262 silicon, direct
+SPI access, full LoRa configuration from firmware. The Nucleo dev
+board uses an **E22-xxxT30D**: same SX1262 plus EBYTE's transparent-mode
+firmware, fronted by a UART. Both implement the same TDMA superframe
+and packet formats, so the upper layers don't change.
+
+The selector is `RADIO_INTERFACE_SPI` vs `RADIO_INTERFACE_UART` in
+`config.h`.
+
+### Why no shared globals?
+
+There are a couple — the FSM state, the telemetry struct — but they're
+written by exactly *one* thread each. Everything else flows through
+queues. This makes debugging tractable: if a value is wrong, you grep
+for the queue, not for the variable.
+
+## Cortex-M7 D-Cache (Buzz V4 only)
+
+The H743 has a D-Cache. DMA-written buffers can become stale in cache,
+so any DMA buffer must live in non-cacheable SRAM.
+
+```c
+DMA_BUFFER  uint8_t imu_dma_buf[64];     // D2 SRAM, for DMA1/DMA2
+BDMA_BUFFER uint8_t mag_dma_buf[16];     // D3 SRAM, for SPI6 BDMA
+```
+
+On the F446ZE these macros expand to nothing. Driver code uses them
+unconditionally.
+
+[Cortex-M7 deep dive →](/concepts/cortex-m7)
+
+## Where things actually live
+
+| If you're looking for...                | Open...                                              |
+| --------------------------------------- | ---------------------------------------------------- |
+| A new sensor driver                     | `Codigo/Sensors/<NAME>/`                             |
+| Something that runs on every IMU sample | `sensors_thread.c` → callback path                   |
+| What happens at LIFTOFF                 | `flight_computer.c`, search `STATE_FLIGHT`           |
+| The packet a telemetry byte ended up in | `Codigo/Telemetry/telemetry.h`                       |
+| Whether SPI3 or SPI6 is the magnetometer | `STM32{H743,F446}.../config.h`, macro `SPI_MAG`     |
+
+## Read next
+
+<Cards>
+  <Cards.Card icon="🚦" title="Flight lifecycle" href="/concepts/flight-lifecycle">
+    The FSM as a story, BOOT to SAFE.
+  </Cards.Card>
+  <Cards.Card icon="🧵" title="The 8 threads" href="/concepts/threads">
+    Per-thread breakdown.
+  </Cards.Card>
+</Cards>

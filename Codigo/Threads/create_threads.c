@@ -294,6 +294,8 @@ void create_threads() {
 
 	printf("All threads created successfully\r\n");
 
+	/* Start ESC PWM timer using board-agnostic macros from config.h
+	 * (F446ZE: TIM3/CH1, Buzz V4 H743: TIM4/CH1) */
 	HAL_TIM_PWM_Start(PWM_ESC_TIM, PWM_ESC_CHANNEL);
 	PWM_ESC_CHANNEL_WRITE = 0;
 

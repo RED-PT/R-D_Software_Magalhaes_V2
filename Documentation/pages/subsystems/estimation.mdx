@@ -1,0 +1,129 @@
+---
+title: Estimation
+---
+
+import { Callout } from 'nextra/components';
+
+# Estimation
+
+The estimator pulls sensor packets off `queue_to_estimator`, fuses
+them into altitude / vertical velocity, and pushes flight-event
+notifications into the FSM.
+
+<figure style={{ textAlign: 'center', margin: '1.5rem 0' }}>
+  <img
+    src="/images/estimator-flow.svg"
+    alt="Estimator flow — IMU and barometer streams entering a fusion block, output as state vector (altitude, vertical velocity, attitude quaternion)"
+    loading="lazy"
+    style={{ maxWidth: '100%', height: 'auto', borderRadius: '0.5rem' }}
+  />
+</figure>
+
+## What it produces
+
+| Field                | Source                                              | Update rate |
+| -------------------- | --------------------------------------------------- | ----------- |
+| Altitude (AGL)       | Barometer (calibrated against ground reference)     | 50 Hz       |
+| Vertical velocity    | Altitude derivative                                 | 50 Hz       |
+| Attitude (quaternion)| BNO055 fused output                                 | 100 Hz      |
+
+The current implementation is intentionally simple — derivative-based
+velocity, no Kalman fusion yet. IMU integration is hooked but
+unused (`TODO` in the source).
+
+## Thread main loop
+
+```c title="Codigo/Estimator/estimator_thread.c"
+void estimator_thread_function() {
+    data_packet_t packet;
+    float current_altitude_m = 0.0f;
+    float current_velocity_ms = 0.0f;
+    float prev_altitude_m = 0.0f;
+    uint32_t prev_time_ms = 0;
+
+    while (1) {
+        // Block on the input queue (100 ms timeout)
+        if (xQueueReceive(queue_to_estimator, &packet,
+                          pdMS_TO_TICKS(100)) == pdTRUE) {
+            data_packet_lock(&packet);
+
+            switch (packet.type) {
+                case DATA_TYPE_BARO: {
+                    BARO_t baro;
+                    data_packet_copy_baro(&packet, &baro);
+                    current_altitude_m = baro.altitude_m;
+
+                    // Velocity = derivative of altitude
+                    uint32_t now = HAL_GetTick();
+                    if (prev_time_ms > 0) {
+                        float dt_s = (now - prev_time_ms) / 1000.0f;
+                        if (dt_s > 0.001f) {
+                            current_velocity_ms =
+                                (current_altitude_m - prev_altitude_m) / dt_s;
+                        }
+                    }
+                    prev_altitude_m = current_altitude_m;
+                    prev_time_ms = now;
+                    break;
+                }
+
+                case DATA_TYPE_IMU: {
+                    // TODO: Use IMU for better state estimation
+                    break;
+                }
+
+                default: break;
+            }
+
+            data_packet_unlock(&packet);
+
+            // Detect liftoff / apogee / landing → FSM events
+            check_flight_events(current_altitude_m, current_velocity_ms);
+        }
+
+        // Reset detection logic when entering FLIGHT
+        static fsm_state_t prev_state = STATE_BOOT;
+        if (fsm_ctx.state == STATE_FLIGHT && prev_state != STATE_FLIGHT) {
+            reset_flight_detection();
+        }
+        prev_state = fsm_ctx.state;
+    }
+}
+```
+
+## Flight-event emission
+
+`check_flight_events()` watches for the four sensor-driven transitions
+the FSM expects:
+
+```c
+// Pseudo-code reflecting check_flight_events():
+if (accel > LIFTOFF_ACCEL_THRESHOLD) push_event(FSM_EVT_LIFTOFF);
+if (velocity ≈ 0 after lift-off)     push_event(FSM_EVT_APOGEE);
+if (altitude < flare_altitude_m)     push_event(FSM_EVT_FLARE_ALT);
+if (accel + altitude stable for N s) push_event(FSM_EVT_LANDED);
+```
+
+Events go on `queue_event_to_fsm`; the FSM picks them up next tick.
+
+## Interfaces
+
+- **Input queue:** `queue_to_estimator` — populated by the DataHandler
+  with `DATA_TYPE_BARO`, `DATA_TYPE_IMU`, etc.
+- **Output queue:** `queue_event_to_fsm` — internal FSM events.
+- **Output globals:** `fsm_ctx.altitude_agl_m`, `fsm_ctx.velocity_vertical_ms`
+  (single-writer rule — only the estimator writes these).
+
+<Callout type="info" emoji="ℹ️">
+  The estimator thread, like the controller, is **created suspended**
+  and resumed by the FSM on entering `STATE_ARMED`. Pre-arm sensor
+  data is dropped on the floor (well — into the SD log, just not
+  processed for control).
+</Callout>
+
+## Files
+
+```
+Codigo/Estimator/estimator_thread.c
+Codigo/Estimator/estimator_thread.h
+```

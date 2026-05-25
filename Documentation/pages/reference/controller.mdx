@@ -1,0 +1,261 @@
+---
+title: Controller reference
+---
+
+import { Callout } from 'nextra/components';
+import { CodeDemo } from '../../components/CodeDemo';
+import { FuncRef } from '../../components/FuncRef';
+
+# Controller reference
+
+The controller is the only thread that touches the ESC PWM. It runs at
+50 Hz, supports five modes, and is **created suspended** — the FSM
+resumes it only when transitioning into `STATE_ARMED`. That's the
+firmware's hardware-level safety guarantee.
+
+For the rationale, see [Control & TVC](/subsystems/control).
+
+---
+
+## Modes
+
+```c title="Codigo/Controller/controller_thread.h"
+typedef enum {
+    CTRL_MODE_IDLE = 0,         /* motors off                      */
+    CTRL_MODE_MANUAL,           /* throttle from FSM directly      */
+    CTRL_MODE_ALTITUDE_HOLD,    /* PID hold at target altitude     */
+    CTRL_MODE_VELOCITY_CTRL,    /* PID hold at target velocity     */
+    CTRL_MODE_LANDING           /* descending velocity setpoint    */
+} ctrl_mode_t;
+```
+
+| Mode | Setpoint source | Output |
+|---|---|---|
+| `CTRL_MODE_IDLE` | none | throttle = 0 |
+| `CTRL_MODE_MANUAL` | `ctrl_state.manual_throttle` | direct passthrough |
+| `CTRL_MODE_ALTITUDE_HOLD` | `target_altitude_m` | PID(altitude error) |
+| `CTRL_MODE_VELOCITY_CTRL` | `target_velocity_ms` | PID(velocity error) |
+| `CTRL_MODE_LANDING` | `-touchdown_velocity_ms` (negative = down) | PID |
+
+---
+
+## Controller state
+
+```c
+typedef struct {
+    ctrl_mode_t mode;
+
+    /* Inputs (from estimator) */
+    float current_altitude_m;
+    float current_velocity_ms;
+
+    /* Setpoints */
+    float target_altitude_m;
+    float target_velocity_ms;
+    float manual_throttle;
+
+    /* Output */
+    float throttle_output;       /* 0.0..1.0 */
+
+    /* Limits (from active profile) */
+    float throttle_min, throttle_max;
+
+    /* Ramping */
+    bool  ramp_active;
+    float ramp_start, ramp_target;
+    uint32_t ramp_start_tick, ramp_duration_ms;
+} controller_state_t;
+
+extern controller_state_t ctrl_state;
+```
+
+---
+
+## PID gains
+
+```c
+typedef struct {
+    float kp, ki, kd;
+    float integral_limit;       /* anti-windup cap */
+} pid_gains_t;
+
+static pid_gains_t altitude_pid = {
+    .kp = 0.5f, .ki = 0.1f, .kd = 0.2f, .integral_limit = 0.3f
+};
+static pid_gains_t velocity_pid = {
+    .kp = 0.8f, .ki = 0.05f, .kd = 0.1f, .integral_limit = 0.2f
+};
+```
+
+Re-tune in `controller_thread.c` for a new vehicle. `integral_limit`
+caps the accumulated error to avoid actuator saturation after a long
+disturbance.
+
+---
+
+## Public API
+
+### Motor lifecycle
+
+```c
+void controller_init_motor(void);
+void controller_arm_motor(void);
+void controller_disarm_motor(void);
+```
+
+| Function | When it's called | What it does |
+|---|---|---|
+| `controller_init_motor` | FSM transition into `SUB_ARM_MOTOR_INIT` | `PWM_Init`, then `PWM_ArmESC(2000)` (2 s arm signal). |
+| `controller_arm_motor` | After motor calibration done | Sets `motor_armed` flag, mode = `CTRL_MODE_MANUAL` at min throttle. |
+| `controller_disarm_motor` | FSM transition out of armed states | Mode = `CTRL_MODE_IDLE`, PWM = 0. |
+
+### Mode control
+
+```c
+void controller_set_mode(ctrl_mode_t mode);
+ctrl_mode_t controller_get_mode(void);
+
+void controller_set_manual_throttle(float throttle);   /* 0.0..1.0 */
+void controller_set_target_altitude(float meters);
+void controller_set_target_velocity(float meters_per_second);
+```
+
+The setters update `ctrl_state` atomically — safe to call from any
+thread (the values are simple floats).
+
+### State input
+
+```c
+void controller_update_estimator_state(float altitude_m, float velocity_ms);
+```
+
+Called by the estimator after each fusion tick. The controller reads
+from `ctrl_state.current_*`; the estimator writes via this function.
+
+### Ramp control
+
+```c
+void controller_ramp_throttle(float target, uint32_t duration_ms);
+void controller_update_ramp(void);   /* called every loop tick */
+bool controller_is_ramping(void);
+```
+
+`controller_ramp_throttle` schedules a smooth throttle change. The
+loop's `controller_update_ramp` advances `manual_throttle` linearly
+toward the target. Used when the FSM transitions between phases —
+prevents step changes that would bounce the vehicle.
+
+<Callout type="info" emoji="ℹ️">
+  Ramping only applies to `CTRL_MODE_MANUAL`. PID modes derive their
+  output from the error and inherently smooth themselves through
+  the loop dynamics.
+</Callout>
+
+### Read-back
+
+```c
+float controller_get_throttle_output(void);   /* 0.0..1.0 */
+```
+
+The current PWM command. Used by the telemetry packet builder.
+
+---
+
+## Thread main loop
+
+```c title="Codigo/Controller/controller_thread.c"
+#define CONTROL_LOOP_PERIOD_MS  20    /* 50 Hz */
+
+void controller_thread_function(void) {
+    memset(&ctrl_state, 0, sizeof(ctrl_state));
+    ctrl_state.mode = CTRL_MODE_IDLE;
+    ctrl_state.throttle_min = 0.0f;
+    ctrl_state.throttle_max = 1.0f;
+
+    /* Created suspended. FSM resumes us in ARMED. */
+    vTaskSuspend(NULL);
+
+    /* Pull profile-defined limits */
+    ctrl_state.throttle_min = fsm_ctx.profile.throttle_min;
+    ctrl_state.throttle_max = fsm_ctx.profile.throttle_max;
+
+    TickType_t last_loop_tick = xTaskGetTickCount();
+
+    while (1) {
+        TickType_t now = xTaskGetTickCount();
+        float dt = (float)(now - last_loop_tick) / 1000.0f;
+        if (dt < 0.001f) dt = 0.001f;
+        last_loop_tick = now;
+
+        controller_update_ramp();
+        run_control_loop(dt);
+
+        vTaskDelay(pdMS_TO_TICKS(CONTROL_LOOP_PERIOD_MS));
+    }
+}
+```
+
+`run_control_loop` is the dispatcher:
+
+```c
+switch (ctrl_state.mode) {
+    case CTRL_MODE_IDLE:           throttle_cmd = 0.0f; break;
+    case CTRL_MODE_MANUAL:         throttle_cmd = ctrl_state.manual_throttle; break;
+    case CTRL_MODE_ALTITUDE_HOLD:  throttle_cmd = compute_altitude_control(/*…*/, dt); break;
+    case CTRL_MODE_VELOCITY_CTRL:  throttle_cmd = compute_velocity_control(/*…*/, dt); break;
+    case CTRL_MODE_LANDING:        throttle_cmd = compute_velocity_control(
+                                        -fsm_ctx.profile.touchdown_velocity_ms,
+                                        ctrl_state.current_velocity_ms, dt); break;
+}
+throttle_cmd = clamp(throttle_cmd, ctrl_state.throttle_min, ctrl_state.throttle_max);
+PWM_SetThrottle(throttle_cmd);
+ctrl_state.throttle_output = throttle_cmd;
+```
+
+---
+
+## ESC PWM driver (`PWM_FUNCTIONS`)
+
+The thin wrapper over the timer-PWM hardware. Board-specific timer
+resolved through `PWM_ESC_TIM` / `PWM_ESC_CHANNEL` macros.
+
+```c title="Codigo/Atuadores/ESC/PWM_FUNCTIONS.h"
+void PWM_Init(void);
+void PWM_ArmESC(uint32_t arm_duration_ms);
+void PWM_SetThrottle(float throttle);              /* 0.0..1.0 */
+void PWM_StopMotor(void);
+bool PWM_IsArmed(void);
+float PWM_GetThrottle(void);
+```
+
+| Function | Effect |
+|---|---|
+| `PWM_Init` | Configure the ESC timer + channel, start at 0% duty. |
+| `PWM_ArmESC` | Send min throttle (1 ms pulse) for `arm_duration_ms`. ESC enters armed mode and beeps. |
+| `PWM_SetThrottle` | Map 0.0–1.0 to 1000–2000 µs pulse. |
+| `PWM_StopMotor` | Duty = 0 (≤ 1 ms pulse — most ESCs disarm here). |
+
+<CodeDemo>
+
+```c filename="Typical sequence (FSM ARM transition)"
+PWM_Init();              /* configure timer */
+PWM_ArmESC(2000);        /* 2 s of min-throttle arming */
+PWM_SetThrottle(0.0f);   /* idle at min */
+
+/* later, FSM transitions to STATE_FLIGHT */
+osThreadResume(controller_thread_id);   /* control loop takes over */
+```
+
+```text filename="Behaviour"
+[PWM] timer = htim4 (Buzz V4) / htim3 (Nucleo)
+[PWM] arming ESC: 2000 ms at 1000 us pulse...
+[ESC]  beep beep   (ESC accepts arm signal)
+[PWM] armed
+[PWM] duty = 1000 us  (idle)
+```
+
+</CodeDemo>
+
+<FuncRef name="PWM_Init" file="PWM_FUNCTIONS.h" /> ·
+<FuncRef name="PWM_SetThrottle" file="PWM_FUNCTIONS.h" /> ·
+<FuncRef name="PWM_ArmESC" file="PWM_FUNCTIONS.h" />

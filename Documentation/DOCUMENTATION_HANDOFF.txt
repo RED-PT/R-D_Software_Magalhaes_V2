@@ -1,0 +1,402 @@
+================================================================================
+ MAGALHAES FLIGHT COMPUTER - DOCUMENTATION HANDOFF
+ Pause point: 2026-04-28
+ Author: Tomas Teixeira (with Claude assistance)
+================================================================================
+
+This file captures the FULL state of the documentation effort at the moment
+work was paused, plus everything that still needs to be done. The goal is for
+a future session (you or a future Claude) to be able to pick this up cold
+and continue without re-deriving context.
+
+--------------------------------------------------------------------------------
+ 0. THE ONE-LINE GOAL
+--------------------------------------------------------------------------------
+
+Build a documentation site for the Magalhaes flight computer firmware that
+looks and feels like Shopify's Liquid docs (https://shopify.dev/docs/api/liquid):
+clean, narrative, code-grounded, with two-pane "input/output" code blocks and
+a curated reference instead of raw Doxygen.
+
+User's explicit direction (verbatim, paraphrased from the session):
+  - "I want everything in the website. ... how every single thread works and
+    how the communications work. everything"
+  - "I want the same colors as shopify website"
+  - "This need to tell a history almost. ... make something awesome."
+  - "the API is horrible" (referring to default Doxygen output -> demoted
+    to a 'Source ↗' link in the top nav, no longer the primary API ref)
+
+--------------------------------------------------------------------------------
+ 1. STACK & TOOLING (already set up - DO NOT change without reason)
+--------------------------------------------------------------------------------
+
+  Framework        : Nextra 2.13.4 (docs theme) on Next.js 14.2.35
+  Output mode      : Static export (`output: 'export'` in next.config.mjs)
+  Deployment       : GitHub Pages via .github/workflows/docs.yml
+  Auto-API         : Doxygen 1.9+ with doxygen-awesome theme, output
+                     embedded at /api/ (now relegated to "Source ↗" link).
+  Fonts/Style      : Custom Shopify-Polaris-style design system in
+                     styles/globals.css (CSS variables, ~600 lines).
+  Custom MDX comps : <CodeDemo>  (two-pane code+output, like Shopify's)
+                     <FuncRef>   (function pill linking into Doxygen api/)
+
+  npm scripts (package.json):
+    dev    -> next dev
+    build  -> next build
+    start  -> next start
+    api    -> doxygen Doxyfile && mkdir -p public/api && cp -r docs/html/. public/api/
+
+--------------------------------------------------------------------------------
+ 2. WHERE EVERYTHING LIVES
+--------------------------------------------------------------------------------
+
+All doc artifacts now live under Documentation/ (consolidated 2026-04-28).
+Repo-root layout:
+
+  Codigo/                       firmware source
+  STM32*_Magalhaes/             per-MCU Cube projects
+  Buzz_V4 - STM32H7/            PCB
+  Dashboard Python/             ground station
+  arduino_gs_software/          arduino-based GS variant
+  Documentation/                <-- ALL DOC ARTIFACTS LIVE HERE
+  .github/workflows/docs.yml    CI (stays at repo root by GitHub convention)
+  .gitignore                    has Documentation/-prefixed rules
+  readme.md
+
+  Documentation/
+    pages/                      Nextra MDX source (the content)
+    components/                 CodeDemo.tsx, FuncRef.tsx
+    styles/globals.css          Shopify-style design tokens + component CSS
+    public/                     Static assets. public/api/ is the Doxygen
+                                output target (gitignored). public/images/
+                                is for hand-drawn illustrations (TODO).
+    doxygen-awesome/            Doxygen theme - CSS/JS fetched at build by
+                                scripts/fetch-docs-deps.sh (gitignored)
+    scripts/fetch-docs-deps.sh  Fetches doxygen-awesome theme assets
+    Doxyfile                    Doxygen config (INPUT paths use ../ to
+                                reach firmware source at repo root)
+    api-mainpage.md             Mainpage when Doxygen is entry point
+    next.config.mjs
+    next-env.d.ts               (auto, gitignored)
+    theme.config.tsx
+    tsconfig.json
+    package.json / package-lock.json
+    DOCUMENTATION_HANDOFF.txt   this file
+
+  Build artifacts that REGENERATE inside Documentation/ (all gitignored):
+    Documentation/.next/        Next.js dev/build cache
+    Documentation/out/          Next.js static export
+    Documentation/node_modules/ npm deps (run `npm install` inside this dir)
+    Documentation/docs/         Doxygen HTML output
+
+  How to run locally (from inside Documentation/):
+    cd Documentation
+    npm install              # first time
+    npm run dev              # http://localhost:3000
+    npm run build            # produces out/ for static deploy
+    bash scripts/fetch-docs-deps.sh   # before first Doxygen build
+    doxygen Doxyfile         # produces docs/html/, copy to public/api/
+
+  CI workflow (.github/workflows/docs.yml) runs everything with
+  `defaults.run.working-directory: Documentation`, so the same paths
+  used locally also work in CI.
+
+--------------------------------------------------------------------------------
+ 3. DESIGN SYSTEM (already done - reuse, don't re-invent)
+--------------------------------------------------------------------------------
+
+  Color palette (Shopify Polaris green, defined in styles/globals.css):
+    --shopify-green        : #008060   (primary)
+    --shopify-green-hover  : #00a074
+    --shopify-green-deep   : #004c3f
+    --shopify-bg           : #ffffff
+    --shopify-text         : #1a1a1a
+    --shopify-muted        : #5c5f62
+    --shopify-border       : #e1e3e5
+    --shopify-code-bg      : #0e1116
+    --nextra-primary-hue        : 165
+    --nextra-primary-saturation : 80%
+
+  Custom CSS classes (already defined in globals.css):
+    .magalhaes-hero            Landing page hero block
+    .magalhaes-eyebrow         Small label above h1
+    .magalhaes-btn             CTA button
+    .magalhaes-feature         Feature row (image + text)
+    .magalhaes-spec            <dl>-based spec table for sensor/driver pages
+    .magalhaes-steps           Numbered step list
+    .magalhaes-code-demo       Two-pane code/output container (CodeDemo.tsx)
+    .magalhaes-funcref         Function-name pill (FuncRef.tsx)
+
+  Theme logo (theme.config.tsx): a 22x22 rounded square with a Polaris-green
+  gradient + "Magalhaes Flight Computer" wordmark.
+
+--------------------------------------------------------------------------------
+ 4. SITE MAP (top nav, defined in pages/_meta.json)
+--------------------------------------------------------------------------------
+
+  /                     Landing page (hero + feature rows + section cards)
+  /get-started          "First-time setup" path: hardware, quick start
+  /story                NARRATIVE walkthrough  ***NOT YET WRITTEN***
+  /concepts             High-level mental models (architecture, threads,
+                        flight-lifecycle, tdma, hal, cortex-m7)
+  /subsystems           Why each subsystem exists, design rationale
+                        (sensors, radio, storage, control, estimation, tests)
+  /reference            Curated API reference (function-by-function)
+  /porting              How to add a new sensor / FSM state / MCU
+  /api/index.html       External-link to Doxygen output (Source ↗)
+
+--------------------------------------------------------------------------------
+ 5. PAGE STATUS - WHAT IS WRITTEN, WHAT REMAINS
+--------------------------------------------------------------------------------
+
+KEY:
+  [DONE]   Page exists with full content matching the new design system
+  [STUB]   Page exists but is placeholder / pre-Shopify-pass
+  [TODO]   Page does not exist yet
+
+  pages/index.mdx                                              [DONE]
+  pages/_app.tsx                                               [DONE]
+  pages/_meta.json                                             [DONE]
+
+  pages/get-started/_meta.json                                 [DONE]
+  pages/get-started/index.mdx                                  [STUB]
+  pages/get-started/quick-start.mdx                            [STUB]
+  pages/get-started/hardware.mdx                               [STUB]
+
+  pages/concepts/_meta.json                                    [DONE]
+  pages/concepts/index.mdx                                     [STUB]
+  pages/concepts/architecture.mdx                              [STUB]
+  pages/concepts/threads.mdx                                   [STUB]
+  pages/concepts/flight-lifecycle.mdx                          [STUB]
+  pages/concepts/tdma.mdx                                      [STUB]
+  pages/concepts/hal.mdx                                       [STUB]
+  pages/concepts/cortex-m7.mdx                                 [STUB]
+
+  pages/subsystems/_meta.json                                  [DONE]
+  pages/subsystems/index.mdx                                   [STUB]
+  pages/subsystems/sensors.mdx                                 [STUB]
+  pages/subsystems/radio.mdx                                   [STUB]
+  pages/subsystems/storage.mdx                                 [STUB]
+  pages/subsystems/control.mdx                                 [STUB]
+  pages/subsystems/estimation.mdx                              [STUB]
+  pages/subsystems/tests.mdx                                   [STUB]
+
+  pages/reference/_meta.json                                   [DONE]
+  pages/reference/index.mdx                                    [DONE]
+  pages/reference/sensors.mdx                                  [DONE]
+  pages/reference/radio.mdx                                    [DONE]
+  pages/reference/fsm.mdx                                      [DONE]
+  pages/reference/controller.mdx                               [DONE]
+  pages/reference/estimator.mdx                                [DONE]
+  pages/reference/storage.mdx                                  [DONE]
+  pages/reference/threading.mdx                                [TODO]   <--
+  pages/reference/types.mdx                                    [TODO]   <--
+  pages/reference/config.mdx                                   [TODO]   <--
+
+  pages/story/_meta.json                                       [TODO]   <--
+  pages/story/index.mdx                                        [TODO]   <--
+  pages/story/a-flight.mdx                                     [TODO]   <--
+
+  pages/porting/_meta.json                                     [DONE]
+  pages/porting/index.mdx                                      [STUB]
+  pages/porting/new-sensor.mdx                                 [STUB]
+  pages/porting/new-mcu.mdx                                    [STUB]
+  pages/porting/fsm-changes.mdx                                [STUB]
+
+--------------------------------------------------------------------------------
+ 6. REMAINING WORK - DETAILED BACKLOG
+--------------------------------------------------------------------------------
+
+------------------- TASK A: Finish the Reference section ----------------------
+This was in_progress when work was paused. Pattern is set by the six existing
+[DONE] reference pages. Match their structure: a one-paragraph intro, a link
+back to the corresponding /subsystems/ concept page, public API (with type
+signatures), thread main loop snippet, tunables table.
+
+  A.1  pages/reference/threading.mdx
+       Source: Codigo/Threads/create_threads.c
+       Cover: thread table (name, priority, stack, queue), priority rationale
+       (Sensors highest -> SDCard lowest), the FreeRTOS notification bits
+       used by the FSM, all FreeRTOS queues that exist (queue_to_estimator,
+       queue_to_sd, queue_event_to_fsm, etc.).
+
+  A.2  pages/reference/types.mdx
+       Source: Codigo/defs.h (sensor structs IMU_t, MAG_t, BNO_t, BARO_t,
+       GPS_t, LOADCELL_t) + Codigo/Telemetry/telemetry.h (packet structs)
+       + data_packet_t and the helpers data_packet_lock/copy_baro/etc.
+       Cover: byte-level field tables, scaling factors, who-writes-who-reads.
+
+  A.3  pages/reference/config.mdx
+       Source: STM32H743ZIT6_Magalhaes/Core/Inc/config.h and
+               STM32F446ZE_Magalhaes/Core/Inc/config.h
+       Cover: side-by-side table of HAL macros (I2C_BARO, SPI_LORA, UART_RADIO,
+       PWM_ESC_TIM, etc.) for both boards, the RADIO_INTERFACE_SPI vs
+       RADIO_INTERFACE_UART selector, DMA_BUFFER vs BDMA_BUFFER linker
+       sections (D2 vs D3 SRAM on H743), pin mapping cheatsheet.
+
+------------------- TASK B: The "Story" section -------------------------------
+This is the user's most-emphasised request: "this need to tell a history
+almost". The landing page (pages/index.mdx) ALREADY links to /story/a-flight,
+so the link currently 404s. Priority.
+
+  B.1  pages/story/_meta.json
+       { "index": "Overview", "a-flight": "A flight, end-to-end" }
+
+  B.2  pages/story/index.mdx
+       Brief intro: "If you read one thing on this site, read 'A flight,
+       end-to-end'." Frame the story arc, link to it.
+
+  B.3  pages/story/a-flight.mdx
+       The marquee narrative. Walk through one rocket flight chronologically,
+       and at each beat show WHICH thread does WHAT. Suggested beats:
+
+         t = -inf   Power on -> hal_callbacks runs, FreeRTOS starts,
+                    create_threads.c spawns 8 threads. Controller and
+                    Estimator are CREATED SUSPENDED.
+         t = 0      STATE_BOOT. fsm_init prints banner. Sensors thread
+                    starts polling. SD thread mounts the card and opens
+                    flight_<n>.bin. Radio thread starts listening for sync.
+         t = 30s    Calibration: ground-pressure baseline captured by
+                    estimator's first BARO_t reads. fsm_get_baro_calibration.
+         t = 60s    GS sends SET_PROFILE then ARM. FSM resumes Controller
+                    + Estimator threads. PWM_ArmESC(2000) plays ESC tone.
+         t = T-0    LAUNCH command. STATE_FLIGHT entered. Estimator's
+                    check_flight_events sees accel spike -> FSM_EVT_LIFTOFF.
+         t = T+1s   Telemetry frame 1: telemetry_fast_t at 8 Hz over slot
+                    0..7, telemetry_slow_t at 1 Hz over slot 8.
+         t = apogee Vario crosses zero -> FSM_EVT_APOGEE. Controller mode
+                    switches to LANDING. PID drives velocity toward
+                    -touchdown_velocity_ms.
+         t = flare  altitude < flare_altitude_m -> FSM_EVT_FLARE_ALT.
+                    Throttle ramps up.
+         t = touch  Accel impact spike -> FSM_EVT_TOUCHDOWN, then accel +
+                    altitude stable for N seconds -> FSM_EVT_LANDED.
+         t = post   STATE_SAFE entry. sd_card_close flushes + unmounts.
+                    Telemetry continues at slow rate. Log file is
+                    flight_<n>.bin, decode with Dashboard Python/decode_log.py.
+
+       Style: Use <CodeDemo> blocks to show actual log output alongside
+       firmware code. Drop in <FuncRef> pills inline.
+
+------------------- TASK C: Deepen the Concepts pages -------------------------
+The concept pages exist but were written before the Shopify pass. They need
+the same treatment as the reference pages - clean structure, code grounding,
+and three new sections at the end of each:
+  - "Why this matters"     (one paragraph, the design rationale)
+  - "Common pitfalls"      (bulleted - what trips people up)
+  - "How this connects"    (links into reference + subsystems)
+
+Files (in priority order):
+  pages/concepts/architecture.mdx      ** start here - sets the frame **
+  pages/concepts/threads.mdx
+  pages/concepts/flight-lifecycle.mdx
+  pages/concepts/tdma.mdx
+  pages/concepts/hal.mdx
+  pages/concepts/cortex-m7.mdx
+
+------------------- TASK D: Sweep the Subsystems pages ------------------------
+Same treatment as concepts - they exist but are pre-Shopify-pass. Each
+subsystems page should be the "WHY", with the matching reference page
+covering the "HOW".
+
+  pages/subsystems/sensors.mdx
+  pages/subsystems/radio.mdx
+  pages/subsystems/storage.mdx
+  pages/subsystems/control.mdx
+  pages/subsystems/estimation.mdx
+  pages/subsystems/tests.mdx
+
+------------------- TASK E: Get-started + Porting -----------------------------
+Lower priority - these are dev-onboarding pages. Bring up to standard once
+the core narrative + reference are solid.
+
+  pages/get-started/index.mdx
+  pages/get-started/quick-start.mdx
+  pages/get-started/hardware.mdx
+  pages/porting/index.mdx
+  pages/porting/new-sensor.mdx
+  pages/porting/new-mcu.mdx
+  pages/porting/fsm-changes.mdx
+
+------------------- TASK F: Illustrations ------------------------------------
+The user wants hand-drawn illustrations (not stock images). They were going
+to design these in Canva. The image list (at minimum 41 placeholders are
+referenced across the site) was generated in an earlier session - if needed,
+re-derive by grep-ing for `/images/` across pages/.
+
+Suggested top 10 (highest visual impact):
+   1.  Hero illustration - rocket + flight computer board on landing
+   2.  Architecture overview - 8 threads as boxes with queues between them
+   3.  Flight lifecycle - timeline with FSM state transitions
+   4.  TDMA superframe - 10 slots in a circle with TX/RX colour-coded
+   5.  Sensor bus topology - I2C/SPI/UART buses with peripherals
+   6.  PCB photo - Buzz V4 annotated with sensor locations
+   7.  Memory layout - D1/D2/D3 SRAM regions with DMA buffers highlighted
+   8.  Control loop - estimator -> PID -> ESC PWM
+   9.  Radio packet types - byte-by-byte layout of telemetry_fast_t
+  10.  SD log format - byte-by-byte layout with type tags
+
+--------------------------------------------------------------------------------
+ 7. CONVENTIONS WORTH PRESERVING
+--------------------------------------------------------------------------------
+
+  - File frontmatter: every .mdx starts with `--- title: ... ---`. Used by
+    Nextra for the <title> tag and breadcrumb.
+
+  - Imports: each .mdx imports only what it uses, e.g.
+        import { Callout } from 'nextra/components';
+        import { CodeDemo } from '../../components/CodeDemo';
+        import { FuncRef } from '../../components/FuncRef';
+    (Path depth differs per folder - 1 ".." for /pages, 2 for nested.)
+
+  - Function references: link out to the Doxygen-generated /api/ pages with
+    <FuncRef name="..." file="..." /> instead of inventing new anchors. Keeps
+    the curated docs synced with whatever Doxygen actually generates.
+
+  - Param convention: [in], [out], [in,out] tags in C-block param tables -
+    matches Doxygen's vocabulary so a reader can move between curated +
+    auto-generated views without context switching.
+
+  - Code blocks must include a `title=` attribute pointing at the actual
+    source file, e.g. ```c title="Codigo/Storage/sd_card_thread.c". This
+    keeps the docs auditable - a reader can grep the title and confirm.
+
+  - DON'T duplicate Doxygen. If a struct/function is fully self-evident from
+    its declaration, just link to /api/. Reserve curated prose for things
+    Doxygen can't express: design rationale, threading invariants, byte-level
+    on-the-wire formats, why-do-we-do-it-this-way.
+
+--------------------------------------------------------------------------------
+ 8. KNOWN LIMITATIONS / OPEN ISSUES
+--------------------------------------------------------------------------------
+
+  - Hot-reload caveats: changes to public/, _app.tsx, components/, or
+    styles/globals.css need a dev-server restart. Editing .mdx is hot.
+
+  - Nextra dev server doesn't auto-resolve directory indexes from public/.
+    The 'Source -> Doxygen' link MUST point to /api/index.html explicitly,
+    not /api/ or /api. Already fixed in pages/_meta.json and pages/index.mdx.
+
+  - 41+ image 404s in current build - expected, illustrations not yet drawn.
+
+  - MkDocs build artifact `--strict` mode used to fail; --strict was removed
+    from CI. (Pre-Nextra remnant - safe to ignore now.)
+
+  - When base path changes (e.g., custom domain), set NEXT_PUBLIC_BASE_PATH
+    env var. Default in workflow is /R-D_Software_Magalhaes_V2 for Pages.
+
+--------------------------------------------------------------------------------
+ 9. PROMPT TO RESUME (paste this to a future Claude)
+--------------------------------------------------------------------------------
+
+  "Read DOCUMENTATION_HANDOFF.txt at the project root (or under
+   Documentation/ if consolidation has been completed). Continue from
+   Task A in the backlog: pages/reference/threading.mdx. Match the
+   structure of the existing [DONE] reference pages. Keep the Shopify
+   Polaris design system in styles/globals.css. Do not regress the
+   site map in pages/_meta.json. Confirm the dev server still builds
+   before claiming a section done."
+
+================================================================================
+ END OF HANDOFF
+================================================================================

@@ -1,0 +1,22 @@
+---
+title: Porting & extension
+---
+
+import { Cards } from 'nextra/components';
+
+# Porting & extension
+
+Three common tasks. Each one stays inside the abstraction contract —
+neither board breaks if you do these right.
+
+<Cards>
+  <Cards.Card icon="🧩" title="Adding an MCU target" href="/porting/new-mcu">
+    Wire up a third board without touching `Codigo/`.
+  </Cards.Card>
+  <Cards.Card icon="➕" title="Adding a sensor" href="/porting/new-sensor">
+    Drop a new driver under `Codigo/Sensors/`.
+  </Cards.Card>
+  <Cards.Card icon="🔁" title="Modifying the FSM" href="/porting/fsm-changes">
+    Rules for adding states or transitions.
+  </Cards.Card>
+</Cards>

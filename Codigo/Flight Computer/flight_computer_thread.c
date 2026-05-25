@@ -77,7 +77,9 @@
 #include "Sensors/MS5607/MS5607.h"
 #include "Atuadores/ESC/PWM_FUNCTIONS.h"
 #include "Tests/static_thrust_test.h"
+#include "Tests/test_runner.h"
 #include "Storage/sd_card_thread.h"
+#include "OS/system_stats.h"
 #include "cmsis_os.h"
 #include "print.h"
 #include <string.h>
@@ -505,8 +507,10 @@ static void handle_state_flight(void) {
 // ABORT State Handler
 // ============================================================================
 static void handle_state_abort(void) {
-    // Emergency state - motors should already be cut
-    // Log data, wait for manual intervention
+    // Motor cut paths into this state:
+    //   CMD_ABORT / CMD_FORCE_SAFE -> StaticTest_Cancel + PWM_EmergencyStop in handler.
+    //   Internal safety events     -> process_static_test guard cancels test next tick.
+    // Wait here for manual intervention.
     static bool abort_logged = false;
 
     if (!abort_logged) {
@@ -648,8 +652,141 @@ static void handle_cmd_set_param(fsm_cmd_msg_t *msg) {
     fsm_ctx.last_cmd_status = 0;
 }
 
+/* ----- Phase 3-A (A3): new test-profile command path ------------------- */
+
+static inline uint16_t rd_u16le(const uint8_t *p) { return (uint16_t)p[0] | ((uint16_t)p[1] << 8); }
+static inline int16_t  rd_i16le(const uint8_t *p) { return (int16_t)rd_u16le(p); }
+static inline float    rd_f32le(const uint8_t *p) { float f; memcpy(&f, p, 4); return f; }
+
+static bool parse_test_profile_wire(const uint8_t *wire, profile_t *out) {
+    /* Wire layouts (params[] is 32 bytes since Phase 3-A / A7).
+     *
+     * STATIC (8 B used):
+     *   [0] kind  [1] is_manual  [2..3] max_throttle_milli (LE u16)
+     *   [4..5] hold_duration_ms (LE u16)  [6] curve  [7] reserved
+     *
+     * GUTTER (28 B used):
+     *   [0] kind  [1] is_manual  [2..3] hold_duration_ms (LE u16)
+     *   [4..5] h_ref_min_dm (LE u16)  [6..7] h_ref_max_dm (LE u16)
+     *   [8..9] initial_h_ref_dm (LE i16)  [10] curve  [11] reserved
+     *   [12..15] pid_kp (LE f32)   [16..19] pid_ki (LE f32)
+     *   [20..23] pid_kd (LE f32)   [24..27] pid_integral_limit (LE f32)
+     *
+     * TORQUE / TORQUE_CAL: recruta defines in B1/B2.
+     */
+    profile_kind_t kind = (profile_kind_t)wire[0];
+    out->kind = kind;
+    switch (kind) {
+        case PROFILE_KIND_TEST_STATIC: {
+            static_test_profile_t *p = &out->test.static_test;
+            p->is_manual          = (wire[1] != 0);
+            p->max_throttle_milli = rd_u16le(&wire[2]);
+            p->hold_duration_ms   = rd_u16le(&wire[4]);
+            p->curve              = (test_curve_t)wire[6];
+            return true;
+        }
+        case PROFILE_KIND_TEST_GUTTER: {
+            gutter_test_profile_t *p = &out->test.gutter;
+            p->is_manual          = (wire[1] != 0);
+            p->hold_duration_ms   = rd_u16le(&wire[2]);
+            p->h_ref_min_dm       = rd_u16le(&wire[4]);
+            p->h_ref_max_dm       = rd_u16le(&wire[6]);
+            p->initial_h_ref_dm   = rd_i16le(&wire[8]);
+            p->curve              = (test_curve_t)wire[10];
+            p->pid_kp             = rd_f32le(&wire[12]);
+            p->pid_ki             = rd_f32le(&wire[16]);
+            p->pid_kd             = rd_f32le(&wire[20]);
+            p->pid_integral_limit = rd_f32le(&wire[24]);
+            return true;
+        }
+        case PROFILE_KIND_TEST_TORQUE:
+        case PROFILE_KIND_TEST_TORQUE_CAL:
+            /* Recruta (B1/B2): wire format below the same params[32] budget. */
+            printf("[FSM] kind=%u not yet wired (B1/B2 stubs)\r\n", (unsigned)kind);
+            return false;
+        default:
+            printf("[FSM] reject: unknown profile kind=%u\r\n", (unsigned)kind);
+            return false;
+    }
+}
+
+static void handle_cmd_set_test_profile(fsm_cmd_msg_t *msg) {
+    if (!fsm_ctx.motor_status.calibration_done) {
+        printf("[FSM] SET_TEST_PROFILE rejected: motor not calibrated\r\n");
+        fsm_ctx.last_cmd_status = 1;
+        return;
+    }
+
+    /* Phase 3-A bugfix: allow re-configuration if a test is loaded but not
+     * running. This covers the "user changed kind/mode and clicked SET again"
+     * case. Only block when motor is live (RUNNING / HOLD / COUNTDOWN / FINISHING). */
+    if (test_runner_is_active()) {
+        bool quiescent = (fsm_ctx.substate == SUB_TEST_CONFIGED
+                       || fsm_ctx.substate == SUB_TEST_ARMED
+                       || fsm_ctx.substate == SUB_TEST_DONE
+                       || fsm_ctx.substate == SUB_TEST_ABORTED);
+        if (!quiescent) {
+            printf("[FSM] SET_TEST_PROFILE rejected: test active in %s\r\n",
+                   fsm_substate_to_str(fsm_ctx.substate));
+            fsm_ctx.last_cmd_status = 1;
+            return;
+        }
+        printf("[FSM] SET_TEST_PROFILE: replacing existing profile\r\n");
+        test_runner_abort(TEST_EXIT_USER);  /* cleans up + returns to STATE_IDLE */
+    }
+
+    /* After the abort path above, fsm_ctx.state should be STATE_IDLE. */
+    if (fsm_ctx.state != STATE_IDLE && fsm_ctx.state != STATE_CONFIGED) {
+        printf("[FSM] SET_TEST_PROFILE rejected: bad state %s\r\n",
+               fsm_state_to_str(fsm_ctx.state));
+        fsm_ctx.last_cmd_status = 1;
+        return;
+    }
+
+    profile_t profile;
+    memset(&profile, 0, sizeof(profile));
+    if (!parse_test_profile_wire(msg->payload.raw, &profile)) {
+        fsm_ctx.last_cmd_status = 1;
+        return;
+    }
+    if (!test_runner_enter(&profile)) {
+        fsm_ctx.last_cmd_status = 1;
+        return;
+    }
+    fsm_send_telemetry_event(EVT_PROFILE_LOADED, NULL, 0);
+    fsm_ctx.last_cmd_status = 0;
+}
+
+static void handle_cmd_hold(fsm_cmd_msg_t *msg) {
+    (void)msg;
+    if (!test_runner_hold()) { fsm_ctx.last_cmd_status = 1; return; }
+    fsm_ctx.last_cmd_status = 0;
+}
+
+static void handle_cmd_resume(fsm_cmd_msg_t *msg) {
+    (void)msg;
+    if (!test_runner_resume()) { fsm_ctx.last_cmd_status = 1; return; }
+    fsm_ctx.last_cmd_status = 0;
+}
+
+static void handle_cmd_stop_test(fsm_cmd_msg_t *msg) {
+    (void)msg;
+    if (!test_runner_is_active()) { fsm_ctx.last_cmd_status = 1; return; }
+    test_runner_finish();  /* tick will drive FINISHING → DONE */
+    fsm_ctx.last_cmd_status = 0;
+}
+
+/* ----------------------------------------------------------------------- */
+
 static void handle_cmd_arm(fsm_cmd_msg_t *msg) {
     printf("[FSM] ARM requested\r\n");
+
+    /* Phase 3-A: route through test_runner when a test profile is loaded. */
+    if (test_runner_is_active() && fsm_ctx.substate == SUB_TEST_CONFIGED) {
+        if (!test_runner_arm()) { fsm_ctx.last_cmd_status = 1; return; }
+        fsm_ctx.last_cmd_status = 0;
+        return;
+    }
 
     if (fsm_ctx.state != STATE_CONFIGED) {
         printf("[FSM] Cannot ARM from %s (need CONFIGED)\r\n", fsm_state_to_str(fsm_ctx.state));
@@ -682,6 +819,15 @@ static void handle_cmd_arm(fsm_cmd_msg_t *msg) {
 static void handle_cmd_disarm(fsm_cmd_msg_t *msg) {
     printf("[FSM] DISARM requested\r\n");
 
+    // If a static test is running, treat DISARM as a graceful cancel.
+    if (StaticTest_IsRunning()) {
+        printf("[FSM] DISARM cancelling static test\r\n");
+        StaticTest_Cancel();
+        PWM_EmergencyStop();
+        fsm_ctx.last_cmd_status = 0;
+        return;
+    }
+
     if (fsm_ctx.state == STATE_ARMED) {
         // Cut motor
         controller_set_throttle(0.0f);
@@ -713,12 +859,35 @@ static void handle_cmd_launch(fsm_cmd_msg_t *msg) {
 
 static void handle_cmd_abort(fsm_cmd_msg_t *msg) {
     printf("[FSM] ABORT!\r\n");
+
+    // Phase 3-A: bring down the new test runner before forcing the global stop
+    // (its on_exit handles motor + sd_card_resume).
+    if (test_runner_is_active()) {
+        test_runner_abort(TEST_EXIT_ABORT);
+    }
+
+    // Cancel any legacy test in progress and force motor off before changing state.
+    // StaticTest_Cancel() drives PWM to 0; PWM_EmergencyStop() is belt-and-suspenders.
+    if (StaticTest_IsRunning()) {
+        StaticTest_Cancel();
+    }
+    PWM_EmergencyStop();
+
     transition_to(STATE_ABORT, SUB_NONE, EVT_ABORT_TRIGGERED);
     fsm_ctx.last_cmd_status = 0;
 }
 
 static void handle_cmd_force_safe(fsm_cmd_msg_t *msg) {
     printf("[FSM] FORCE_SAFE\r\n");
+
+    if (test_runner_is_active()) {
+        test_runner_abort(TEST_EXIT_ABORT);
+    }
+    if (StaticTest_IsRunning()) {
+        StaticTest_Cancel();
+    }
+    PWM_EmergencyStop();
+
     transition_to(STATE_SAFE, SUB_NONE, EVT_STATE_CHANGE);
     fsm_ctx.last_cmd_status = 0;
 }
@@ -750,6 +919,13 @@ static void handle_cmd_calibrate_baro(fsm_cmd_msg_t *msg) {
 
 static void handle_cmd_start_test(fsm_cmd_msg_t *msg) {
     printf("[FSM] START_TEST\r\n");
+
+    /* Phase 3-A: if the new test runner is armed, kick off its countdown. */
+    if (test_runner_is_active() && fsm_ctx.substate == SUB_TEST_ARMED) {
+        if (!test_runner_start_countdown()) { fsm_ctx.last_cmd_status = 1; return; }
+        fsm_ctx.last_cmd_status = 0;
+        return;
+    }
 
     if (fsm_ctx.state != STATE_ARMED || fsm_ctx.substate != SUB_ARM_READY) {
         printf("[FSM] Not ready for test!\r\n");
@@ -896,6 +1072,10 @@ static void process_command(fsm_cmd_msg_t *msg) {
         case CMD_CALIBRATE_MOTOR: handle_cmd_calibrate_motor(msg); break;
         case CMD_STATIC_TEST:    handle_cmd_static_test(msg); break;
         case CMD_START_TEST:     handle_cmd_start_test(msg); break;
+        case CMD_SET_TEST_PROFILE: handle_cmd_set_test_profile(msg); break;
+        case CMD_HOLD:           handle_cmd_hold(msg); break;
+        case CMD_RESUME:         handle_cmd_resume(msg); break;
+        case CMD_STOP_TEST:      handle_cmd_stop_test(msg); break;
         default:
             printf("[FSM] Unknown CMD %u\r\n", msg->cmd);
             fsm_ctx.last_cmd_status = 2;
@@ -1059,6 +1239,16 @@ static uint32_t last_progress_tick = 0;
 static void process_static_test(void) {
     if (!static_test_in_progress) return;
 
+    // Defensive: if the FSM has entered a stop state via any path
+    // (e.g. internal safety event, not just CMD_ABORT), force-cancel the test.
+    if (fsm_ctx.state == STATE_ABORT || fsm_ctx.state == STATE_SAFE) {
+        if (StaticTest_IsRunning()) {
+            printf("[FSM] FSM in stop state, cancelling static test\r\n");
+            StaticTest_Cancel();
+            PWM_EmergencyStop();
+        }
+    }
+
     static_test_state_t current_state = StaticTest_Update();
     const static_test_ctx_t *ctx = StaticTest_GetContext();
 
@@ -1153,6 +1343,7 @@ void fsm_thread_function(void *argument) {
     fsm_event_msg_t evt_msg;
 
     TickType_t last_stats = xTaskGetTickCount();
+    TickType_t last_thread_stat = xTaskGetTickCount();
 
     while (1) {
         // Process commands from radio thread
@@ -1177,14 +1368,30 @@ void fsm_thread_function(void *argument) {
             case STATE_CONFIGED:   handle_state_configed(); break;
             case STATE_ARMED:      handle_state_armed(); break;
             case STATE_TEST_STAND: handle_state_test_stand(); break;
+            case STATE_TEST_STATIC:
+            case STATE_TEST_TORQUE:
+            case STATE_TEST_TORQUE_CAL:
+            case STATE_TEST_GUTTER:
+                /* Phase 3-A (A2/A5): sub-FSM dispatch via test_runner. The
+                 * runner pulls the latest test_control_packet_t from its own
+                 * cache (populated by radio_thread → test_runner_submit_control). */
+                test_runner_tick();
+                break;
             case STATE_FLIGHT:     handle_state_flight(); break;
             case STATE_ABORT:      handle_state_abort(); break;
             case STATE_SAFE:       handle_state_safe(); break;
             default: break;
         }
 
-        // Periodic stats
+        // Round-robin emission of one task's stats per second.
+        // Over ~10 s the GS receives stats for every task in the system.
         TickType_t now = xTaskGetTickCount();
+        if ((now - last_thread_stat) >= pdMS_TO_TICKS(1000)) {
+            system_stats_emit_one();
+            last_thread_stat = now;
+        }
+
+        // Periodic stats
         if ((now - last_stats) >= pdMS_TO_TICKS(STATS_INTERVAL_MS)) {
             printf("[FSM] State=%s.%s | Profile=%s | Target=%.1fm Flare=%.1fm | BaroCal=%s\r\n",
                    fsm_state_to_str(fsm_ctx.state),

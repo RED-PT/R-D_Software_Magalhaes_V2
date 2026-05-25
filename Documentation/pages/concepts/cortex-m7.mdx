@@ -1,0 +1,136 @@
+---
+title: Cortex-M7 cache
+---
+
+import { Callout } from 'nextra/components';
+
+# Cortex-M7 cache and DMA
+
+Buzz V4 only. The H743 has a 16 KB D-Cache. DMA writes happen *behind
+the cache's back* — if your buffer is in cached memory, the CPU sees
+stale data on read.
+
+## The problem
+
+<figure style={{ textAlign: 'center', margin: '1.5rem 0' }}>
+  <img
+    src="/images/m7-stale-cache.svg"
+    alt="Stale cache illustration — DMA writes to RAM, but CPU reads cached value, two values shown different"
+    loading="lazy"
+    style={{ maxWidth: '100%', height: 'auto', borderRadius: '0.5rem' }}
+  />
+  <figcaption style={{ fontSize: '0.85rem', opacity: 0.7, marginTop: '0.5rem' }}>
+    DMA bypasses the cache. Without intervention, the CPU reads
+    whatever value the cache has, not the value DMA just wrote.
+  </figcaption>
+</figure>
+
+Two options:
+
+1. **Manually invalidate/clean the cache** around every DMA transfer
+   (`SCB_InvalidateDCache_by_Addr`). Cheap-looking but error-prone —
+   one missed call corrupts data.
+2. **Place DMA buffers in non-cacheable SRAM regions.** Done once at
+   link time; no per-transfer cost. **This is what the firmware does.**
+
+## SRAM regions
+
+<figure style={{ textAlign: 'center', margin: '1.5rem 0' }}>
+  <img
+    src="/images/m7-sram-regions.svg"
+    alt="M7 SRAM map — three coloured rectangles for D1 (cached, code+heap), D2 (non-cacheable, DMA buffers), D3 (non-cacheable, BDMA buffers). Addresses labelled. Arrows from each DMA controller to its allowed region"
+    loading="lazy"
+    style={{ maxWidth: '100%', height: 'auto', borderRadius: '0.5rem' }}
+  />
+</figure>
+
+Real numbers from the linker script:
+
+```ld title="STM32H743ZIT6_Magalhaes/STM32H743ZITX_FLASH.ld"
+MEMORY
+{
+  /* ... */
+  RAM_D2 (xrw)   : ORIGIN = 0x30000000, LENGTH = 288K
+  RAM_D3 (xrw)   : ORIGIN = 0x38000000, LENGTH =  64K
+  ITCMRAM (xrw)  : ORIGIN = 0x00000000, LENGTH =  64K
+}
+```
+
+| Region   | Address      | Size    | DMA visibility       | Used for                       |
+| -------- | ------------ | ------- | -------------------- | ------------------------------ |
+| D1 SRAM  | 0x24000000   | 512 KB  | Most controllers     | Code, FreeRTOS heap, stacks    |
+| D2 SRAM  | 0x30000000   | 288 KB  | DMA1, DMA2           | DMA1/DMA2 buffers              |
+| D3 SRAM  | 0x38000000   |  64 KB  | BDMA only            | SPI6 buffers                   |
+
+The H743 has **multiple AXI bus masters**. Not every DMA controller
+can reach every SRAM region. BDMA in particular only sees D3 — that's
+why SPI6 (magnetometer) needs `BDMA_BUFFER`, not `DMA_BUFFER`.
+
+## The macros
+
+```c title="STM32H743ZIT6_Magalhaes/Core/Inc/config.h"
+#define DMA_BUFFER   __attribute__((section(".dma_buffer"),  aligned(32)))
+#define BDMA_BUFFER  __attribute__((section(".bdma_buffer"), aligned(32)))
+```
+
+```c title="STM32F446ZE_Magalhaes/Core/Inc/config.h"
+/* No D-Cache on M4 — macros expand to nothing. */
+```
+
+Driver code uses them unconditionally:
+
+```c title="Codigo/Sensors/sensors_thread.c"
+DMA_BUFFER  ASM330LHHX_t imu_device;    // D2 SRAM (DMA1/DMA2 reachable)
+BDMA_BUFFER MMC5983MA_t  mag_device;    // D3 SRAM (BDMA reachable only)
+DMA_BUFFER  BNO055_t     bno_device;    // D2 SRAM
+DMA_BUFFER  UBLOX_GPS_t  gps_device;    // D2 SRAM
+```
+
+The same source builds clean on both boards.
+
+## Linker script
+
+```ld title="STM32H743ZIT6_Magalhaes/STM32H743ZITX_FLASH.ld"
+.dma_buffer (NOLOAD) :
+{
+    . = ALIGN(32);
+    *(.dma_buffer)
+    *(.dma_buffer*)
+    . = ALIGN(32);
+} >RAM_D2
+
+/* BDMA buffers in D3 SRAM (accessible by BDMA only — SPI6, etc.) */
+.bdma_buffer (NOLOAD) :
+{
+    . = ALIGN(32);
+    *(.bdma_buffer)
+    *(.bdma_buffer*)
+    . = ALIGN(32);
+} >RAM_D3
+```
+
+`NOLOAD` means the loader doesn't initialise these regions. Buffers
+contain garbage until first written — fine for DMA targets that get
+overwritten on every transfer.
+
+## Cache-line alignment
+
+`ALIGN(32)` matches the M7 cache line size. Without it, a buffer
+straddling two cache lines could still get partial cache pollution.
+
+<Callout type="warning" emoji="⚠️">
+  If you ever see weird intermittent corruption on a single sensor,
+  **check first** whether its driver struct has the right macro. A
+  missing `BDMA_BUFFER` on the magnetometer is the classic case —
+  DMA fires, BDMA can't reach the address, transfer silently produces
+  garbage.
+</Callout>
+
+## When porting to a non-M7 chip
+
+`config.h` for the F446ZE expands `DMA_BUFFER` and `BDMA_BUFFER` to
+nothing. The same source compiles, the buffers land in normal SRAM.
+This is the abstraction principle — driver code never branches on
+the MCU family.
+
+[Hardware abstraction →](/concepts/hal) · [Adding a new MCU →](/porting/new-mcu)

@@ -1,11 +1,22 @@
-/*
- * static_thrust_test.c
+/**
+ * @file static_thrust_test.c
+ * @brief Static motor thrust test implementation
+ * @author Tomas Teixeira
+ * @date January 2026
  *
- * Static Motor Thrust Test Module
- * Records (Thrust, PWM) data points during throttle ramp
+ * Implements the state machine for automated static thrust testing.
+ * The test performs a step response (instant jump to max throttle),
+ * holds for STATIC_TEST_HOLD_DURATION_MS while sampling the FX29
+ * load cell at STATIC_TEST_SAMPLE_RATE_HZ, then saves the results.
  *
- *  Created on: Jan 11, 2026
- *      Author: Tomas Teixeira
+ * SD card logging is paused during the test (sd_card_pause /
+ * sd_card_resume) to avoid SPI bus contention with the motor's
+ * EMI. Data is made available to the dashboard via telemetry;
+ * save_test_data_to_sd() is a stub that returns true.
+ *
+ * @see static_thrust_test.h for public API and configuration macros
+ * @see FX29.h for load cell driver
+ * @see PWM_FUNCTIONS.h for motor control
  */
 
 #include "static_thrust_test.h"
@@ -16,11 +27,15 @@
 #include <stdio.h>
 #include <string.h>
 
-// Use I2C_LOADCELL from config.h (hi2c2)
+/** @brief I2C handle for load cell (I2C_LOADCELL from config.h = hi2c2) */
 extern I2C_HandleTypeDef hi2c2;
 
-// Load cell calibration (from linear regression with 11 points)
-// Formula: F_real = LOADCELL_SCALE_FACTOR * F_measured
+/**
+ * @brief Load cell calibration scale factor
+ *
+ * Derived from linear regression over 11 calibration points.
+ * Formula: F_real = LOADCELL_SCALE_FACTOR * F_measured
+ */
 #define LOADCELL_SCALE_FACTOR  0.4481f
 
 // Test context (singleton)
@@ -91,7 +106,9 @@ static_test_state_t StaticTest_Update(void) {
         case STATIC_TEST_IDLE:
         case STATIC_TEST_COMPLETE:
         case STATIC_TEST_FAILED:
-            // Nothing to do
+        case STATIC_TEST_RAMP_UP:
+        case STATIC_TEST_RAMP_DOWN:
+            // Nothing to do (RAMP_UP/DOWN reserved for future ramp-mode test).
             break;
 
         case STATIC_TEST_INIT: {

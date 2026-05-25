@@ -8,6 +8,10 @@
  * where the Flight Computer operates as a slave, synchronized to the Ground
  * Station's timing.
  *
+ * Two radio backends are selected at compile time:
+ * - **RADIO_INTERFACE_UART**: E22 module via UART DMA (F446ZE dev board)
+ * - **RADIO_INTERFACE_SPI**: SX126x via SPI DMA (Buzz V4 PCB / H743)
+ *
  * @section radio_arch Architecture
  * The radio thread manages:
  * - TDMA slot timing and synchronization
@@ -21,7 +25,8 @@
  * transmitting in free-running mode until sync is reacquired.
  *
  * @see telemetry.h for packet structure definitions
- * @see E22_uart_dma.h for low-level radio driver
+ * @see e22_uart_dma.h for UART radio driver (RADIO_INTERFACE_UART)
+ * @see lora_sx126x.h for SPI radio driver (RADIO_INTERFACE_SPI)
  */
 
 #ifndef RADIO_RADIO_THREAD_H_
@@ -189,6 +194,19 @@ void radio_thread_function();
  */
 void radio_update_sensor_data(const IMU_t *imu, const BARO_t *baro,
                                const BNO_t *bno, const GPS_t *gps);
+
+/**
+ * @brief Phase 3-A (A4): request a TDMA preset switch.
+ *
+ * The change is queued and applied at the next superframe boundary, so
+ * existing in-flight slot timing isn't disrupted. Effective range:
+ * - TDMA_MODE_FLIGHT (default): 1000 ms / 10×100 ms slots
+ * - TDMA_MODE_TEST_INTERACTIVE: 200 ms / 5×40 ms slots (10 Hz RX/TX)
+ */
+void radio_request_tdma_mode(tdma_mode_t mode);
+
+/** @brief Currently active TDMA preset (one of tdma_mode_t). */
+tdma_mode_t radio_get_tdma_mode(void);
 
 /** @} */ /* End of RadioFunctions group */
 

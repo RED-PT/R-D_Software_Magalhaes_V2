@@ -185,10 +185,10 @@
             <span>Communications</span>
           </button>
 
-          <!-- Static Thrust Test -->
+          <!-- Tests (STATIC / TORQUE / TORQUE CAL / GUTTER) -->
           <button class="nav-item" data-page="test">
             <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14l-5-5 1.41-1.41L12 14.17l4.59-4.58L18 11l-6 6z"/></svg>
-            <span>Test</span>
+            <span>Tests</span>
           </button>
 
           <!-- Help/Reference -->
@@ -421,23 +421,358 @@
             <div class="metric"><div class="label">RX Packets</div><div class="value" id="rxValue">--</div></div>
             <div class="metric"><div class="label">TX Packets</div><div class="value" id="txValue">--</div></div>
             <div class="metric"><div class="label">TDMA</div><div class="value" id="syncValue">--</div></div>
+            <div class="metric"><div class="label">TDMA Mode</div><div class="value"><span id="tdmaModeBadge" class="tdma-mode-badge" data-mode="FLIGHT">FLIGHT</span></div></div>
             <div class="metric"><div class="label">CRC Errors</div><div class="value" id="crcValue">--</div></div>
             <div class="metric"><div class="label">ACK OK</div><div class="value" id="ackOkValue">--</div></div>
             <div class="metric"><div class="label">ACK Timeout</div><div class="value" id="ackTimeoutValue">--</div></div>
           </div>
+
+          <!-- FreeRTOS task table — populated by EVT_THREAD_STAT (per-task, round-robin
+               ~1 Hz) and EVT_SYSTEM_STAT (globals, once per cycle). -->
+          <div class="card" style="margin-top:1rem">
+            <div class="card-title">FC Threads</div>
+            <div id="threadStatsHeader" class="thread-stats-header">Waiting for system stats…</div>
+            <table class="thread-stats">
+              <thead>
+                <tr>
+                  <th>Task</th><th>Prio</th><th>State</th><th>Stack free</th><th>CPU</th>
+                </tr>
+              </thead>
+              <tbody id="threadStatsBody">
+                <tr><td colspan="5" style="opacity:0.6">Waiting for first stats packet…</td></tr>
+              </tbody>
+            </table>
+          </div>
         </section>
 
         <!-- =============================================================
-             PAGE: TEST - Static thrust test interface
-             Shows: Thrust vs PWM chart, test controls, results, CSV export
+             PAGE: TEST - Unified test page for STATIC / TORQUE / TORQUE_CAL / GUTTER
+             Layout (Phase 2B):
+               1. Test setup    : test-type tabs + manual/auto mode toggle
+               2. Profile config: dynamic — fields depend on test+mode
+               3. Lifecycle     : SET PROFILE → ARM → RUN → STOP/HOLD/ABORT
+               4. Manual control: sliders (visible only in manual + RUNNING)
+               5. Live data     : current actuators + sensors
+               6. Chart         : thrust/torque/altitude vs time/throttle (preserves
+                                  existing thrustChart for back-compat with the static-auto path)
+               7. Results       : final summary + CSV export
              ============================================================= -->
         <section class="page" id="page-test">
           <div class="grid">
 
-            <!-- Thrust Test Chart with View Selector -->
+            <!-- ── 1. Test setup ─────────────────────────────────────── -->
+            <div class="card wide">
+              <div class="card-title">Test Setup</div>
+
+              <!-- Test type tabs -->
+              <div class="test-type-tabs">
+                <button class="test-type-btn active" data-test-kind="static">STATIC</button>
+                <button class="test-type-btn" data-test-kind="torque">TORQUE</button>
+                <button class="test-type-btn" data-test-kind="torque_cal">TORQUE CAL</button>
+                <button class="test-type-btn" data-test-kind="gutter">GUTTER</button>
+              </div>
+
+              <!-- Mode toggle -->
+              <div class="test-mode-toggle">
+                <label class="active"><input type="radio" name="testMode" value="auto" checked> Automatic</label>
+                <label><input type="radio" name="testMode" value="manual"> Manual</label>
+              </div>
+
+              <div class="test-setup-hint" id="testSetupHint">
+                Static thrust test (auto): jumps to a target throttle, holds, returns to 0 — measures thrust vs PWM.
+              </div>
+            </div>
+
+            <!-- ── 2. Profile config (one panel visible at a time) ───── -->
+
+            <!-- STATIC + AUTO (preserves legacy IDs for back-compat with old JS) -->
+            <div class="card test-config-panel" data-config="static-auto">
+              <div class="card-title">Static · Automatic profile</div>
+              <div class="row">
+                <label>Max throttle</label>
+                <input id="testThrottleInput" type="number" min="1" max="100" value="20" />
+                <span class="unit">%</span>
+              </div>
+              <div class="row">
+                <label>Hold duration</label>
+                <input class="cfg-static-auto-hold" type="number" min="100" max="60000" value="10000" />
+                <span class="unit">ms</span>
+              </div>
+              <div class="row">
+                <label>Curve</label>
+                <select class="cfg-static-auto-curve">
+                  <option value="step" selected>Step</option>
+                  <option value="ramp">Ramp</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- STATIC + MANUAL -->
+            <div class="card test-config-panel" data-config="static-manual" hidden>
+              <div class="card-title">Static · Manual profile</div>
+              <div class="row">
+                <label>Max throttle clamp</label>
+                <input class="cfg-static-manual-clamp" type="number" min="1" max="100" value="50" />
+                <span class="unit">%</span>
+              </div>
+              <p class="cfg-help">Slider during RUN is bound to this safety ceiling. Recommended ≤ 50% until the rig is characterised.</p>
+            </div>
+
+            <!-- TORQUE + AUTO -->
+            <div class="card test-config-panel" data-config="torque-auto" hidden>
+              <div class="card-title">Torque · Automatic profile</div>
+              <div class="row">
+                <label>Max throttle</label>
+                <input class="cfg-torque-auto-throttle" type="number" min="1" max="100" value="30" />
+                <span class="unit">%</span>
+              </div>
+              <div class="row">
+                <label>Hold duration</label>
+                <input class="cfg-torque-auto-hold" type="number" min="100" max="60000" value="10000" />
+                <span class="unit">ms</span>
+              </div>
+              <div class="row">
+                <label>Curve</label>
+                <select class="cfg-torque-auto-curve">
+                  <option value="step" selected>Step</option>
+                  <option value="ramp">Ramp</option>
+                </select>
+              </div>
+              <div class="row">
+                <label>Moment arm</label>
+                <input class="cfg-torque-auto-arm" type="number" min="0.001" max="2" step="0.001" value="0.150" />
+                <span class="unit">m</span>
+              </div>
+            </div>
+
+            <!-- TORQUE + MANUAL -->
+            <div class="card test-config-panel" data-config="torque-manual" hidden>
+              <div class="card-title">Torque · Manual profile</div>
+              <div class="row">
+                <label>Max throttle clamp</label>
+                <input class="cfg-torque-manual-clamp" type="number" min="1" max="100" value="50" />
+                <span class="unit">%</span>
+              </div>
+              <div class="row">
+                <label>Moment arm</label>
+                <input class="cfg-torque-manual-arm" type="number" min="0.001" max="2" step="0.001" value="0.150" />
+                <span class="unit">m</span>
+              </div>
+            </div>
+
+            <!-- TORQUE_CAL + AUTO -->
+            <div class="card test-config-panel" data-config="torque_cal-auto" hidden>
+              <div class="card-title">Torque calibration · Automatic profile</div>
+              <div class="row">
+                <label>Max throttle</label>
+                <input class="cfg-tcal-auto-throttle" type="number" min="1" max="100" value="40" />
+                <span class="unit">%</span>
+              </div>
+              <div class="row">
+                <label>Hold duration</label>
+                <input class="cfg-tcal-auto-hold" type="number" min="100" max="60000" value="15000" />
+                <span class="unit">ms</span>
+              </div>
+              <div class="row">
+                <label>Throttle curve</label>
+                <select class="cfg-tcal-auto-curve">
+                  <option value="step" selected>Step</option>
+                  <option value="ramp">Ramp</option>
+                </select>
+              </div>
+              <div class="row">
+                <label>Moment arm</label>
+                <input class="cfg-tcal-auto-arm" type="number" min="0.001" max="2" step="0.001" value="0.150" />
+                <span class="unit">m</span>
+              </div>
+              <div class="row">
+                <label>Alpha range</label>
+                <input class="cfg-tcal-auto-amin" type="number" min="-180" max="180" step="0.1" value="-30" />
+                <span>to</span>
+                <input class="cfg-tcal-auto-amax" type="number" min="-180" max="180" step="0.1" value="30" />
+                <span class="unit">°</span>
+              </div>
+              <div class="row">
+                <label>Alpha curve</label>
+                <select class="cfg-tcal-auto-acurve">
+                  <option value="step">Step (extremes)</option>
+                  <option value="ramp" selected>Ramp (continuous)</option>
+                </select>
+              </div>
+              <div class="row">
+                <label>Alpha period</label>
+                <input class="cfg-tcal-auto-aperiod" type="number" min="500" max="60000" value="5000" />
+                <span class="unit">ms</span>
+              </div>
+            </div>
+
+            <!-- TORQUE_CAL + MANUAL -->
+            <div class="card test-config-panel" data-config="torque_cal-manual" hidden>
+              <div class="card-title">Torque calibration · Manual profile</div>
+              <div class="row">
+                <label>Max throttle clamp</label>
+                <input class="cfg-tcal-manual-clamp" type="number" min="1" max="100" value="50" />
+                <span class="unit">%</span>
+              </div>
+              <div class="row">
+                <label>Moment arm</label>
+                <input class="cfg-tcal-manual-arm" type="number" min="0.001" max="2" step="0.001" value="0.150" />
+                <span class="unit">m</span>
+              </div>
+              <div class="row">
+                <label>Alpha clamp</label>
+                <input class="cfg-tcal-manual-amin" type="number" min="-180" max="180" step="0.1" value="-30" />
+                <span>to</span>
+                <input class="cfg-tcal-manual-amax" type="number" min="-180" max="180" step="0.1" value="30" />
+                <span class="unit">°</span>
+              </div>
+            </div>
+
+            <!-- GUTTER + AUTO -->
+            <div class="card test-config-panel" data-config="gutter-auto" hidden>
+              <div class="card-title">Gutter · Automatic profile</div>
+              <p class="cfg-help">⚠ Closed-loop test — needs healthy baro + estimator + controller. Verify rail tether before arming.</p>
+              <div class="row">
+                <label>Hold duration</label>
+                <input class="cfg-gutter-auto-hold" type="number" min="500" max="120000" value="15000" />
+                <span class="unit">ms</span>
+              </div>
+              <div class="row">
+                <label><var>h</var><sub>ref</sub> bounds</label>
+                <input class="cfg-gutter-auto-hmin" type="number" min="0" max="50" step="0.1" value="0" />
+                <span>to</span>
+                <input class="cfg-gutter-auto-hmax" type="number" min="0" max="50" step="0.1" value="3" />
+                <span class="unit">m</span>
+              </div>
+              <div class="row">
+                <label>Initial <var>h</var><sub>ref</sub></label>
+                <input class="cfg-gutter-auto-h0" type="number" min="0" max="50" step="0.1" value="1.0" />
+                <span class="unit">m</span>
+              </div>
+              <div class="row">
+                <label>Curve</label>
+                <select class="cfg-gutter-auto-curve">
+                  <option value="step">Step</option>
+                  <option value="ramp" selected>Ramp</option>
+                </select>
+              </div>
+              <div class="row">
+                <label>PID gains (<var>K</var><sub>p</sub> <var>K</var><sub>i</sub> <var>K</var><sub>d</sub>)</label>
+                <input class="cfg-gutter-auto-kp" type="number" min="0" step="0.01" value="0.50" />
+                <input class="cfg-gutter-auto-ki" type="number" min="0" step="0.01" value="0.10" />
+                <input class="cfg-gutter-auto-kd" type="number" min="0" step="0.01" value="0.20" />
+              </div>
+              <div class="row">
+                <label>Integral limit</label>
+                <input class="cfg-gutter-auto-ilim" type="number" min="0" step="0.01" value="0.30" />
+              </div>
+            </div>
+
+            <!-- GUTTER + MANUAL -->
+            <div class="card test-config-panel" data-config="gutter-manual" hidden>
+              <div class="card-title">Gutter · Manual profile</div>
+              <p class="cfg-help">⚠ Closed-loop test — needs healthy baro + estimator + controller. Verify rail tether before arming.</p>
+              <div class="row">
+                <label><var>h</var><sub>ref</sub> bounds</label>
+                <input class="cfg-gutter-manual-hmin" type="number" min="0" max="50" step="0.1" value="0" />
+                <span>to</span>
+                <input class="cfg-gutter-manual-hmax" type="number" min="0" max="50" step="0.1" value="3" />
+                <span class="unit">m</span>
+              </div>
+              <div class="row">
+                <label>PID gains (<var>K</var><sub>p</sub> <var>K</var><sub>i</sub> <var>K</var><sub>d</sub>)</label>
+                <input class="cfg-gutter-manual-kp" type="number" min="0" step="0.01" value="0.50" />
+                <input class="cfg-gutter-manual-ki" type="number" min="0" step="0.01" value="0.10" />
+                <input class="cfg-gutter-manual-kd" type="number" min="0" step="0.01" value="0.20" />
+              </div>
+              <div class="row">
+                <label>Integral limit</label>
+                <input class="cfg-gutter-manual-ilim" type="number" min="0" step="0.01" value="0.30" />
+              </div>
+            </div>
+
+            <!-- ── 3. Lifecycle controls ─────────────────────────────── -->
+            <div class="card">
+              <div class="card-title">Lifecycle</div>
+              <div class="lifecycle-status">
+                <span class="lifecycle-pill" id="lifecyclePill">IDLE</span>
+                <span class="lifecycle-mode" id="lifecycleMode">static · auto</span>
+                <span class="heartbeat-wrap" title="GS↔FC manual-mode link health (1 s timeout). Green=fresh, orange=stale, red=dead">
+                  <span class="heartbeat-indicator" id="heartbeatIndicator">●</span>
+                  <span class="heartbeat-label">Link</span>
+                </span>
+              </div>
+              <div class="lifecycle-buttons">
+                <button id="setProfileBtn" class="btn-primary">SET PROFILE</button>
+                <button id="armTestBtn"     class="btn-arm" disabled>ARM</button>
+                <button id="runTestBtn"     class="btn-run" disabled>RUN</button>
+                <button id="holdTestBtn"    class="btn-hold" disabled hidden>HOLD</button>
+                <button id="resumeTestBtn"  class="btn-run" disabled hidden>RESUME</button>
+                <button id="stopTestBtn"    class="btn-stop" disabled>STOP</button>
+                <button id="abortTestBtn"   class="btn-abort">ABORT</button>
+              </div>
+              <div class="countdown-display" id="countdownDisplay" hidden>—</div>
+              <!-- Data utility buttons — clear chart, download last test as CSV. -->
+              <div class="lifecycle-buttons">
+                <button id="clearTestBtn"   style="background:#6b7280">CLEAR CHART</button>
+                <button id="downloadCsvBtn" style="background:#3b82f6">DOWNLOAD CSV</button>
+              </div>
+              <div class="status" id="testStatus">Ready — motor calibration required first</div>
+            </div>
+
+            <!-- ── 4. Manual control sliders (visible only in manual + RUNNING) ── -->
+            <div class="card manual-sliders-panel" id="manualSlidersPanel" hidden>
+              <div class="card-title">Manual control</div>
+
+              <div class="slider-row" data-slider="throttle">
+                <label>Throttle</label>
+                <input type="range" id="manualThrottle" min="0" max="1000" value="0" />
+                <output id="manualThrottleOut">0.0 %</output>
+              </div>
+
+              <div class="slider-row" data-slider="alpha" hidden>
+                <label>Alpha (servo)</label>
+                <input type="range" id="manualAlpha" min="-18000" max="18000" value="0" />
+                <output id="manualAlphaOut">0.00 °</output>
+              </div>
+
+              <div class="slider-row" data-slider="h_ref" hidden>
+                <label><var>h</var><sub>ref</sub></label>
+                <input type="range" id="manualHRef" min="0" max="50" step="0.1" value="0" />
+                <output id="manualHRefOut">0.0 m</output>
+              </div>
+
+              <div class="manual-send-rate">Sending at 10 Hz when RUNNING · last sent: <span id="manualLastSent">—</span></div>
+            </div>
+
+            <!-- ── 5. Live data ──────────────────────────────────────── -->
+            <div class="card">
+              <div class="card-title">Live data</div>
+              <div class="live-data-grid">
+                <div><span class="label">Time</span><strong id="currentTime">0.0 s</strong></div>
+                <div><span class="label">Throttle</span><strong id="currentPWM">0%</strong></div>
+                <div><span class="label">Thrust</span><strong id="currentThrust">0.00 N</strong></div>
+                <div><span class="label">Torque</span><strong id="currentTorque">— N·m</strong></div>
+                <div><span class="label">Alpha</span><strong id="currentAlpha">— °</strong></div>
+                <div><span class="label">Altitude</span><strong id="currentAltitude">— m</strong></div>
+                <div><span class="label">Test state</span><strong id="testState">IDLE</strong></div>
+              </div>
+
+              <div class="pwm-gauge">
+                <div class="gauge-container">
+                  <svg viewBox="0 0 120 70" width="120" height="70">
+                    <path class="gauge-bg" d="M 10 60 A 50 50 0 0 1 110 60" />
+                    <path class="gauge-fill" id="testPwmGaugeFill" d="M 10 60 A 50 50 0 0 1 110 60" stroke="#22c55e" stroke-dasharray="157" stroke-dashoffset="157" />
+                  </svg>
+                </div>
+                <div class="gauge-value" id="testPwmValue">0%</div>
+              </div>
+            </div>
+
+            <!-- ── 6. Chart (preserves existing thrustChart canvas) ──── -->
             <div class="card wide">
               <div class="card-title">
-                Static Thrust Test
+                Chart
                 <div class="chart-view-selector" style="display:inline-block; margin-left:20px;">
                   <button class="chart-view-btn active" data-view="thrust_pwm" style="padding:4px 8px; font-size:11px; margin:0 2px;">Thrust vs PWM</button>
                   <button class="chart-view-btn" data-view="thrust_time" style="padding:4px 8px; font-size:11px; margin:0 2px;">Thrust vs Time</button>
@@ -449,51 +784,7 @@
                 <div><span class="label">Samples:</span><strong id="testSamples">0</strong></div>
                 <div><span class="label">Max Thrust:</span><strong id="testMaxThrust">-- N</strong></div>
                 <div><span class="label">Max PWM:</span><strong id="testMaxPWM">--%</strong></div>
-              </div>
-            </div>
-
-            <!-- Test Controls -->
-            <div class="card">
-              <div class="card-title">Test Controls</div>
-              <div class="test-controls">
-                <div class="row">
-                  <label>Max Throttle:</label>
-                  <input id="testThrottleInput" type="number" min="1" max="100" value="20" style="width:60px" />
-                  <span>%</span>
-                </div>
-                <div class="row" style="margin-top:10px">
-                  <button id="startTestBtn" style="background:#22c55e">START TEST</button>
-                  <button id="clearTestBtn" style="background:#6b7280">CLEAR</button>
-                </div>
-                <div class="row" style="margin-top:10px">
-                  <button id="downloadCsvBtn" style="background:#3b82f6">DOWNLOAD CSV</button>
-                </div>
-                <div class="status" id="testStatus" style="margin-top:10px;font-size:12px;color:#888">
-                  Ready - Motor calibration required first
-                </div>
-              </div>
-            </div>
-
-            <!-- Test Results Display -->
-            <div class="card">
-              <div class="card-title">Test Results</div>
-              <div class="test-results">
-                <div><strong>Current Time:</strong> <span id="currentTime">0.0 s</span></div>
-                <div><strong>Current PWM:</strong> <span id="currentPWM">0%</span></div>
-                <div><strong>Current Thrust:</strong> <span id="currentThrust">0.00 N</span></div>
-                <div><strong>Test State:</strong> <span id="testState">IDLE</span></div>
-                <div style="margin-top:10px"><strong>Live PWM Gauge:</strong></div>
-
-                <!-- Test Page PWM Gauge -->
-                <div class="pwm-gauge" style="margin-top:5px">
-                  <div class="gauge-container">
-                    <svg viewBox="0 0 120 70" width="120" height="70">
-                      <path class="gauge-bg" d="M 10 60 A 50 50 0 0 1 110 60" />
-                      <path class="gauge-fill" id="testPwmGaugeFill" d="M 10 60 A 50 50 0 0 1 110 60" stroke="#22c55e" stroke-dasharray="157" stroke-dashoffset="157" />
-                    </svg>
-                  </div>
-                  <div class="gauge-value" id="testPwmValue">0%</div>
-                </div>
+                <div><span class="label">Avg Thrust (>5s):</span><strong id="testAvgThrust">-- N</strong></div>
               </div>
             </div>
           </div>
@@ -504,16 +795,62 @@
              Shows: Available commands, flight profile configurations
              ============================================================= -->
         <section class="page" id="page-help">
-          <!-- Command Reference -->
+          <!-- Command Reference (legacy console commands) -->
           <div class="card">
-            <div class="card-title">Command Reference</div>
+            <div class="card-title">Console commands</div>
             <div id="helpCommands" class="help-list"></div>
           </div>
 
-          <!-- Flight Profiles -->
+          <!-- Flight Profiles (legacy) -->
           <div class="card" style="margin-top:10px;">
-            <div class="card-title">Profiles</div>
+            <div class="card-title">Legacy profiles</div>
             <div id="helpProfiles" class="help-list"></div>
+          </div>
+
+          <!-- Tests page reference (Phase 2B) -->
+          <div class="card" style="margin-top:10px;">
+            <div class="card-title">Tests page</div>
+            <div class="help-block">
+              <p>The <strong>Tests</strong> page exposes four test kinds, each with Manual or Automatic mode.</p>
+
+              <h4>Test kinds</h4>
+              <ul class="help-test-list">
+                <li><strong>STATIC</strong> — horizontal-rail motor on load cell. Measures thrust vs throttle.</li>
+                <li><strong>TORQUE</strong> — like STATIC plus a moment arm; FC computes torque = thrust · arm.</li>
+                <li><strong>TORQUE CAL</strong> — TORQUE plus a servo (<var>α</var>) sweep to characterise torque vs <var>α</var>.</li>
+                <li><strong>GUTTER</strong> — tethered vertical climb on a rail; FC controller tracks <var>h</var><sub>ref</sub> in closed loop. Needs healthy baro.</li>
+              </ul>
+
+              <h4>Modes</h4>
+              <ul>
+                <li><strong>Automatic</strong> — profile defines the recipe (max throttle, hold time, curve, sweep range). FC executes deterministically.</li>
+                <li><strong>Manual</strong> — sliders drive the actuators directly at 10 Hz. Heartbeat: if no slider packet for 1 s, FC auto-aborts.</li>
+              </ul>
+
+              <h4>Lifecycle</h4>
+              <p>For every test:</p>
+              <pre class="help-pre">CONFIGED ──► ARMED ──► COUNTDOWN ──► RUNNING ──► FINISHING ──► DONE
+                                            │
+                                            ├──► HOLD (manual only — pause)
+                                            │
+                                            └──► ABORTED (any failure / abort)</pre>
+
+              <h4>Pre-conditions</h4>
+              <ul>
+                <li>Motor calibration (<code>M</code> command) is required before SET PROFILE / ARM accept.</li>
+                <li>GUTTER additionally requires barometer calibration (<code>C</code> command) and a healthy estimator.</li>
+              </ul>
+
+              <h4>Manual sliders by kind</h4>
+              <ul>
+                <li>STATIC, TORQUE — throttle only</li>
+                <li>TORQUE CAL — throttle + <var>α</var></li>
+                <li>GUTTER — <var>h</var><sub>ref</sub></li>
+              </ul>
+
+              <h4>Heartbeat</h4>
+              <p>The green dot in the lifecycle bar is the GS↔FC link health for Manual mode. Green = fresh, orange = stale, red = no packet for &gt; 1 s. When red the FC auto-aborts the test.</p>
+            </div>
           </div>
         </section>
       </main>

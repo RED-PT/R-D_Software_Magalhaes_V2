@@ -1,0 +1,169 @@
+---
+title: Hardware abstraction
+---
+
+import { Tabs, Callout } from 'nextra/components';
+
+# Hardware abstraction
+
+`Codigo/` never references a specific HAL handle or GPIO. Everything
+goes through `config.h`. That's the whole portability mechanism — the
+two boards share *identical* application code.
+
+<figure style={{ textAlign: 'center', margin: '1.5rem 0' }}>
+  <img
+    src="/images/hal-abstraction.svg"
+    alt="HAL abstraction illustration — two boards on the left, both feeding into a single config.h block in the middle, single Codigo/ source tree on the right"
+    loading="lazy"
+    style={{ maxWidth: '100%', height: 'auto', borderRadius: '0.5rem' }}
+  />
+</figure>
+
+## The contract — at a glance
+
+| Macro                  | Used by         | Buzz V4 (H743)                                  | Nucleo (F446)        |
+| ---------------------- | --------------- | ----------------------------------------------- | -------------------- |
+| `SPI_IMU_BARO`         | IMU + Baro      | `&hspi1`                                        | `&hspi1`             |
+| `SPI_MAG`              | MMC5983MA       | `&hspi6` (BDMA)                                 | `&hspi3`             |
+| `SPI_LORA`             | SX1262          | `&hspi5`                                        | `&hspi2`             |
+| `SPI_SDCARD`           | SD card         | `&hspi2`                                        | `&hspi4`             |
+| `UART_RADIO`           | E22 (UART mode) | *undefined*                                     | `&huart6`            |
+| `UART_UBLOX`           | u-blox GPS      | `&huart1`                                       | `&huart2`            |
+| `UART_DEBUG`           | printf          | `&huart2`                                       | `&huart3`            |
+| `I2C_BNO`              | BNO055          | `&hi2c1`                                        | `&hi2c1`             |
+| `I2C_INA`              | INA219          | `&hi2c1`                                        | *undefined*          |
+| `I2C_LOADCELL`         | FX29            | `&hi2c2`                                        | `&hi2c2`             |
+| `PWM_ESC_TIM`          | ESC PWM         | `&htim4`                                        | `&htim3`             |
+| `RADIO_INTERFACE_SPI`  | radio_thread    | defined                                         | undefined            |
+| `RADIO_INTERFACE_UART` | radio_thread    | undefined                                       | defined              |
+| `DMA_BUFFER`           | DMA targets     | `__attribute__((section(".dma_buffer"), aligned(32)))` | (empty)       |
+| `BDMA_BUFFER`          | SPI6 DMA        | `__attribute__((section(".bdma_buffer"), aligned(32)))` | (empty)      |
+
+## Real `config.h` excerpts side by side
+
+<Tabs items={['Buzz V4 (STM32H743)', 'Nucleo (STM32F446ZE)']}>
+  <Tabs.Tab>
+    ```c title="STM32H743ZIT6_Magalhaes/Core/Inc/config.h"
+    /* ---- Radio backend selection ---- */
+    #define RADIO_INTERFACE_SPI         /* E22-900M22S, direct SX1262 */
+
+    /* ---- Buses ---- */
+    #define I2C_BNO                 &hi2c1
+    #define I2C_INA                 &hi2c1
+    #define UART_UBLOX              &huart1
+    #define UART_DEBUG              &huart2
+
+    #define SPI_IMU_BARO            &hspi1     /* IMU + barometer share */
+    #define SPI_MAG                 &hspi6     /* magnetometer (BDMA)  */
+    #define SPI_SDCARD              &hspi2
+    #define SPI_LORA                &hspi5     /* SX1262 direct        */
+
+    /* ---- ESC PWM ---- */
+    #define PWM_ESC_TIM             &htim4
+    #define PWM_ESC_CHANNEL         TIM_CHANNEL_1
+    #define PWM_ESC_CHANNEL_WRITE   TIM4->CCR1
+
+    /* ---- DMA buffer placement (M7 D-Cache coherency) ---- */
+    #define DMA_BUFFER  __attribute__((section(".dma_buffer"),  aligned(32)))
+    #define BDMA_BUFFER __attribute__((section(".bdma_buffer"), aligned(32)))
+    ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+    ```c title="STM32F446ZE_Magalhaes/Core/Inc/config.h"
+    /* ---- Radio backend selection ---- */
+    #define RADIO_INTERFACE_UART        /* E22-xxxT30D, transparent mode */
+
+    /* ---- Buses ---- */
+    #define I2C_BNO                 &hi2c1
+    #define I2C_LOADCELL            &hi2c2
+    #define UART_UBLOX              &huart2
+    #define UART_DEBUG              &huart3
+    #define UART_RADIO              &huart6     /* E22 transparent UART  */
+
+    #define SPI_IMU_BARO            &hspi1
+    #define SPI_LORA                &hspi2      /* (only used if SPI mode) */
+    #define SPI_MAG                 &hspi3      /* magnetometer            */
+    #define SPI_SDCARD              &hspi4
+
+    /* ---- ESC PWM ---- */
+    #define PWM_ESC_TIM             &htim3
+    #define PWM_ESC_CHANNEL         TIM_CHANNEL_1
+
+    /* DMA_BUFFER / BDMA_BUFFER expand to nothing — no D-Cache on M4 */
+    ```
+  </Tabs.Tab>
+</Tabs>
+
+## Two patterns for handling absence
+
+<figure style={{ textAlign: 'center', margin: '1.5rem 0' }}>
+  <img
+    src="/images/hal-two-patterns.svg"
+    alt="Two patterns illustration — left: macro defined on both boards but pointing at different handles. Right: macro defined on one board only, consumer wrapped in #ifdef"
+    loading="lazy"
+    style={{ maxWidth: '100%', height: 'auto', borderRadius: '0.5rem' }}
+  />
+</figure>
+
+### Pattern A — same macro, different value
+
+Use when both boards have the peripheral but on different buses. The
+driver code is identical:
+
+```c
+// In the magnetometer driver — works on either board:
+MMC5983MA_Init(&mag_device, SPI_MAG);
+//             ^^^^^^^^^^^  ^^^^^^^
+//             struct        SPI_MAG resolves to &hspi6 (H743)
+//                                            or &hspi3 (F446)
+```
+
+### Pattern B — macro defined on one board, undefined on the other
+
+Use when one board doesn't have the peripheral at all. The consumer
+gates itself with `#ifdef`:
+
+```c
+// e22_uart_dma.c — the entire file is wrapped:
+#include "config.h"
+#ifdef RADIO_INTERFACE_UART
+   /* ... entire UART driver here ... */
+#endif
+
+// lora_sx126x.c — same idea, different macro:
+#include "config.h"
+#ifdef RADIO_INTERFACE_SPI
+   /* ... entire SPI driver here ... */
+#endif
+```
+
+Both files are **always compiled** — but only one produces real code
+on each board. No need for build-system tricks.
+
+## Convenience macros (CS, RF switch, etc.)
+
+`config.h` also wraps the GPIO operations every driver needs, so even
+the bit-twiddling stays board-agnostic:
+
+```c title="config.h (H743) — SX1262 SPI helpers"
+#define CS_LORA_LOW()    HAL_GPIO_WritePin(CS_LORA_PORT, CS_LORA_PIN, GPIO_PIN_RESET)
+#define CS_LORA_HIGH()   HAL_GPIO_WritePin(CS_LORA_PORT, CS_LORA_PIN, GPIO_PIN_SET)
+#define LORA_IS_BUSY()   (HAL_GPIO_ReadPin(BUSY_LORA_PORT, BUSY_LORA_PIN) == GPIO_PIN_SET)
+
+/* RF switch on E22-900M22S — TX/RX pin selection */
+#define RADIO_RF_SWITCH_RX()  do { RADIO_RXEN_HIGH(); RADIO_TXEN_LOW();  } while(0)
+#define RADIO_RF_SWITCH_TX()  do { RADIO_RXEN_LOW();  RADIO_TXEN_HIGH(); } while(0)
+#define RADIO_RF_SWITCH_OFF() do { RADIO_RXEN_LOW();  RADIO_TXEN_LOW();  } while(0)
+```
+
+The driver calls `CS_LORA_LOW()` / `RADIO_RF_SWITCH_TX()` — never knows
+or cares what port or pin those map to.
+
+<Callout type="info" emoji="ℹ️">
+  If you find yourself writing `&hspi3` or `GPIOB` inside a file under
+  `Codigo/`, stop. That's a sign the abstraction needs another macro
+  in `config.h`.
+</Callout>
+
+[Cortex-M7 deep dive →](/concepts/cortex-m7) ·
+[Adding a new MCU →](/porting/new-mcu)

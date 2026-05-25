@@ -1,0 +1,74 @@
+---
+title: Reference
+---
+
+import { Cards } from 'nextra/components';
+
+# Reference
+
+Function-level documentation for every public API in the firmware.
+Hand-curated, organised by module, cross-linked to the concept pages
+that explain *why*. Each page covers:
+
+- **Public types** — structs, enums, and the meaning of each field.
+- **Functions** — full signatures with parameter direction
+  (`[in]` / `[out]` / `[in,out]`), return value, preconditions, and
+  failure modes.
+- **Examples** — the same patterns used in the firmware itself.
+- **Cross-links** — into the concept pages and the auto-generated
+  Doxygen output.
+
+If you want every symbol indexed by name, see the
+[auto-generated reference](/api/index.html).
+
+## Modules
+
+<Cards>
+  <Cards.Card icon="🛰️" title="Sensors" href="/reference/sensors">
+    Six device drivers (IMU, mag, baro, BNO, GPS, FX29, INA219), each
+    with `_Init / _Configure / _Read / _ProcessData`.
+  </Cards.Card>
+  <Cards.Card icon="📡" title="Radio & TDMA" href="/reference/radio">
+    SX1262 driver, E22 UART driver, TDMA superframe primitives,
+    packet builders.
+  </Cards.Card>
+  <Cards.Card icon="🚦" title="Flight state machine" href="/reference/fsm">
+    State enum, sub-state enum, command enum, telemetry events,
+    internal events, the full FSM context struct.
+  </Cards.Card>
+  <Cards.Card icon="🎯" title="Controller" href="/reference/controller">
+    Modes, motor API, ramp API, ESC PWM driver.
+  </Cards.Card>
+  <Cards.Card icon="📐" title="Estimator" href="/reference/estimator">
+    State publication, flight-event detection, queue interface.
+  </Cards.Card>
+  <Cards.Card icon="💾" title="Storage" href="/reference/storage">
+    SD-card thread API, FatFS glue, log file format.
+  </Cards.Card>
+  <Cards.Card icon="🧵" title="Threading & queues" href="/reference/threading">
+    Thread handles, priorities, queues, stream buffers, software
+    timers, notification bits.
+  </Cards.Card>
+  <Cards.Card icon="🧩" title="Shared types" href="/reference/types">
+    `defs.h` — sensor structs, packet structs, internal types used
+    everywhere.
+  </Cards.Card>
+  <Cards.Card icon="🧷" title="config.h macros" href="/reference/config">
+    Every macro the abstraction contract relies on, side by side for
+    both boards.
+  </Cards.Card>
+</Cards>
+
+## Conventions
+
+- **`[in]`** parameters are read by the function and not modified.
+- **`[out]`** parameters are written by the function. Pass a pointer
+  to caller-owned storage.
+- **`[in,out]`** parameters are read and modified.
+- **`true` on success** is the firmware-wide convention for `bool`
+  returns. `false` means the call failed; the function will `printf`
+  a diagnostic.
+- **`HAL_StatusTypeDef`** returns are passed through unmodified from
+  the underlying STM32 HAL.
+- **`__attribute__((packed))`** on structs that go on the wire — do
+  not reorder fields.

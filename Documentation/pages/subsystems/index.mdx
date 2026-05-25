@@ -1,0 +1,31 @@
+---
+title: Subsystems
+---
+
+import { Cards } from 'nextra/components';
+
+# Subsystems
+
+Per-area deep dives. Each page covers data flow, key constants, and the
+files you'd open to make changes.
+
+<Cards>
+  <Cards.Card icon="🛰️" title="Sensors" href="/subsystems/sensors">
+    Drivers, sensor thread orchestration, calibration.
+  </Cards.Card>
+  <Cards.Card icon="📐" title="Estimation" href="/subsystems/estimation">
+    IMU + barometer fusion, altitude/velocity output.
+  </Cards.Card>
+  <Cards.Card icon="🎯" title="Control & TVC" href="/subsystems/control">
+    Closed-loop gimbal control, ESC commands.
+  </Cards.Card>
+  <Cards.Card icon="📡" title="Radio & telemetry" href="/subsystems/radio">
+    LoRa drivers, TDMA logic, packet builders.
+  </Cards.Card>
+  <Cards.Card icon="💾" title="Storage" href="/subsystems/storage">
+    SD card thread, FatFS, log file format.
+  </Cards.Card>
+  <Cards.Card icon="🧪" title="Tests & bench" href="/subsystems/tests">
+    Static thrust test, calibration utilities.
+  </Cards.Card>
+</Cards>

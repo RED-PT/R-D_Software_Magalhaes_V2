@@ -1,0 +1,92 @@
+---
+title: Hardware overview
+---
+
+# Hardware overview
+
+Two boards. Same firmware. The only file that differs is `config.h`.
+
+## Buzz V4 (primary target)
+
+<figure style={{ textAlign: 'center', margin: '1.5rem 0' }}>
+  <img
+    src="/images/buzz-v4-labelled.svg"
+    alt="Buzz V4 PCB labelled with every major component — MCU, IMU, baro, mag, GPS, radio, SD, ESC connector, INA219, debug"
+    style={{ maxWidth: '100%', height: 'auto', borderRadius: '0.5rem' }}
+  />
+  <figcaption style={{ fontSize: '0.85rem', opacity: 0.7, marginTop: '0.5rem' }}>
+    The Buzz V4 PCB — custom four-layer board built around the STM32H743ZIT6.
+  </figcaption>
+</figure>
+
+| Component     | Model                  | Interface     | Rate                    |
+| ------------- | ---------------------- | ------------- | ----------------------- |
+| MCU           | STM32H743ZIT6          | —             | Cortex-M7 @ 480 MHz     |
+| IMU           | ASM330LHHX             | SPI1 (DMA)    | 6.6 kHz                 |
+| Orientation   | BNO055                 | I2C1 (DMA)    | 100 Hz                  |
+| Barometer     | MS5607                 | SPI1 (block)  | 50 Hz                   |
+| Magnetometer  | MMC5983MA              | SPI6 (BDMA)   | 100 Hz                  |
+| GPS           | u-blox NEO-M9N         | UART1 (DMA)   | 1–10 Hz                 |
+| Radio         | E22-900M22S (SX1262)   | SPI5 (DMA)    | LoRa 868 MHz            |
+| Storage       | microSD                | SPI2          | FatFS                   |
+| Power         | INA219                 | I2C1          | 1 mΩ shunt              |
+| Debug         | ST-Link                | UART2         | printf                  |
+
+<figure style={{ textAlign: 'center', margin: '1.5rem 0' }}>
+  <img
+    src="/images/buzz-v4-bus-map.svg"
+    alt="Buzz V4 bus map — colour-coded diagram showing which peripherals share which SPI/I2C/UART buses"
+    style={{ maxWidth: '100%', height: 'auto', borderRadius: '0.5rem' }}
+  />
+  <figcaption style={{ fontSize: '0.85rem', opacity: 0.7, marginTop: '0.5rem' }}>
+    Bus topology. SPI1 carries IMU + barometer; I2C1 carries BNO055 + INA219.
+  </figcaption>
+</figure>
+
+## Nucleo F446ZE (development board)
+
+<figure style={{ textAlign: 'center', margin: '1.5rem 0' }}>
+  <img
+    src="/images/nucleo-f446-labelled.svg"
+    alt="Nucleo F446ZE labelled with the same component set wired through morpho headers"
+    style={{ maxWidth: '100%', height: 'auto', borderRadius: '0.5rem' }}
+  />
+  <figcaption style={{ fontSize: '0.85rem', opacity: 0.7, marginTop: '0.5rem' }}>
+    The Nucleo dev board — same sensors, breadboarded through Morpho headers.
+  </figcaption>
+</figure>
+
+| Component     | Model           | Interface    | Notes                       |
+| ------------- | --------------- | ------------ | --------------------------- |
+| MCU           | STM32F446ZE     | —            | Cortex-M4 @ 180 MHz         |
+| IMU           | ASM330LHHX      | SPI1 (DMA)   |                             |
+| Orientation   | BNO055          | I2C1 (DMA)   |                             |
+| Barometer     | MS5607          | SPI1 (block) |                             |
+| Magnetometer  | MMC5983MA       | SPI3 (DMA)   | different bus from H743     |
+| GPS           | u-blox NEO-7M   | UART1 (DMA)  | older GPS, same protocol    |
+| Radio         | E22-xxxT30D     | UART (DMA)   | transparent mode            |
+| Storage       | microSD         | SPI2         |                             |
+| Debug         | ST-Link         | UART6        |                             |
+
+## Cortex-M7 SRAM map (Buzz V4 only)
+
+<figure style={{ textAlign: 'center', margin: '1.5rem 0' }}>
+  <img
+    src="/images/cortex-m7-sram-map.svg"
+    alt="SRAM regions D1 D2 D3 with code, DMA buffer section, BDMA buffer section colour-coded with addresses"
+    style={{ maxWidth: '100%', height: 'auto', borderRadius: '0.5rem' }}
+  />
+  <figcaption style={{ fontSize: '0.85rem', opacity: 0.7, marginTop: '0.5rem' }}>
+    The H743 has separate SRAM domains. DMA controllers can only see certain
+    regions — buffers must live where the DMA engine can reach them, and
+    outside the D-Cache for coherency.
+  </figcaption>
+</figure>
+
+| Region   | Address      | Used for             | Macro          |
+| -------- | ------------ | -------------------- | -------------- |
+| D1 SRAM  | 0x24000000   | Code, FreeRTOS heap  | (default)      |
+| D2 SRAM  | 0x30000000   | DMA1/DMA2 buffers    | `DMA_BUFFER`   |
+| D3 SRAM  | 0x38000000   | BDMA (SPI6) buffers  | `BDMA_BUFFER`  |
+
+[Read more about M7 cache and DMA →](/concepts/cortex-m7)

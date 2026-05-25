@@ -5,7 +5,14 @@
  * @date October 2025
  *
  * This module provides PWM-based control for Electronic Speed Controllers (ESC)
- * used in the Magalhaes rocket motor control system.
+ * used in the Magalhaes rocket motor control system. It supports multiple
+ * target boards through board-specific config.h definitions:
+ * - **NUCLEO-F446ZE:** TIM3 CH1 on PC6 (PWM_ESC_TIM = &htim3)
+ * - **Buzz V4 (STM32H743ZIT6):** TIM4 CH1 (PWM_ESC_TIM = &htim4)
+ *
+ * The macros PWM_ESC_TIM, PWM_ESC_CHANNEL, PWM_ESC_TIM_INSTANCE, and
+ * PWM_ESC_CHANNEL_WRITE are defined in each board's config.h, so all
+ * functions in this module are hardware-agnostic.
  *
  * @section pwm_overview Overview
  * Standard hobby ESCs expect a PWM signal:
@@ -26,6 +33,7 @@
  * - Test ramp functions at low throttle first
  *
  * @see controller_thread.h for higher-level motor control
+ * @see config.h for board-specific PWM_ESC_* macro definitions
  */
 
 #ifndef PWM_FUNCTIONS_H

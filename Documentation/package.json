@@ -1,0 +1,25 @@
+{
+  "name": "magalhaes-docs",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Documentation site for the Magalhães flight computer.",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "api": "doxygen Doxyfile && mkdir -p public/api && cp -r docs/html/. public/api/"
+  },
+  "dependencies": {
+    "next": "14.2.35",
+    "nextra": "2.13.4",
+    "nextra-theme-docs": "2.13.4",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "20.14.10",
+    "@types/react": "18.3.3",
+    "typescript": "5.5.3"
+  }
+}

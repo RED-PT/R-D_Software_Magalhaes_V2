@@ -104,6 +104,10 @@ let rttMs = null;
  */
 let ws = null;
 
+/** True once the console log was restored from sessionStorage on page load.
+ *  When set, replay packets from the server skip appending duplicate log lines. */
+let logRestoredFromSession = false;
+
 // =============================================================================
 // Rate Calculation Variables
 // =============================================================================
@@ -181,7 +185,13 @@ let testStartTime = 0;
  * @constant {string[]}
  * @description FSM state names indexed by state ID
  */
-const STATE_NAMES = ["BOOT", "IDLE", "CONFIGED", "ARMED", "TEST_STAND", "FLIGHT", "ABORT", "SAFE"];
+// Indices must mirror the fsm_state_t / fsm_substate_t enums in
+// Codigo/Flight Computer/flight_computer.h. Phase 2 added the per-test
+// states and the SUB_TEST_* sub-FSM — keep in sync after future enum changes.
+const STATE_NAMES = [
+  "BOOT", "IDLE", "CONFIGED", "ARMED", "TEST_STAND", "FLIGHT", "ABORT", "SAFE",
+  "TEST_STATIC", "TEST_TORQUE", "TEST_TORQUE_CAL", "TEST_GUTTER"
+];
 
 /**
  * @constant {string[]}
@@ -191,7 +201,10 @@ const SUBSTATE_NAMES = [
   "NONE", "TS_SENSOR_CHECK", "TS_THROTTLE_RAMP",
   "FL_IGNITION", "FL_LIFTOFF_DETECT", "FL_ASCENT", "FL_COAST",
   "FL_DESCENT_BRAKE", "FL_LANDING_FLARE", "FL_TOUCHDOWN", "FL_RECOVERY",
-  "ARM_MOTOR_INIT", "ARM_MOTOR_CAL", "ARM_READY"
+  "ARM_MOTOR_INIT", "ARM_MOTOR_CAL", "ARM_READY",
+  // Phase 2 — sub-states shared by every STATE_TEST_<KIND>.
+  "TEST_CONFIGED", "TEST_ARMED", "TEST_COUNTDOWN", "TEST_RUNNING",
+  "TEST_HOLD", "TEST_FINISHING", "TEST_DONE", "TEST_ABORTED"
 ];
 
 /**
@@ -204,8 +217,22 @@ const EVENT_NAMES = {
   8: "DISARMED", 9: "LIFTOFF", 10: "APOGEE", 11: "LANDING",
   12: "GENERIC", 13: "PONG", 14: "BARO_CAL", 15: "MOTOR_ARMED",
   16: "MOTOR_CAL_STARTED", 17: "MOTOR_CAL_PHASE2", 18: "MOTOR_CALIBRATED",
-  19: "STATIC_TEST_STARTED", 20: "STATIC_TEST_PROGRESS", 21: "STATIC_TEST_COMPLETE", 22: "STATIC_TEST_FAILED"
+  19: "STATIC_TEST_STARTED", 20: "STATIC_TEST_PROGRESS", 21: "STATIC_TEST_COMPLETE", 22: "STATIC_TEST_FAILED",
+  23: "THREAD_STAT", 24: "SYSTEM_STAT", 25: "TEST_COUNTDOWN"
 };
+
+const EVT_THREAD_STAT = 23;
+const EVT_SYSTEM_STAT = 24;
+const EVT_TEST_COUNTDOWN = 25;
+const TASK_STATE_NAMES = ["Running", "Ready", "Blocked", "Suspended", "Deleted", "Invalid"];
+
+/** Stack words on Cortex-M = 4 bytes per word (32-bit). */
+const STACK_BYTES_PER_WORD = 4;
+
+/** Accumulator for thread stats arriving round-robin. Keyed by name. */
+const threadStats = {};
+/** Latest global system stats (heap, uptime, total runtime). */
+let systemStats = null;
 
 // =============================================================================
 // Chart Creation Functions
@@ -495,6 +522,18 @@ function connectWebSocket() {
 
   ws.addEventListener('message', (event) => {
     const pkt = JSON.parse(event.data);
+    // Replay packets are sent by the server when a new client connects:
+    // they replay the latest snapshot + recent events so a refresh doesn't
+    // lose state (boot report, FSM state, etc). UI updaters run normally;
+    // only the textual log is suppressed when we already restored from
+    // sessionStorage (avoids duplicating "[EVENT] BOOT_REPORT" etc.).
+    const isReplay = pkt.replay === true;
+    const skipLog = isReplay && logRestoredFromSession;
+
+    if (pkt.type === 'snapshot_complete') {
+      // Marker — useful for debugging; nothing else to do.
+      return;
+    }
     if (pkt.type === 'fast') {
       updateFast(pkt);
     } else if (pkt.type === 'slow') {
@@ -506,27 +545,45 @@ function connectWebSocket() {
     } else if (pkt.type === 'pong') {
       rttMs = pkt.rtt_ms;
       document.getElementById('rttValue').textContent = `${pkt.rtt_ms} ms`;
-      appendLog(`[PONG] RTT=${pkt.rtt_ms}ms`);
+      if (!skipLog) appendLog(`[PONG] RTT=${pkt.rtt_ms}ms`);
     } else if (pkt.type === 'event') {
       const name = EVENT_NAMES[pkt.event_type] || `EVT_${pkt.event_type}`;
       console.log('[DEBUG] Received event:', pkt.event_type, name, 'payload length:', pkt.payload ? pkt.payload.length : 0);
-      appendLog(`[EVENT] ${name}`);
+      // Don't spam the log with THREAD_STAT/SYSTEM_STAT — they're emitted ~1Hz
+      // and have their own UI card on the Communications page.
+      const isStatEvent = (pkt.event_type === EVT_THREAD_STAT
+                        || pkt.event_type === EVT_SYSTEM_STAT);
+      if (!skipLog && !isStatEvent) appendLog(`[EVENT] ${name}`);
       // Parse boot report from CHECKS_GREEN (4) or CHECKS_RED (5)
       if (pkt.event_type === 4 && pkt.payload) {
         parseBootReport(pkt.payload, true);  // All checks passed
       } else if (pkt.event_type === 5 && pkt.payload) {
         parseBootReport(pkt.payload, false); // Some checks failed
+      } else if (pkt.event_type === EVT_THREAD_STAT && pkt.payload) {
+        parseThreadStat(pkt.payload);
+      } else if (pkt.event_type === EVT_SYSTEM_STAT && pkt.payload) {
+        parseSystemStat(pkt.payload);
+      } else if (pkt.event_type === EVT_TEST_COUNTDOWN && pkt.payload) {
+        // Phase 3-A (A6): payload[0] = seconds remaining (3, 2, 1, 0)
+        const remaining = parseInt(pkt.payload.substring(0, 2), 16);
+        const cd = document.getElementById('countdownDisplay');
+        if (cd) {
+          cd.hidden = false;
+          cd.textContent = remaining > 0 ? `T-${remaining}` : 'GO';
+        }
+        appendLog(`[COUNTDOWN] T-${remaining}`);
       }
       // Handle static test events
       handleStaticTestEvent(pkt.event_type, pkt.payload);
       // Handle motor calibration events
       handleMotorCalEvent(pkt.event_type, pkt.payload);
     } else if (pkt.type === 'log') {
-      appendLog(`[GS] ${pkt.message}`);
+      if (!skipLog) appendLog(`[GS] ${pkt.message}`);
     }
   });
 }
 
+logRestoredFromSession = restoreLogFromSession();
 connectWebSocket();
 
 // =============================================================================
@@ -585,6 +642,24 @@ function updateFast(pkt) {
   const substate = SUBSTATE_NAMES[pkt.substate] || `SS${pkt.substate}`;
   document.getElementById('stateValue').textContent = `${state} / ${substate}`;
 
+  /* Phase 3-A bugfix: keep the test page's lifecycle pill in sync with what
+   * the FC actually reports, not just what the user clicked. Otherwise a
+   * rejected SET_PROFILE / aborted test leaves the UI showing CONFIGED while
+   * the FC has reverted to IDLE — and the next click rejects again. */
+  const SUB_TO_LIFECYCLE = {
+    14: 'CONFIGED', 15: 'ARMED', 16: 'COUNTDOWN', 17: 'RUNNING',
+    18: 'HOLD', 19: 'FINISHING', 20: 'DONE', 21: 'ABORTED'
+  };
+  let inferredLifecycle = null;
+  if (pkt.state >= 8 && pkt.state <= 11) {
+    inferredLifecycle = SUB_TO_LIFECYCLE[pkt.substate];
+  } else if (pkt.state === 1 /* STATE_IDLE */ || pkt.state === 2 /* STATE_CONFIGED */) {
+    inferredLifecycle = 'IDLE';
+  }
+  if (inferredLifecycle && inferredLifecycle !== testPage.lifecycle) {
+    tpSetLifecycle(inferredLifecycle);
+  }
+
   document.getElementById('accelX').textContent = `${pkt.accel_x.toFixed(2)} g`;
   document.getElementById('accelY').textContent = `${pkt.accel_y.toFixed(2)} g`;
   document.getElementById('accelZ').textContent = `${pkt.accel_z.toFixed(2)} g`;
@@ -628,11 +703,30 @@ function updateFast(pkt) {
  * - Battery level
  * - GPS information and map position
  */
+// Phase 3-A (A4): track latest announced TDMA mode from FC.
+let tdmaModeCurrent = 0;  // 0 = FLIGHT, 1 = TEST_INTERACTIVE
+const TDMA_MODE_NAMES = ['FLIGHT', 'TEST'];
+
+function updateTdmaModeBadge() {
+  const el = document.getElementById('tdmaModeBadge');
+  if (!el) return;
+  const name = TDMA_MODE_NAMES[tdmaModeCurrent] || `M${tdmaModeCurrent}`;
+  el.textContent = name;
+  el.dataset.mode = name;  // CSS hooks
+}
+
 function updateSlow(pkt) {
   document.getElementById('tempValue').textContent = `${pkt.temperature.toFixed(1)} C`;
   document.getElementById('pressValue').textContent = `${pkt.pressure.toFixed(1)} mbar`;
   document.getElementById('batteryValue').textContent = `${pkt.battery} %`;
   document.getElementById('satValue').textContent = `${pkt.satellites}`;
+
+  // Phase 3-A (A4): pick up TDMA mode the FC announced in this slow packet.
+  if (pkt.tdma_mode !== undefined && pkt.tdma_mode !== tdmaModeCurrent) {
+    tdmaModeCurrent = pkt.tdma_mode;
+    updateTdmaModeBadge();
+    appendLog(`[TDMA] FC switched to ${TDMA_MODE_NAMES[tdmaModeCurrent] || tdmaModeCurrent}`);
+  }
 
   pushData(charts.temp, [pkt.temperature]);
   pushData(charts.press, [pkt.pressure]);
@@ -716,11 +810,47 @@ function updateStatus(pkt) {
  * Adds timestamped message to the console log pre element
  * and auto-scrolls to show the latest entry.
  */
+/**
+ * @const {number} LOG_PERSIST_LIMIT
+ * Cap on persisted log length to avoid sessionStorage quota errors.
+ * Older lines are dropped when this is exceeded.
+ */
+const LOG_PERSIST_LIMIT = 100000;
+
 function appendLog(text) {
   const log = document.getElementById('consoleLog');
   log.textContent += `${text}\n`;
   log.scrollTop = log.scrollHeight;
+  // Persist so a browser refresh doesn't lose the session log.
+  try {
+    let s = log.textContent;
+    if (s.length > LOG_PERSIST_LIMIT) {
+      s = s.slice(-LOG_PERSIST_LIMIT);
+      log.textContent = s;
+    }
+    sessionStorage.setItem('consoleLog', s);
+  } catch (e) { /* quota or disabled storage — silently drop */ }
 }
+
+/**
+ * Restore the console log from sessionStorage on page load.
+ * Called once before the WebSocket connects so a refresh keeps history.
+ * Returns true if anything was restored.
+ */
+function restoreLogFromSession() {
+  try {
+    const stored = sessionStorage.getItem('consoleLog');
+    if (stored) {
+      document.getElementById('consoleLog').textContent = stored;
+      return true;
+    }
+  } catch (e) { /* ignore */ }
+  return false;
+}
+
+/* logRestoredFromSession is declared near the top of this file (with `ws`)
+ * because it's set before connectWebSocket() runs and let-declarations have
+ * temporal dead zone — referencing it before the declaration would throw. */
 
 // =============================================================================
 // Boot Status Functions
@@ -808,6 +938,124 @@ function parseBootReport(payloadHex, checksOk) {
 }
 
 // =============================================================================
+// Thread Stats (EVT_THREAD_STAT, see thread_stat_payload_t in flight_computer.h)
+// =============================================================================
+
+/**
+ * Parse one thread-stat payload and merge into the threadStats accumulator.
+ * Layout (22 bytes, little-endian):
+ *   u8 task_idx | u8 total | u8 prio | u8 state |
+ *   u16 stack_high_water | u32 runtime_counter |
+ *   char name[12] | u16 reserved
+ */
+function parseThreadStat(payloadHex) {
+  if (!payloadHex || payloadHex.length < 22 * 2) return;
+  const bytes = new Uint8Array(payloadHex.length / 2);
+  for (let i = 0; i < bytes.length; i++) {
+    bytes[i] = parseInt(payloadHex.substr(i * 2, 2), 16);
+  }
+  const dv = new DataView(bytes.buffer);
+  const task_idx = dv.getUint8(0);
+  const total = dv.getUint8(1);
+  const priority = dv.getUint8(2);
+  const state = dv.getUint8(3);
+  const stack = dv.getUint16(4, true);
+  const runtime = dv.getUint32(6, true);
+  let name = '';
+  for (let i = 10; i < 22 && bytes[i] !== 0; i++) name += String.fromCharCode(bytes[i]);
+
+  const prev = threadStats[name] || {};
+  threadStats[name] = {
+    name, task_idx, total, priority, state,
+    stack, runtime,
+    runtime_prev: prev.runtime || 0,
+    runtime_total: runtime,  // raw — divide by sum to get %
+    last_update: Date.now(),
+  };
+  renderThreadStats();
+}
+
+/**
+ * Parse the EVT_SYSTEM_STAT payload (18 bytes, little-endian):
+ *   u32 uptime_ms | u32 free_heap | u32 min_ever_heap | u32 total_runtime |
+ *   u16 task_count | u16 reserved
+ */
+function parseSystemStat(payloadHex) {
+  if (!payloadHex || payloadHex.length < 18 * 2) return;
+  const bytes = new Uint8Array(payloadHex.length / 2);
+  for (let i = 0; i < bytes.length; i++) {
+    bytes[i] = parseInt(payloadHex.substr(i * 2, 2), 16);
+  }
+  const dv = new DataView(bytes.buffer);
+  systemStats = {
+    uptime_ms:           dv.getUint32(0,  true),
+    free_heap:           dv.getUint32(4,  true),
+    min_ever_free_heap:  dv.getUint32(8,  true),
+    total_runtime:       dv.getUint32(12, true),
+    task_count:          dv.getUint16(16, true),
+    received_at:         Date.now(),
+  };
+  renderThreadStats();
+}
+
+function formatUptime(ms) {
+  const s = Math.floor(ms / 1000);
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  if (h > 0) return `${h}h ${m}m ${sec}s`;
+  if (m > 0) return `${m}m ${sec}s`;
+  return `${sec}s`;
+}
+
+function renderThreadStats() {
+  const tbody = document.getElementById('threadStatsBody');
+  if (!tbody) return;
+
+  const tasks = Object.values(threadStats).sort((a, b) => b.priority - a.priority);
+  // Prefer the system-reported total_runtime as the CPU% denominator —
+  // it covers the whole system uniformly, including the IDLE task.
+  // Fall back to sum-of-tasks if no SYSTEM_STAT received yet.
+  const totalRuntime = (systemStats && systemStats.total_runtime)
+    || tasks.reduce((s, t) => s + t.runtime_total, 0)
+    || 1;
+
+  tbody.innerHTML = tasks.map(t => {
+    const cpu = ((t.runtime_total / totalRuntime) * 100).toFixed(1);
+    const stateName = TASK_STATE_NAMES[t.state] || `S${t.state}`;
+    const stackBytes = t.stack * STACK_BYTES_PER_WORD;
+    const stackWarn = stackBytes < 256 ? ' style="color:#ef4444"' : '';
+    return `<tr>
+      <td>${escapeHtml(t.name)}</td>
+      <td>${t.priority}</td>
+      <td>${stateName}</td>
+      <td${stackWarn}>${stackBytes} B</td>
+      <td>${cpu}%</td>
+    </tr>`;
+  }).join('');
+
+  // Update the header line with global stats if we have them.
+  const header = document.getElementById('threadStatsHeader');
+  if (header) {
+    if (systemStats) {
+      const heap = (systemStats.free_heap / 1024).toFixed(1);
+      const minHeap = (systemStats.min_ever_free_heap / 1024).toFixed(1);
+      header.textContent = `Uptime: ${formatUptime(systemStats.uptime_ms)} · ` +
+        `Heap free: ${heap} KB (min ever ${minHeap} KB) · ` +
+        `Tasks: ${systemStats.task_count}`;
+    } else {
+      header.textContent = 'Waiting for system stats…';
+    }
+  }
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[c]));
+}
+
+// =============================================================================
 // PWM Gauge Functions
 // =============================================================================
 
@@ -885,6 +1133,9 @@ function handleStaticTestEvent(eventType, payload) {
         testStatusEl.style.color = '#f59e0b';
       }
       if (testStateEl) testStateEl.textContent = 'RUNNING';
+      // Clear avg thrust display
+      const avgThrustResetEl = document.getElementById('testAvgThrust');
+      if (avgThrustResetEl) avgThrustResetEl.textContent = '-- N';
       // Clear chart
       if (charts.thrust) {
         charts.thrust.data.datasets[0].data = [];
@@ -945,25 +1196,46 @@ function handleStaticTestEvent(eventType, payload) {
         const samplesEl = document.getElementById('testSamples');
         const maxThrustEl = document.getElementById('testMaxThrust');
         const maxPWMEl = document.getElementById('testMaxPWM');
+        const avgThrustEl = document.getElementById('testAvgThrust');
         if (samplesEl) samplesEl.textContent = testData.length;
         if (maxThrustEl) maxThrustEl.textContent = `${testMaxThrust.toFixed(2)} N`;
         if (maxPWMEl) maxPWMEl.textContent = `${testMaxPWM}%`;
+
+        // Calculate average thrust excluding first 5 seconds
+        if (avgThrustEl) {
+          const samplesAfter5s = testData.filter(d => d.time_ms >= 5000);
+          if (samplesAfter5s.length > 0) {
+            const avgThrust = samplesAfter5s.reduce((sum, d) => sum + d.thrust, 0) / samplesAfter5s.length;
+            avgThrustEl.textContent = `${avgThrust.toFixed(2)} N`;
+          } else {
+            avgThrustEl.textContent = '-- N';
+          }
+        }
       }
       break;
 
-    case 21: // EVT_STATIC_TEST_COMPLETE
+    case 21: { // EVT_STATIC_TEST_COMPLETE
       testRunning = false;
+      // Final average thrust (excluding first 5 seconds)
+      const samplesAfter5s = testData.filter(d => d.time_ms >= 5000);
+      const avgThrust = samplesAfter5s.length > 0
+        ? samplesAfter5s.reduce((sum, d) => sum + d.thrust, 0) / samplesAfter5s.length
+        : 0;
+      const avgThrustFinalEl = document.getElementById('testAvgThrust');
+      if (avgThrustFinalEl) avgThrustFinalEl.textContent = `${avgThrust.toFixed(2)} N`;
+
       if (statusEl) {
-        statusEl.textContent = `Test complete! ${testData.length} samples`;
+        statusEl.textContent = `Test complete! ${testData.length} samples | Avg: ${avgThrust.toFixed(2)}N`;
         statusEl.style.color = '#22c55e';
       }
       if (testStatusEl) {
-        testStatusEl.textContent = `Complete! ${testData.length} samples. Max: ${testMaxThrust.toFixed(2)}N at ${testMaxPWM}%`;
+        testStatusEl.textContent = `Complete! ${testData.length} samples. Max: ${testMaxThrust.toFixed(2)}N | Avg(>5s): ${avgThrust.toFixed(2)}N`;
         testStatusEl.style.color = '#22c55e';
       }
       if (testStateEl) testStateEl.textContent = 'COMPLETE';
       updateAllPWMGauges(0);
       break;
+    }
 
     case 22: // EVT_STATIC_TEST_FAILED
       testRunning = false;
@@ -1071,6 +1343,9 @@ function handleMotorCalEvent(eventType, payload) {
         testStatusEl.textContent = 'Motor calibrated - ready for test';
         testStatusEl.style.color = '#22c55e';
       }
+      // Re-render the test page so SET PROFILE / ARM enable now that the
+      // motor calibration gate passed.
+      if (typeof tpUpdateLifecycleUI === 'function') tpUpdateLifecycleUI();
       break;
   }
 }
@@ -1098,6 +1373,14 @@ document.getElementById('sendCmd').addEventListener('click', () => {
   input.value = '';
 });
 
+// Enter key in cmdInput sends the command (same path as Send button).
+document.getElementById('cmdInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    document.getElementById('sendCmd').click();
+  }
+});
+
 // Static Thrust Test button handler (Console page)
 document.getElementById('staticTestBtn').addEventListener('click', () => {
   const pctInput = document.getElementById('staticTestPct');
@@ -1111,25 +1394,6 @@ document.getElementById('staticTestBtn').addEventListener('click', () => {
   }
 
   // Send command in format "EXX" where XX is the throttle percentage
-  const cmd = `E${pct}`;
-  ws.send(JSON.stringify({ type: 'cmd', cmd }));
-  appendLog(`[CMD] Static Test ${pct}%`);
-  statusEl.textContent = `Starting test at ${pct}%...`;
-  statusEl.style.color = '#f59e0b';
-});
-
-// Test page button handlers
-document.getElementById('startTestBtn')?.addEventListener('click', () => {
-  const pctInput = document.getElementById('testThrottleInput');
-  const statusEl = document.getElementById('testStatus');
-  const pct = parseInt(pctInput.value, 10);
-
-  if (isNaN(pct) || pct < 1 || pct > 100) {
-    statusEl.textContent = 'Invalid percentage (1-100)';
-    statusEl.style.color = '#ef4444';
-    return;
-  }
-
   const cmd = `E${pct}`;
   ws.send(JSON.stringify({ type: 'cmd', cmd }));
   appendLog(`[CMD] Static Test ${pct}%`);
@@ -1530,3 +1794,326 @@ document.addEventListener('fullscreenchange', () => {
     fullscreenElement.style.padding = '20px';
   }
 });
+
+// =============================================================================
+// Test page state machine (Phase 2B)
+// -----------------------------------------------------------------------------
+// Drives the unified test UI for STATIC / TORQUE / TORQUE_CAL / GUTTER, each
+// with Manual or Automatic mode. The protocol commands sent to the FC are
+// placeholders here — Phase 3-A wires them into the real FSM dispatch.
+// =============================================================================
+
+/** Sliders that each test kind exposes in Manual mode. */
+const KIND_SLIDERS = {
+  static:     ['throttle'],
+  torque:     ['throttle'],
+  torque_cal: ['throttle', 'alpha'],
+  gutter:     ['h_ref'],
+};
+
+/** Hint shown under the test type tabs. HTML is inserted as innerHTML so
+ *  use <var>x</var><sub>sub</sub>-style notation for variable names. */
+const KIND_HINTS = {
+  'static-auto':     'Static thrust test (auto): jumps to a target throttle, holds, returns to 0 — measures thrust vs PWM.',
+  'static-manual':   'Static thrust test (manual): you drive the throttle slider, FC streams thrust + PWM samples.',
+  'torque-auto':     'Torque test (auto): static profile + moment arm → torque computed on the FC side.',
+  'torque-manual':   'Torque test (manual): same as static-manual + torque calculation from the configured moment arm.',
+  'torque_cal-auto': 'Torque calibration (auto): throttle held + servo (<var>α</var>) sweep → torque vs <var>α</var> curve.',
+  'torque_cal-manual':'Torque calibration (manual): both throttle and <var>α</var> sliders, you drive the relationship.',
+  'gutter-auto':     'Gutter (auto): tethered vertical climb tracking a programmed <var>h</var><sub>ref</sub>(<var>t</var>). Closed loop — needs healthy baro.',
+  'gutter-manual':   'Gutter (manual): <var>h</var><sub>ref</sub> slider, FC controller chases your setpoint within the configured bounds.',
+};
+
+/** Active state of the test page. */
+const testPage = {
+  kind: 'static',
+  mode: 'auto',
+  lifecycle: 'IDLE',  // IDLE | CONFIGED | ARMED | COUNTDOWN | RUNNING | HOLD | FINISHING | DONE | ABORTED
+  lastSendTick: 0,
+};
+
+function tpUpdateConfigPanel() {
+  const want = `${testPage.kind}-${testPage.mode}`;
+  document.querySelectorAll('.test-config-panel').forEach(p => {
+    p.hidden = (p.dataset.config !== want);
+  });
+  const hint = document.getElementById('testSetupHint');
+  if (hint) hint.innerHTML = KIND_HINTS[want] || '';
+  const modeLabel = document.getElementById('lifecycleMode');
+  if (modeLabel) modeLabel.textContent = `${testPage.kind} · ${testPage.mode}`;
+  tpUpdateSliders();
+}
+
+function tpUpdateSliders() {
+  const visible = KIND_SLIDERS[testPage.kind] || [];
+  document.querySelectorAll('.slider-row').forEach(row => {
+    row.hidden = !visible.includes(row.dataset.slider);
+  });
+  const panel = document.getElementById('manualSlidersPanel');
+  if (panel) {
+    panel.hidden = !(testPage.mode === 'manual'
+                  && (testPage.lifecycle === 'RUNNING' || testPage.lifecycle === 'HOLD'));
+  }
+}
+
+function tpUpdateLifecycleUI() {
+  const pill = document.getElementById('lifecyclePill');
+  if (pill) {
+    pill.textContent = testPage.lifecycle;
+    pill.dataset.state = testPage.lifecycle;
+  }
+  const cd = document.getElementById('countdownDisplay');
+  if (cd) cd.hidden = (testPage.lifecycle !== 'COUNTDOWN');
+
+  // Motor calibration warning bar — shown in test status until M cal is done.
+  const status = document.getElementById('testStatus');
+  if (status && !motorCalibrated && testPage.lifecycle === 'IDLE') {
+    status.textContent = '⚠ Motor calibration required first — run M command on Console page.';
+    status.style.color = '#f59e0b';
+  }
+
+  // Button availability per lifecycle.
+  const set = (id, { enabled, hidden }) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (hidden !== undefined) el.hidden = hidden;
+    el.disabled = !enabled;
+  };
+  const ls = testPage.lifecycle;
+  // Motor must be calibrated before any test profile is loaded.
+  // Without it the FC will reject CMD_SET_PROFILE/CMD_*_TEST commands anyway.
+  const motorOk = !!motorCalibrated;
+  set('setProfileBtn', { enabled: motorOk && (ls === 'IDLE' || ls === 'CONFIGED' || ls === 'DONE' || ls === 'ABORTED') });
+  set('armTestBtn',    { enabled: motorOk && ls === 'CONFIGED' });
+  set('runTestBtn',    { enabled: ls === 'ARMED', hidden: ls === 'HOLD' });
+  set('resumeTestBtn', { enabled: ls === 'HOLD',  hidden: ls !== 'HOLD' });
+  set('holdTestBtn',   { enabled: ls === 'RUNNING' && testPage.mode === 'manual',
+                         hidden: !(testPage.mode === 'manual' && (ls === 'RUNNING' || ls === 'HOLD')) });
+  set('stopTestBtn',   { enabled: ls === 'RUNNING' || ls === 'HOLD' });
+  set('abortTestBtn',  { enabled: ls !== 'IDLE' && ls !== 'DONE' && ls !== 'ABORTED' });
+  tpUpdateSliders();
+}
+
+/* Phase 3-A bugfix: shared chart-reset, used by clearTestBtn AND any lifecycle
+ * entry into a new test (COUNTDOWN / RUNNING) — keeps the chart from carrying
+ * stale points across runs even when EVT_STATIC_TEST_STARTED is dropped. */
+function tpResetChartData() {
+  testData = [];
+  testMaxThrust = 0;
+  testMaxPWM = 0;
+  testStartTime = Date.now();
+  if (charts.thrust) {
+    charts.thrust.data.datasets[0].data = [];
+    charts.thrust.update('none');
+  }
+  const reset = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
+  reset('testSamples',     '0');
+  reset('testMaxThrust',   '-- N');
+  reset('testMaxPWM',      '--%');
+  reset('testAvgThrust',   '-- N');
+  reset('currentTime',     '0.0 s');
+  reset('currentPWM',      '0%');
+  reset('currentThrust',   '0.00 N');
+}
+
+function tpSetLifecycle(state) {
+  const previous = testPage.lifecycle;
+  testPage.lifecycle = state;
+  /* Reset chart at start of each fresh test (catches both manual runs and the
+   * "second test in a session" case where EVT_STARTED can arrive late). */
+  if ((state === 'COUNTDOWN' || state === 'RUNNING') && previous !== state
+      && previous !== 'COUNTDOWN' && previous !== 'RUNNING' && previous !== 'HOLD') {
+    tpResetChartData();
+  }
+  tpUpdateLifecycleUI();
+}
+
+/**
+ * Send a JSON message to the GS server. Phase 3-A will translate these into
+ * real commands and (for manual mode) test_control_packet_t over the radio.
+ * For now the server may not understand all of these — that's fine, the
+ * stub messages let us drive the UI end-to-end.
+ */
+function tpSendCommand(cmd, payload) {
+  if (!ws || ws.readyState !== WebSocket.OPEN) return;
+  ws.send(JSON.stringify({ type: 'test_cmd', cmd, kind: testPage.kind, mode: testPage.mode, ...payload }));
+  appendLog(`[TEST] ${cmd} (${testPage.kind}/${testPage.mode})`);
+}
+
+/** Snapshot the active config panel into a profile object the FC will consume. */
+function tpReadProfile() {
+  const v = (sel) => {
+    const el = document.querySelector(`.test-config-panel[data-config="${testPage.kind}-${testPage.mode}"] ${sel}`);
+    return el ? el.value : null;
+  };
+  const num = (sel) => parseFloat(v(sel) ?? '0') || 0;
+  const out = { kind: testPage.kind, mode: testPage.mode };
+  const k = testPage.kind, m = testPage.mode;
+  if (k === 'static' && m === 'auto') {
+    out.max_throttle = num('#testThrottleInput');
+    out.hold_ms      = num('.cfg-static-auto-hold');
+    out.curve        = v('.cfg-static-auto-curve');
+  } else if (k === 'static' && m === 'manual') {
+    out.max_throttle_clamp = num('.cfg-static-manual-clamp');
+  } else if (k === 'torque' && m === 'auto') {
+    out.max_throttle = num('.cfg-torque-auto-throttle');
+    out.hold_ms      = num('.cfg-torque-auto-hold');
+    out.curve        = v('.cfg-torque-auto-curve');
+    out.moment_arm_m = num('.cfg-torque-auto-arm');
+  } else if (k === 'torque' && m === 'manual') {
+    out.max_throttle_clamp = num('.cfg-torque-manual-clamp');
+    out.moment_arm_m = num('.cfg-torque-manual-arm');
+  } else if (k === 'torque_cal' && m === 'auto') {
+    out.max_throttle = num('.cfg-tcal-auto-throttle');
+    out.hold_ms      = num('.cfg-tcal-auto-hold');
+    out.throttle_curve = v('.cfg-tcal-auto-curve');
+    out.moment_arm_m = num('.cfg-tcal-auto-arm');
+    out.alpha_min    = num('.cfg-tcal-auto-amin');
+    out.alpha_max    = num('.cfg-tcal-auto-amax');
+    out.alpha_curve  = v('.cfg-tcal-auto-acurve');
+    out.alpha_period_ms = num('.cfg-tcal-auto-aperiod');
+  } else if (k === 'torque_cal' && m === 'manual') {
+    out.max_throttle_clamp = num('.cfg-tcal-manual-clamp');
+    out.moment_arm_m = num('.cfg-tcal-manual-arm');
+    out.alpha_min    = num('.cfg-tcal-manual-amin');
+    out.alpha_max    = num('.cfg-tcal-manual-amax');
+  } else if (k === 'gutter' && m === 'auto') {
+    out.hold_ms        = num('.cfg-gutter-auto-hold');
+    out.h_ref_min      = num('.cfg-gutter-auto-hmin');
+    out.h_ref_max      = num('.cfg-gutter-auto-hmax');
+    out.initial_h_ref  = num('.cfg-gutter-auto-h0');
+    out.curve          = v('.cfg-gutter-auto-curve');
+    out.kp = num('.cfg-gutter-auto-kp');
+    out.ki = num('.cfg-gutter-auto-ki');
+    out.kd = num('.cfg-gutter-auto-kd');
+    out.integral_limit = num('.cfg-gutter-auto-ilim');
+  } else if (k === 'gutter' && m === 'manual') {
+    out.h_ref_min = num('.cfg-gutter-manual-hmin');
+    out.h_ref_max = num('.cfg-gutter-manual-hmax');
+    out.kp = num('.cfg-gutter-manual-kp');
+    out.ki = num('.cfg-gutter-manual-ki');
+    out.kd = num('.cfg-gutter-manual-kd');
+    out.integral_limit = num('.cfg-gutter-manual-ilim');
+  }
+  return out;
+}
+
+// ── Wiring: tabs, mode toggle, config panels ────────────────────────────────
+document.querySelectorAll('.test-type-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.test-type-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    testPage.kind = btn.dataset.testKind;
+    tpUpdateConfigPanel();
+  });
+});
+document.querySelectorAll('.test-mode-toggle input[name="testMode"]').forEach(radio => {
+  radio.addEventListener('change', () => {
+    testPage.mode = radio.value;
+    document.querySelectorAll('.test-mode-toggle label').forEach(l => l.classList.remove('active'));
+    radio.parentElement.classList.add('active');
+    tpUpdateConfigPanel();
+    tpUpdateLifecycleUI();
+  });
+});
+
+// ── Wiring: lifecycle buttons ──────────────────────────────────────────────
+document.getElementById('setProfileBtn')?.addEventListener('click', () => {
+  const profile = tpReadProfile();
+  tpSendCommand('SET_PROFILE', { profile });
+  tpSetLifecycle('CONFIGED');
+});
+document.getElementById('armTestBtn')?.addEventListener('click', () => {
+  tpSendCommand('ARM');
+  tpSetLifecycle('ARMED');
+});
+document.getElementById('runTestBtn')?.addEventListener('click', () => {
+  tpSendCommand('RUN');
+  tpSetLifecycle('COUNTDOWN');
+  // Local 3-2-1 fallback animation; the FC will also broadcast EVT_TEST_COUNTDOWN
+  // events when wired up in Phase 3-A and those will overwrite this.
+  let n = 3;
+  const cd = document.getElementById('countdownDisplay');
+  if (cd) cd.textContent = String(n);
+  const tick = setInterval(() => {
+    n -= 1;
+    if (cd) cd.textContent = (n > 0) ? String(n) : 'GO';
+    if (n <= 0) {
+      clearInterval(tick);
+      setTimeout(() => tpSetLifecycle('RUNNING'), 400);
+    }
+  }, 1000);
+});
+document.getElementById('holdTestBtn')?.addEventListener('click', () => {
+  tpSendCommand('HOLD');
+  tpSetLifecycle('HOLD');
+});
+document.getElementById('resumeTestBtn')?.addEventListener('click', () => {
+  tpSendCommand('RESUME');
+  tpSetLifecycle('RUNNING');
+});
+document.getElementById('stopTestBtn')?.addEventListener('click', () => {
+  tpSendCommand('STOP');
+  tpSetLifecycle('FINISHING');
+  setTimeout(() => tpSetLifecycle('DONE'), 600);
+});
+document.getElementById('abortTestBtn')?.addEventListener('click', () => {
+  tpSendCommand('ABORT');
+  tpSetLifecycle('ABORTED');
+});
+
+// ── Wiring: manual sliders ─────────────────────────────────────────────────
+const FIELD_THROTTLE = 1, FIELD_ALPHA = 2, FIELD_HREF = 4;
+let manualSnapshot = { throttle_milli: 0, alpha_centideg: 0, h_ref_dm: 0, mask: 0 };
+let manualTickTimer = null;
+
+function tpFmtThrottle()  { document.getElementById('manualThrottleOut').textContent = `${(manualSnapshot.throttle_milli / 10).toFixed(1)} %`; }
+function tpFmtAlpha()     { document.getElementById('manualAlphaOut').textContent    = `${(manualSnapshot.alpha_centideg / 100).toFixed(2)} °`; }
+function tpFmtHRef()      { document.getElementById('manualHRefOut').textContent     = `${(manualSnapshot.h_ref_dm / 10).toFixed(1)} m`; }
+
+document.getElementById('manualThrottle')?.addEventListener('input', e => {
+  manualSnapshot.throttle_milli = parseInt(e.target.value, 10) || 0;
+  manualSnapshot.mask |= FIELD_THROTTLE;
+  tpFmtThrottle();
+});
+document.getElementById('manualAlpha')?.addEventListener('input', e => {
+  manualSnapshot.alpha_centideg = parseInt(e.target.value, 10) || 0;
+  manualSnapshot.mask |= FIELD_ALPHA;
+  tpFmtAlpha();
+});
+document.getElementById('manualHRef')?.addEventListener('input', e => {
+  manualSnapshot.h_ref_dm = Math.round((parseFloat(e.target.value) || 0) * 10);
+  manualSnapshot.mask |= FIELD_HREF;
+  tpFmtHRef();
+});
+
+/** Send a test_control packet at 10 Hz while in Manual + ARMED/COUNTDOWN/RUNNING/HOLD.
+ *  The FC's heartbeat watchdog starts the moment it enters SUB_TEST_RUNNING and
+ *  aborts after TEST_HEARTBEAT_TIMEOUT_MS without a packet. Sending earlier
+ *  (during COUNTDOWN) keeps latest_ctrl_tick fresh so the first RUNNING tick
+ *  doesn't race the watchdog. The FC only acts on the packets while in RUNNING,
+ *  so this is safe in earlier substates. */
+function tpManualTick() {
+  if (testPage.mode !== 'manual') return;
+  const ls = testPage.lifecycle;
+  if (ls !== 'ARMED' && ls !== 'COUNTDOWN' && ls !== 'RUNNING' && ls !== 'HOLD') return;
+  if (!ws || ws.readyState !== WebSocket.OPEN) return;
+  const mask = manualSnapshot.mask | FIELD_THROTTLE;
+  const flags = ls === 'HOLD' ? 2 : 1; // HOLD : RUN
+  ws.send(JSON.stringify({
+    type: 'test_control',
+    field_mask: mask,
+    throttle_milli: manualSnapshot.throttle_milli,
+    alpha_centideg: manualSnapshot.alpha_centideg,
+    h_ref_dm:       manualSnapshot.h_ref_dm,
+    h_ref_dot_cms:  0,
+    flags: flags,
+  }));
+  const lastSentEl = document.getElementById('manualLastSent');
+  if (lastSentEl) lastSentEl.textContent = new Date().toLocaleTimeString();
+}
+manualTickTimer = setInterval(tpManualTick, 100);
+
+// Initial render
+tpUpdateConfigPanel();
+tpUpdateLifecycleUI();

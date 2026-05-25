@@ -1,0 +1,304 @@
+---
+title: Sensors
+---
+
+import { Callout } from 'nextra/components';
+import { CodeDemo } from '../../components/CodeDemo';
+import { FuncRef } from '../../components/FuncRef';
+
+# Sensors
+
+Seven physical sensors, one orchestration thread. Every driver wraps a
+single device behind a uniform `_Init / _Configure / _ProcessData`
+shape so the thread doesn't care about specifics.
+
+<figure style={{ textAlign: 'center', margin: '1.5rem 0' }}>
+  <img
+    src="/images/sensors-map.svg"
+    alt="Sensor map — central Sensors thread block with seven driver tiles around it (IMU, BNO055, MS5607, MMC5983MA, GPS, FX29, INA219)"
+    loading="lazy"
+    style={{ maxWidth: '100%', height: 'auto', borderRadius: '0.5rem' }}
+  />
+</figure>
+
+## Global instances and bus tracking
+
+```c title="Codigo/Sensors/sensors_thread.c"
+/* Sensor instances — placed in DMA-reachable SRAM on H743 */
+DMA_BUFFER  ASM330LHHX_t imu_device;    /* IMU on SPI1 (DMA)        */
+BDMA_BUFFER MMC5983MA_t  mag_device;    /* MAG on SPI6 (BDMA, D3)   */
+MS5607_t                 baro_device;   /* BARO on SPI1 (blocking)  */
+DMA_BUFFER  BNO055_t     bno_device;    /* BNO on I2C1 (DMA)        */
+DMA_BUFFER  UBLOX_GPS_t  gps_device;    /* GPS on USART (DMA)       */
+
+/* Bus arbitration — IMU and BARO share SPI1; only one can read at a time */
+volatile active_sensor_t spi1_active_sensor    = ACTIVE_SENSOR_NONE;
+volatile active_sensor_t spi_mag_active_sensor = ACTIVE_SENSOR_NONE;
+volatile active_sensor_t i2c1_active_sensor    = ACTIVE_SENSOR_NONE;
+```
+
+The bus-tracking variables prevent two sensors from claiming the same
+SPI/I2C bus mid-transfer. They're set when a DMA starts and cleared
+on completion (or timeout, see I2C recovery below).
+
+## Init sequence
+
+`sensors_thread_init()` runs once at thread startup. Each call reports
+its result to the FSM:
+
+```c title="Codigo/Sensors/sensors_thread.c — sensors_thread_init()"
+/* IMU */
+bool imu_ok = ASM330LHHX_Init(&imu_device, SPI_IMU_BARO);
+fsm_report_init_status("IMU_INIT", imu_ok);
+if (imu_ok) {
+    bool imu_cfg = ASM330LHHX_Configure(&imu_device);
+    fsm_report_init_status("IMU_CONFIG", imu_cfg);
+}
+
+/* Magnetometer */
+bool mag_ok = MMC5983MA_Init(&mag_device, SPI_MAG);
+fsm_report_init_status("MAG_INIT", mag_ok);
+if (mag_ok) {
+    bool mag_cfg = MMC5983MA_Configure(&mag_device);
+    fsm_report_init_status("MAG_CONFIG", mag_cfg);
+}
+
+/* Barometer */
+bool baro_ok = MS5607_Init(&baro_device, SPI_IMU_BARO,
+                           CS_BARO_PORT, CS_BARO_PIN);
+fsm_report_init_status("BARO_INIT", baro_ok);
+
+/* BNO055 (9-DOF fusion) */
+bool bno_ok = BNO055_Init(&bno_device, I2C_BNO);
+fsm_report_init_status("BNO_INIT", bno_ok);
+if (bno_ok) {
+    BNO055_Configure(&bno_device);
+}
+
+/* GPS */
+bool gps_ok = UBLOX_GPS_Init(&gps_device, UART_UBLOX);
+if (gps_ok) {
+    HAL_Delay(1000);                       /* GPS boot */
+    UBLOX_GPS_ConfigureMinimal(&gps_device);
+    UBLOX_GPS_StartDMA(&gps_device);
+}
+```
+
+Note the use of `config.h` macros — `SPI_IMU_BARO`, `SPI_MAG`,
+`I2C_BNO`, `UART_UBLOX`. The init code is identical on both boards;
+only the macros resolve differently.
+
+## DMA-driven read pattern
+
+Once initialised, the thread waits on FreeRTOS notifications. Each
+notification bit comes from a different IRQ source:
+
+```c title="Codigo/Sensors/sensors_thread.c — main loop"
+xTaskNotifyWait(0, ULONG_MAX, &ulNotificationValue, xMaxBlockTime);
+
+/* IMU data-ready — kick off DMA (non-blocking) */
+if (ulNotificationValue & SENSOR_NOTIFY_IMU_DRDY) {
+    if (spi1_active_sensor == ACTIVE_SENSOR_NONE) {
+        spi1_active_sensor = ACTIVE_SENSOR_IMU;
+        ASM330LHHX_StartReadDMA(&imu_device);
+    }
+}
+
+/* DMA complete — parse and hand off */
+if (ulNotificationValue & SENSOR_NOTIFY_DMA_COMPLETE) {
+    if (spi1_active_sensor == ACTIVE_SENSOR_IMU) {
+        IMU_t imu_data;
+        if (ASM330LHHX_ProcessData(&imu_device, &imu_data)) {
+            data_handler_store_imu(&imu_data);   /* fan-out */
+        }
+        spi1_active_sensor = ACTIVE_SENSOR_NONE;
+    }
+    /* ... similar branches for MAG and BNO ... */
+}
+
+/* Barometer — timer-driven, blocking read (only ~9 ms) */
+if (ulNotificationValue & SENSOR_NOTIFY_BARO_TIMER) {
+    BARO_t baro_data;
+    if (MS5607_ReadWithCalibration(&baro_device, &baro_data,
+                                    fsm_get_baro_calibration())) {
+        data_handler_store_baro(&baro_data);
+    }
+}
+```
+
+## I2C bus recovery
+
+The BNO055 (I2C) occasionally hangs the bus — a DMA never completes.
+The thread detects this and reinitialises I2C from scratch:
+
+```c title="Codigo/Sensors/sensors_thread.c"
+#define DMA_TIMEOUT_MS 100
+
+if (i2c1_active_sensor != ACTIVE_SENSOR_NONE) {
+    uint32_t elapsed = HAL_GetTick() - i2c1_dma_start_tick;
+    if (elapsed > DMA_TIMEOUT_MS) {
+        I2C_BusRecovery(bno_device.hi2c);    /* de-init + re-init */
+        i2c1_active_sensor = ACTIVE_SENSOR_NONE;
+    }
+}
+
+static void I2C_BusRecovery(I2C_HandleTypeDef *hi2c) {
+    HAL_I2C_DeInit(hi2c);
+    HAL_Delay(11);
+    HAL_I2C_Init(hi2c);
+    sensor_stats.i2c_recoveries++;
+}
+```
+
+<Callout type="info" emoji="ℹ️">
+  This isn't theoretical — the BNO055 hanging I2C1 was a real
+  recurring issue. Recovery happens in-thread without dropping
+  other sensor activity.
+</Callout>
+
+## Per-sensor reference
+
+### ASM330LHHX — 6-axis IMU
+
+|              |                                           |
+| ------------ | ----------------------------------------- |
+| **Bus**          | `SPI_IMU_BARO` (SPI1, DMA)            |
+| **Rate**         | 416 Hz (configured), data-ready IRQ   |
+| **Driver**       | `Codigo/Sensors/ASM330LHHX/`          |
+| **Read pattern** | DMA into ring buffer; IRQ wakes thread |
+
+### BNO055 — 9-DOF orientation
+
+|              |                                           |
+| ------------ | ----------------------------------------- |
+| **Bus**      | `I2C_BNO` (I2C1, DMA)                     |
+| **Rate**     | 100 Hz, polled via FreeRTOS timer         |
+| **Driver**   | `Codigo/Sensors/BNO055/`                  |
+| **Quirk**    | Internal Bosch fusion firmware; reads quaternions |
+
+### MS5607 — barometric pressure
+
+|              |                                           |
+| ------------ | ----------------------------------------- |
+| **Bus**      | `SPI_IMU_BARO` (SPI1, blocking)           |
+| **Rate**     | 50 Hz, polled via FreeRTOS timer          |
+| **Driver**   | `Codigo/Sensors/MS5607/`                  |
+| **Quirk**    | Conversion takes ~9 ms; ping-pong scheme  |
+
+The barometer shares SPI1 with the IMU — that's why the bus tracking
+variable exists. When the baro polls, it briefly takes the bus from
+the IMU.
+
+### MMC5983MA — 3-axis magnetometer
+
+|              |                                           |
+| ------------ | ----------------------------------------- |
+| **Bus**      | `SPI_MAG` (SPI6 BDMA on H743 / SPI3 DMA on F446) |
+| **Rate**     | 100 Hz, data-ready IRQ                    |
+| **Driver**   | `Codigo/Sensors/MMC5983MA/`               |
+| **Quirk**    | SET/RESET cycle for stray-field rejection |
+
+### u-blox GPS
+
+<figure style={{ textAlign: 'center', margin: '1.5rem 0' }}>
+  <img
+    src="/images/gps-protocol.svg"
+    alt="GPS protocol illustration — UART byte stream with NMEA sentences mixed with UBX binary frames, parser splitting them into structured output"
+    loading="lazy"
+    style={{ maxWidth: '100%', height: 'auto', borderRadius: '0.5rem' }}
+  />
+</figure>
+
+|              |                                           |
+| ------------ | ----------------------------------------- |
+| **Bus**      | `UART_UBLOX` (UART, DMA)                  |
+| **Rate**     | 1–10 Hz                                   |
+| **Driver**   | `Codigo/Sensors/GPS/`                     |
+| **Protocol** | NMEA + UBX binary configuration           |
+
+The GPS init does some board-specific configuration:
+
+```c
+UBLOX_GPS_ConfigureMinimal(&gps_device);    /* trim NMEA output */
+HAL_Delay(200);
+
+#if UBLOX_GPS_HAS_FLASH
+UBLOX_GPS_SaveConfig(&gps_device);          /* NEO-M9N: persist */
+#else
+/* NEO-7M: ROM-only, config lost on power cycle */
+#endif
+```
+
+### FX29 — load cell
+
+|              |                                           |
+| ------------ | ----------------------------------------- |
+| **Bus**      | `I2C_LOADCELL` (I2C2, polling)            |
+| **Rate**     | ~80 Hz                                    |
+| **Driver**   | `Codigo/Sensors/FX29/`                    |
+| **Used by**  | Static thrust test only                   |
+
+### INA219 — power monitor
+
+|              |                                           |
+| ------------ | ----------------------------------------- |
+| **Bus**      | `I2C_INA` (I2C1)                          |
+| **Rate**     | 1 Hz                                      |
+| **Driver**   | `Codigo/Sensors/INA219/`                  |
+| **Notes**    | Buzz V4 only; 1 mΩ shunt                  |
+
+## Statistics
+
+The thread keeps a `sensor_stats` struct and dumps it every 10 s.
+Code on the left, what you'd see on the debug UART on the right:
+
+<CodeDemo>
+
+```c filename="sensors_thread.c"
+if ((xTaskGetTickCount() - last_stats_time)
+    > pdMS_TO_TICKS(10000)) {
+    printf("Sensor Statistics\r\n");
+    printf("IMU:  %lu samples, %lu errors\r\n",
+           sensor_stats.imu_samples,
+           sensor_stats.imu_errors);
+    /* ... rest of sensors ... */
+    last_stats_time = xTaskGetTickCount();
+}
+```
+
+```text filename="Debug UART output"
+Sensor Statistics
+IMU:  41600 samples, 0 errors
+MAG:   1000 samples, 0 errors
+BARO:   500 samples, 0 errors
+BNO:   1000 samples, 2 errors
+GPS:     10 samples, 0 errors, 8 sats, updates=42, sentences=128
+DMA errors: 0, I2C timeouts: 0, I2C recoveries: 0
+```
+
+</CodeDemo>
+
+Useful at the launchpad — error counts climbing means a wiring or
+EMI problem.
+
+## Driver function reference
+
+For the full signatures (parameters, return values, register layouts),
+jump straight into the API reference:
+
+- <FuncRef name="ASM330LHHX_Init"          file="ASM330LHHX.h" />
+- <FuncRef name="ASM330LHHX_Configure"     file="ASM330LHHX.h" />
+- <FuncRef name="ASM330LHHX_StartReadDMA"  file="ASM330LHHX.h" />
+- <FuncRef name="ASM330LHHX_ProcessData"   file="ASM330LHHX.h" />
+- <FuncRef name="MMC5983MA_Init"           file="MMC5983MA.h"  />
+- <FuncRef name="MMC5983MA_StartReadDMA"   file="MMC5983MA.h"  />
+- <FuncRef name="BNO055_Init"              file="BNO055.h"     />
+- <FuncRef name="BNO055_StartReadDMA"      file="BNO055.h"     />
+- <FuncRef name="MS5607_ReadWithCalibration" file="MS5607.h"   />
+- <FuncRef name="UBLOX_GPS_Init"           file="GPS.h"        />
+- <FuncRef name="FX29_Init"                file="FX29.h"       />
+- <FuncRef name="INA219_Init"              file="INA219.h"     />
+
+## Adding a new sensor
+
+See [Adding a sensor](/porting/new-sensor).

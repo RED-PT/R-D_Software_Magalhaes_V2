@@ -94,19 +94,25 @@ static SemaphoreHandle_t fsm_mutex = NULL;
 /* ============================================================================
  * State/Substate String Tables
  * ============================================================================ */
-/** @brief Human-readable state names for logging and telemetry */
+/** @brief Human-readable state names for logging and telemetry. Order
+ *  must match the fsm_state_t enum exactly (used as direct index). */
 static const char* state_strings[] = {
     "BOOT", "IDLE", "CONFIGED", "ARMED",
-    "TEST_STAND", "FLIGHT", "ABORT", "SAFE"
+    "TEST_STAND", "FLIGHT", "ABORT", "SAFE",
+    /* Phase 2 — per-test parent states. */
+    "TEST_STATIC", "TEST_TORQUE", "TEST_TORQUE_CAL", "TEST_GUTTER"
 };
 
-/** @brief Human-readable substate names for logging and telemetry */
+/** @brief Human-readable substate names for logging and telemetry. */
 static const char* substate_strings[] = {
     "NONE",
     "TS_SENSOR_CHECK", "TS_THROTTLE_RAMP",
     "FL_IGNITION", "FL_LIFTOFF_DETECT", "FL_ASCENT", "FL_COAST",
     "FL_DESCENT_BRAKE", "FL_LANDING_FLARE", "FL_TOUCHDOWN", "FL_RECOVERY",
-    "ARM_MOTOR_INIT", "ARM_MOTOR_CAL", "ARM_READY"
+    "ARM_MOTOR_INIT", "ARM_MOTOR_CAL", "ARM_READY",
+    /* Phase 2 — sub-states shared by every STATE_TEST_<KIND>. */
+    "TEST_CONFIGED", "TEST_ARMED", "TEST_COUNTDOWN", "TEST_RUNNING",
+    "TEST_HOLD", "TEST_FINISHING", "TEST_DONE", "TEST_ABORTED"
 };
 
 /** @brief Human-readable profile names for logging and telemetry */
@@ -121,7 +127,7 @@ static const char* profile_strings[] = {
  * @retval "UNKNOWN" if state is out of valid range
  */
 const char* fsm_state_to_str(fsm_state_t state) {
-    if (state <= STATE_SAFE) return state_strings[state];
+    if (state <= STATE_TEST_GUTTER) return state_strings[state];
     return "UNKNOWN";
 }
 
@@ -132,7 +138,7 @@ const char* fsm_state_to_str(fsm_state_t state) {
  * @retval "UNKNOWN" if substate is out of valid range
  */
 const char* fsm_substate_to_str(fsm_substate_t substate) {
-    if (substate <= SUB_ARM_READY) return substate_strings[substate];
+    if (substate <= SUB_TEST_ABORTED) return substate_strings[substate];
     return "UNKNOWN";
 }
 

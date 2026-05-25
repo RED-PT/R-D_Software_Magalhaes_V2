@@ -1,3 +1,23 @@
+/**
+ * @file fatfs_sd.c
+ * @brief Low-level SD card driver over SPI for FatFS
+ *
+ * Provides the disk I/O layer (disk_initialize, disk_read, disk_write,
+ * disk_ioctl) that FatFS calls internally. Communication uses the SPI
+ * peripheral defined by HSPI_SDCARD in fatfs_sd.h / config.h.
+ *
+ * @section fatfs_sd_speed SPI Baud Rate Switch
+ * SD card initialisation must run at a slow SPI clock (<=400 kHz per
+ * SD spec). After successful initialisation, if the board's config.h
+ * defines @c SD_SPI_PRESCALER_FAST, the prescaler is lowered to
+ * increase throughput for subsequent read/write operations. On the
+ * Buzz V4 (H743) this is SPI_BAUDRATEPRESCALER_4; on the F446ZE dev
+ * board the macro is not defined so the init prescaler is kept.
+ *
+ * @note Based on elm-chan's generic MMC/SD SPI driver.
+ * @see fatfs_sd.h for SPI pin/port macros
+ * @see config.h for SD_SPI_PRESCALER_FAST definition
+ */
 
 #define TRUE  1
 #define FALSE 0
@@ -7,6 +27,7 @@
 
 #include "diskio.h"
 #include "fatfs_sd.h"
+#include "cmsis_os.h"
 
 uint16_t Timer1, Timer2;					/* 1ms Timer Counter */
 
@@ -22,14 +43,14 @@ static uint8_t PowerFlag = 0;				/* Power flag */
 static void SELECT(void)
 {
 	HAL_GPIO_WritePin(SD_CS_PORT, SD_CS_PIN, GPIO_PIN_RESET);
-	HAL_Delay(1);
+	osDelay(1);
 }
 
 /* slave deselect */
 static void DESELECT(void)
 {
 	HAL_GPIO_WritePin(SD_CS_PORT, SD_CS_PIN, GPIO_PIN_SET);
-	HAL_Delay(1);
+	osDelay(1);
 }
 
 /* SPI transmit a byte */
@@ -336,7 +357,12 @@ DSTATUS SD_disk_initialize(BYTE drv)
 		Stat &= ~STA_NOINIT;
 
 #ifdef SD_SPI_PRESCALER_FAST
-		/* Switch SPI to high speed now that card is initialized */
+		/*
+		 * Switch SPI to high speed now that card is initialized.
+		 * SD spec requires <= 400 kHz during init (CMD0/CMD8/ACMD41).
+		 * After init succeeds, SD_SPI_PRESCALER_FAST (from config.h)
+		 * lowers the prescaler to maximise read/write throughput.
+		 */
 		(HSPI_SDCARD)->Init.BaudRatePrescaler = SD_SPI_PRESCALER_FAST;
 		HAL_SPI_Init(HSPI_SDCARD);
 #endif

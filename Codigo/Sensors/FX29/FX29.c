@@ -15,6 +15,7 @@
  */
 
 #include "FX29.h"
+#include "cmsis_os.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -143,7 +144,7 @@ bool FX29_Tare(FX29_t *dev) {
     LOADCELL_t reading;
 
     for (int i = 0; i < FX29_TARE_SAMPLES; i++) {
-        HAL_Delay(FX29_TARE_DELAY_MS);
+        osDelay(FX29_TARE_DELAY_MS);
 
         if (FX29_Read(dev, &reading)) {
             if (reading.status == FX29_OK || reading.status == FX29_STALE_DATA) {
@@ -186,7 +187,7 @@ bool FX29_Calibrate(FX29_t *dev, float known_weight1_n, float measured1_n,
     float measured_delta = measured2_n - measured1_n;
 
     // Check for division by zero
-    if (measured_delta == 0.0f || measured_delta < 0.001f && measured_delta > -0.001f) {
+    if (measured_delta == 0.0f || (measured_delta < 0.001f && measured_delta > -0.001f)) {
         printf("[FX29] Calibration failed: measured values too close\r\n");
         return false;
     }

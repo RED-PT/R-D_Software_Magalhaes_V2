@@ -11,9 +11,10 @@
  * - 3-axis magnetic field measurement
  * - 18-bit resolution (0.0625 mGauss/LSB)
  * - Full scale range: +/-8 Gauss
- * - SPI interface up to 10 MHz
+ * - SPI interface up to 10 MHz (connected via SPI_MAG; see config.h)
  * - Automatic SET/RESET for offset elimination
  * - DMA-based data transfer
+ * - Supports multiple board targets (F446ZE Nucleo uses SPI3, H743ZI Buzz V4 uses SPI6)
  *
  * @section mmc_usage Usage
  * @code
@@ -95,9 +96,9 @@
  * Contains all state for a single MMC5983MA device instance.
  */
 typedef struct {
-    SPI_HandleTypeDef *hspi;        /**< SPI peripheral handle */
-    uint8_t tx_buffer[9];           /**< DMA transmit buffer (1 cmd + 8 dummy) */
-    uint8_t read_buffer[9];         /**< DMA receive buffer (1 dummy + 8 data) */
+    SPI_HandleTypeDef *hspi;        /**< SPI peripheral handle (SPI_MAG from config.h) */
+    uint8_t tx_buffer[9];           /**< DMA transmit buffer (1 cmd + 8 dummy); kept in struct for DMA cache coherency */
+    uint8_t read_buffer[9];         /**< DMA receive buffer (1 dummy + 8 data); sized to 9 to prevent DMA buffer overflow */
     volatile uint8_t data_ready;    /**< Flag set when new data available */
 
     /* Internal raw data (18-bit values) */

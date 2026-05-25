@@ -3,12 +3,19 @@
  * @brief HAL Interrupt Callback Implementations
  * @author Tomás Teixeira (texman)
  * @date November 18, 2025
- * @version 2.0
+ * @version 2.1
  *
  * @details
  * This file implements all STM32 HAL interrupt callbacks for the Magalhães
  * Flight Computer. It serves as the central interrupt handling module that
  * bridges hardware interrupts with FreeRTOS task notifications.
+ *
+ * Supports dual-board configurations:
+ * - **STM32F446ZE** (dev board): UART radio via E22, SPI3 for magnetometer
+ * - **STM32H743ZIT6** (Buzz V4 PCB): SPI radio via SX126x, SPI6 for magnetometer
+ *
+ * Peripheral instance macros (SPI_MAG_INSTANCE, UART_DEBUG_INSTANCE, etc.)
+ * are resolved at compile time via config.h to the correct hardware for each board.
  *
  * ## Callback Categories
  *
@@ -306,6 +313,7 @@ void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c) {
  * Called when a UART DMA transmit transfer completes.
  * Currently handles E22 LoRa module command transmission.
  *
+ * @note Only active when RADIO_INTERFACE_UART is defined (F446ZE dev board)
  * @see E22_UART_TxCpltCallback()
  */
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
@@ -332,6 +340,8 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
  * - Calls E22_UART_RxCpltCallback() for radio data processing
  * - Handles telemetry packets and command responses
  *
+ * @note The UART_RADIO_INSTANCE path is only active when RADIO_INTERFACE_UART
+ *       is defined (F446ZE dev board)
  * @see GPS_ProcessBuffer() for NMEA parsing
  * @see E22_UART_RxCpltCallback() for radio handling
  */
@@ -361,6 +371,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
  * This callback is currently disabled. It was intended for double-buffering
  * UART reception on the E22 radio module.
  *
+ * @note Only active when RADIO_INTERFACE_UART is defined (F446ZE dev board)
  * @note Enable this callback if implementing continuous reception with
  *       circular DMA buffer processing.
  */
@@ -380,7 +391,8 @@ void HAL_UART_RxHalfCpltCallback(UART_HandleTypeDef *huart) {
  *
  * @details
  * Called when a UART communication error occurs (overrun, framing, noise, etc.).
- * Currently only logs errors for USART6 for debugging purposes.
+ * Currently only logs errors for UART_DEBUG_INSTANCE (USART6 on F446ZE, USART2
+ * on H743) for debugging purposes.
  *
  * **Common UART Errors:**
  * - Overrun: Data received before previous byte read
@@ -394,4 +406,26 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) {
 	if (huart->Instance == UART_DEBUG_INSTANCE) {
 		printf("ERRO DMA UART\r\n");
 	}
+}
+
+/* ============================================================================
+ * FreeRTOS RUN_TIME_STATS hooks
+ * ----------------------------------------------------------------------------
+ * Override the __weak stubs CubeMX generates in Core/Src/freertos.c that
+ * always return 0 (which is why ulRunTimeCounter would never increment and
+ * the GS thread-stats table showed 0% CPU for every task).
+ *
+ * Uses the ARM Cortex-M DWT cycle counter — a core feature, portable across
+ * F446 and H743. The 32-bit counter wraps every ~24s on F446 @ 180 MHz, but
+ * FreeRTOS only consumes the *delta* between samples (modular subtraction),
+ * so the wrap is harmless for relative CPU% calculations.
+ * ============================================================================ */
+void configureTimerForRunTimeStats(void) {
+    CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+    DWT->CYCCNT = 0;
+    DWT->CTRL  |= DWT_CTRL_CYCCNTENA_Msk;
+}
+
+unsigned long getRunTimeCounterValue(void) {
+    return DWT->CYCCNT;
 }

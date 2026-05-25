@@ -60,10 +60,20 @@
  * @{
  */
 #define STATIC_TEST_SAMPLE_RATE_HZ      20      /**< Data samples per second */
-#define STATIC_TEST_HOLD_DURATION_MS    10000    /**< Hold time at max throttle (ms) */
-#define STATIC_TEST_RAMP_DURATION_MS    500
+#define STATIC_TEST_HOLD_DURATION_MS    10000   /**< Duration (ms) the motor is held at max throttle.
+                                                     Changing this value automatically resizes
+                                                     STATIC_TEST_MAX_SAMPLES via the formula below. */
+#define STATIC_TEST_RAMP_DURATION_MS    500     /**< Ramp up/down duration (ms) -- currently unused (step response) */
 #define STATIC_TEST_SETTLE_DELAY_MS     500     /**< Settle time before test (ms) */
-#define STATIC_TEST_MAX_SAMPLES         256     /**< Maximum data points to store */
+/**
+ * @brief Maximum number of data samples that can be stored
+ *
+ * Auto-calculated from STATIC_TEST_HOLD_DURATION_MS and
+ * STATIC_TEST_SAMPLE_RATE_HZ so the buffer always fits the full hold
+ * phase. A margin of 20 extra slots accounts for timing jitter. For the
+ * default values (10 s hold, 20 Hz), this evaluates to 220 samples.
+ */
+#define STATIC_TEST_MAX_SAMPLES         ((STATIC_TEST_HOLD_DURATION_MS / (1000 / STATIC_TEST_SAMPLE_RATE_HZ)) + 20)
 /** @} */
 
 /**

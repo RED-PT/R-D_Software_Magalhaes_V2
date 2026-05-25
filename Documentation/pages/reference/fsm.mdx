@@ -1,0 +1,397 @@
+---
+title: FSM reference
+---
+
+import { Callout } from 'nextra/components';
+import { CodeDemo } from '../../components/CodeDemo';
+import { FuncRef } from '../../components/FuncRef';
+
+# Flight state machine reference
+
+The FSM is the **safety boundary** of the firmware. It owns
+transitions, gates everything that touches a motor or pyrotechnic, and
+emits the events the SD log uses to reconstruct a flight afterwards.
+
+For the rationale behind each state, see [Flight lifecycle](/concepts/flight-lifecycle).
+
+---
+
+## States
+
+```c title="Codigo/Flight Computer/flight_computer.h"
+typedef enum {
+    STATE_BOOT = 0,     /* peripherals + threads coming up      */
+    STATE_IDLE,         /* alive, waiting for a profile         */
+    STATE_CONFIGED,     /* profile validated, awaiting ARM      */
+    STATE_ARMED,        /* motor armed, waiting LAUNCH or TEST  */
+    STATE_TEST_STAND,   /* bench thrust characterisation        */
+    STATE_FLIGHT,       /* active flight (sub-state machine)    */
+    STATE_ABORT,        /* emergency shutdown sequence          */
+    STATE_SAFE          /* post-flight idle, logs flushed       */
+} fsm_state_t;
+```
+
+<Callout type="error" emoji="🛑">
+  **The values are wire-visible.** Every fast telemetry packet stamps
+  the current state as a single byte. The SD log does the same. The
+  dashboard inspects them numerically. **Never repurpose a value;
+  always append.**
+</Callout>
+
+## Sub-states
+
+```c
+typedef enum {
+    SUB_NONE = 0,
+    /* TEST_STAND */
+    SUB_TS_SENSOR_CHECK, SUB_TS_THROTTLE_RAMP,
+    /* FLIGHT */
+    SUB_FL_IGNITION,     SUB_FL_LIFTOFF_DETECT, SUB_FL_ASCENT,
+    SUB_FL_COAST,        SUB_FL_DESCENT_BRAKE,  SUB_FL_LANDING_FLARE,
+    SUB_FL_TOUCHDOWN,    SUB_FL_RECOVERY,
+    /* ARM */
+    SUB_ARM_MOTOR_INIT,  SUB_ARM_MOTOR_CALIBRATING, SUB_ARM_READY
+} fsm_substate_t;
+```
+
+## Profile types
+
+```c
+typedef enum {
+    PROFILE_NONE = 0,
+    PROFILE_GUTTER_RAMP = 1,    /* test stand: throttle ramp      */
+    PROFILE_GUTTER_HOLD = 2,    /* test stand: constant throttle  */
+    PROFILE_FLIGHT_PARAM = 3    /* flight: target alt, auto-land  */
+} flight_profile_t;
+```
+
+## Profile parameters
+
+```c
+typedef struct {
+    flight_profile_t type;
+
+    /* Common */
+    float target_altitude_m;
+    float flare_altitude_m;
+    float touchdown_velocity_ms;
+    float max_altitude_m;       /* safety limit */
+    float max_velocity_ms;      /* safety limit */
+
+    /* Gutter Hold */
+    float hold_throttle;        /* 0.0..1.0 */
+
+    /* Gutter Ramp */
+    float ramp_duration_s;
+
+    /* Safety */
+    float throttle_min, throttle_max;
+
+    /* Landing zone (FLIGHT_PARAM) */
+    float landing_lat, landing_lon;
+} profile_params_t;
+```
+
+---
+
+## Commands {#commands}
+
+`fsm_command_t` is what the **GS sends down** to the FC.
+
+```c
+typedef enum {
+    CMD_NONE = 0,
+    CMD_PING,                /* RTT measurement                  */
+    CMD_SET_PROFILE,         /* load profile + parameters        */
+    CMD_SET_PARAM,           /* update a single parameter        */
+    CMD_ARM,
+    CMD_DISARM,
+    CMD_START_TEST,          /* run profile-defined test         */
+    CMD_LAUNCH,
+    CMD_ABORT,
+    CMD_FORCE_SAFE,          /* jump straight to SAFE            */
+    CMD_CALIBRATE_BARO,      /* set ground-pressure reference    */
+    CMD_CALIBRATE_MOTOR,     /* ESC min/max calibration          */
+    CMD_STATIC_TEST,         /* static thrust test (max %)       */
+    CMD_RESYNC               /* force TDMA resync                */
+} fsm_command_t;
+```
+
+Each command is delivered as an `fsm_cmd_msg_t` on `queue_cmd_to_fsm`:
+
+```c
+typedef struct {
+    fsm_command_t cmd;
+    uint8_t       cmd_seq;
+    uint32_t      gs_timestamp;
+    uint8_t       payload[16];
+} fsm_cmd_msg_t;
+```
+
+The radio thread parses the wire packet and pushes onto the queue;
+the FSM thread drains it and dispatches.
+
+| Command | Allowed in states | Effect |
+|---|---|---|
+| `CMD_PING` | any | Echo back as `EVT_PONG` with RTT. |
+| `CMD_SET_PROFILE` | IDLE, CONFIGED | Loads profile, transitions to CONFIGED. |
+| `CMD_SET_PARAM` | CONFIGED | Update one field. |
+| `CMD_ARM` | CONFIGED | Begin motor arm sequence (sub-states). |
+| `CMD_DISARM` | ARMED, TEST_STAND | Return to CONFIGED. ESC off. |
+| `CMD_START_TEST` | ARMED | Begin test (must be a test profile). |
+| `CMD_LAUNCH` | ARMED | Begin flight (must be flight profile). |
+| `CMD_ABORT` | any after IDLE | Jump to ABORT, then SAFE. |
+| `CMD_FORCE_SAFE` | any | Jump to SAFE. Logs flushed. |
+| `CMD_CALIBRATE_BARO` | IDLE, CONFIGED | Set ground reference. |
+| `CMD_CALIBRATE_MOTOR` | CONFIGED | ESC min/max calibration sequence. |
+| `CMD_STATIC_TEST` | ARMED | Static thrust test at given throttle %. |
+| `CMD_RESYNC` | any | Force radio to resync with GS. |
+
+---
+
+## Telemetry events
+
+`telemetry_event_type_t` is what the **FC sends up** to the GS. Every
+significant transition emits one. Events are pushed onto
+`queue_fsm_events`; the radio thread drains them and TXes in priority
+slots.
+
+```c
+typedef enum {
+    EVT_STATE_CHANGE = 0,
+    EVT_FAULT,
+    EVT_ABORT_TRIGGERED,
+    EVT_PROFILE_LOADED,
+    EVT_CHECKS_GREEN,        EVT_CHECKS_RED,
+    EVT_BOOT_REPORT,
+    EVT_ARMED,               EVT_DISARMED,
+    EVT_LIFTOFF, EVT_APOGEE, EVT_LANDING,
+    EVT_GENERIC_MSG, EVT_PONG,
+    EVT_BARO_CALIBRATED,
+    EVT_MOTOR_ARMED,
+    EVT_MOTOR_CAL_STARTED,   EVT_MOTOR_CAL_PHASE2,
+    EVT_MOTOR_CALIBRATED,
+    EVT_STATIC_TEST_STARTED, EVT_STATIC_TEST_PROGRESS,
+    EVT_STATIC_TEST_COMPLETE, EVT_STATIC_TEST_FAILED
+} telemetry_event_type_t;
+```
+
+To emit an event from any thread:
+
+```c
+fsm_send_telemetry_event(EVT_GENERIC_MSG, "hello", 6);
+```
+
+---
+
+## Internal events (estimator → FSM)
+
+`fsm_internal_event_t` is delivered on `queue_event_to_fsm`. The
+estimator detects sensor-driven transitions (liftoff, apogee, landing)
+and pushes them; the FSM reads without re-deriving anything.
+
+```c
+typedef enum {
+    FSM_EVT_NONE = 0,
+    FSM_EVT_LIFTOFF,            /* accel > threshold */
+    FSM_EVT_APOGEE,             /* vario ≈ 0 after liftoff */
+    FSM_EVT_DESCENT_START,
+    FSM_EVT_FLARE_ALT,          /* altitude < flare_altitude_m */
+    FSM_EVT_TOUCHDOWN,
+    FSM_EVT_LANDED,             /* both stable for N seconds */
+    FSM_EVT_ALTITUDE_LIMIT,
+    FSM_EVT_VELOCITY_LIMIT,
+    FSM_EVT_MOTOR_ARMED,
+    FSM_EVT_CALIBRATION_DONE
+} fsm_internal_event_t;
+```
+
+---
+
+## FSM context {#context}
+
+The single global struct that ties everything together.
+
+```c
+extern fsm_ctx_t fsm_ctx;          /* defined in flight_computer.c */
+```
+
+### Layout
+
+```c
+typedef struct {
+    /* Current state */
+    fsm_state_t    state, prev_state;
+    fsm_substate_t substate, prev_substate;
+
+    /* Active profile */
+    profile_params_t profile;
+
+    /* Real-time nav (filled by estimator) */
+    float altitude_agl_m;
+    float velocity_vertical_ms;
+    float max_altitude_reached_m;
+
+    /* Timing anchors */
+    uint32_t state_entry_tick;
+    uint32_t flight_start_tick;
+    uint32_t boot_start_tick;
+
+    /* Last command */
+    uint8_t last_cmd_seq;
+    uint8_t last_cmd_status;
+
+    /* Boot status */
+    boot_status_t boot_status;
+
+    /* Runtime flags (bit-packed) */
+    fsm_flags_t flags;
+
+    /* Calibrations / arming / RTT */
+    baro_calibration_t  baro_cal;
+    motor_arm_status_t  motor_status;
+    ping_tracker_t      ping;
+} fsm_ctx_t;
+```
+
+### Boot status
+
+```c
+typedef struct {
+    int8_t imu_init,  baro_init,  mag_init,  bno_init, gps_init;
+    int8_t sd_card_init, radio_init, data_handler_init;
+    int8_t imu_config, baro_config, mag_config, bno_config, gps_config;
+    int8_t sensors_thread_started, /* … */;
+
+    uint8_t total_checks, passed_checks, failed_checks, critical_failures;
+} boot_status_t;
+```
+
+Each driver reports its result via `fsm_report_init_status()`. If
+`critical_failures > 0`, the FSM stays in BOOT.
+
+### Runtime flags
+
+```c
+typedef struct {
+    uint8_t baro_calibrated     : 1;
+    uint8_t gps_locked          : 1;
+    uint8_t sensors_healthy     : 1;
+    uint8_t sd_logging_enabled  : 1;
+    uint8_t estimator_running   : 1;
+    uint8_t controller_running  : 1;
+    uint8_t abort_requested     : 1;
+    uint8_t motor_armed         : 1;
+} fsm_flags_t;
+```
+
+---
+
+## Public functions
+
+### `fsm_init`
+
+```c
+void fsm_init(void);
+```
+
+Called once at FSM thread start. Zeros `fsm_ctx`, sets `state = STATE_BOOT`,
+records `boot_start_tick`, primes the boot status struct.
+
+### `fsm_get_state` / `fsm_set_state`
+
+```c
+fsm_state_t fsm_get_state(void);
+void        fsm_set_state(fsm_state_t new_state);
+```
+
+Thread-safe accessors. Setting the state triggers `EVT_STATE_CHANGE`
+emission and updates `state_entry_tick`.
+
+### `fsm_report_init_status`
+
+```c
+void fsm_report_init_status(const char *check_name, bool ok);
+```
+
+Called by every driver during boot. Increments `passed_checks` /
+`failed_checks`. If `check_name` matches a known critical check (IMU,
+BARO, RADIO, …) and `ok` is false, increments `critical_failures`.
+
+### `fsm_report_thread_started`
+
+```c
+void fsm_report_thread_started(const char *thread_name);
+```
+
+Each thread calls this once at startup so the FSM knows the system
+is fully alive.
+
+### `fsm_send_telemetry_event`
+
+```c
+void fsm_send_telemetry_event(telemetry_event_type_t type,
+                               const void *payload, uint16_t size);
+```
+
+Push an event into `queue_fsm_events`. Safe to call from any thread.
+Payload is copied into the queue item.
+
+### `fsm_get_baro_calibration`
+
+```c
+const baro_calibration_t *fsm_get_baro_calibration(void);
+```
+
+Returns a pointer to the active barometer calibration so the sensors
+thread can apply it inside `MS5607_ReadWithCalibration`.
+
+### State-string helpers
+
+```c
+const char *fsm_state_to_str(fsm_state_t state);
+const char *fsm_substate_to_str(fsm_substate_t substate);
+const char *fsm_profile_to_str(flight_profile_t profile);
+```
+
+---
+
+## How the FSM thread loops
+
+The full main loop (every 50 ms = 20 Hz):
+
+```c title="Codigo/Flight Computer/flight_computer_thread.c"
+while (1) {
+    /* Drain commands */
+    while (xQueueReceive(queue_cmd_to_fsm, &cmd_msg, 0) == pdTRUE) {
+        process_command(&cmd_msg);
+    }
+
+    /* Drain estimator events */
+    while (xQueueReceive(queue_event_to_fsm, &evt_msg, 0) == pdTRUE) {
+        process_internal_event(&evt_msg);
+    }
+
+    /* Phase machines */
+    process_calibration();
+    process_motor_calibration();
+    process_static_test();
+
+    /* Per-state handlers */
+    switch (fsm_ctx.state) {
+        case STATE_BOOT:        handle_state_boot();        break;
+        case STATE_IDLE:        handle_state_idle();        break;
+        case STATE_CONFIGED:    handle_state_configed();    break;
+        case STATE_ARMED:       handle_state_armed();       break;
+        case STATE_TEST_STAND:  handle_state_test_stand();  break;
+        case STATE_FLIGHT:      handle_state_flight();      break;
+        case STATE_ABORT:       handle_state_abort();       break;
+        case STATE_SAFE:        handle_state_safe();        break;
+    }
+
+    vTaskDelay(pdMS_TO_TICKS(50));
+}
+```
+
+[Concept: full lifecycle walkthrough →](/concepts/flight-lifecycle) ·
+[Modifying the FSM →](/porting/fsm-changes)

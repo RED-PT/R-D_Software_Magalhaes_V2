@@ -10,9 +10,10 @@
  * @section asm330_features Features
  * - 3-axis accelerometer: +/-2/4/8/16g selectable
  * - 3-axis gyroscope: +/-125/250/500/1000/2000 dps selectable
- * - SPI interface up to 10 MHz
+ * - SPI interface up to 10 MHz (connected via SPI_IMU_BARO; see config.h)
  * - Hardware interrupt for data ready
  * - DMA-based data transfer for efficiency
+ * - Supports multiple board targets (F446ZE Nucleo, H743ZI Buzz V4)
  *
  * @section asm330_usage Usage
  * @code
@@ -53,8 +54,8 @@
  * Maintains SPI handle, DMA buffers, and raw sensor data.
  */
 typedef struct {
-    SPI_HandleTypeDef *hspi;        /**< SPI peripheral handle */
-    uint8_t tx_buffer[15];          /**< DMA transmit buffer */
+    SPI_HandleTypeDef *hspi;        /**< SPI peripheral handle (SPI_IMU_BARO from config.h) */
+    uint8_t tx_buffer[15];          /**< DMA transmit buffer (kept in struct for DMA cache coherency) */
     uint8_t read_buffer[15];        /**< DMA receive buffer (1 cmd + 14 data bytes) */
     volatile uint8_t data_ready;    /**< Flag set when new data available */
 

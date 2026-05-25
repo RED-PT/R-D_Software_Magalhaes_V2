@@ -51,6 +51,8 @@
 #include "fatfs_sd.h"
 #include "print.h"
 #include "cmsis_os.h"
+#include "FreeRTOS.h"
+#include "semphr.h"
 #include <stdio.h>
 #include <string.h>
 #include "Flight Computer/flight_computer.h"
@@ -60,6 +62,12 @@ static FIL file;
 static bool sd_initialized = false;
 static bool sd_file_open = false;
 static volatile bool sd_paused = false;  // Pause flag for motor tests (volatile for cross-task visibility)
+
+/** @brief Guards every FatFS operation on `file` and `fs`. FatFS is not
+ *  reentrant by default; without this mutex, sd_card_pause()/close() called
+ *  from the FSM thread can race with the SD thread's flush loop and
+ *  corrupt the file handle. */
+static SemaphoreHandle_t file_mtx = NULL;
 
 #define SD_WRITE_BUFFER_SIZE    4096
 static char write_buffer[SD_WRITE_BUFFER_SIZE];
@@ -78,7 +86,10 @@ static void log_data_packet(const data_packet_t *packet);
 static void sd_card_init(void) {
     printf("Initializing SD card...\r\n");
 
+    xSemaphoreTake(file_mtx, portMAX_DELAY);
     FRESULT res = f_mount(&fs, "", 0);
+    xSemaphoreGive(file_mtx);
+
     if (res != FR_OK) {
         printf("ERROR: Failed to mount SD (error %d)\r\n", res);
         fsm_report_init_status("SD_CARD", false);
@@ -103,17 +114,20 @@ static void sd_card_configure(void) {
     char filename[32];
     snprintf(filename, sizeof(filename), "log_0.csv");
 
+    xSemaphoreTake(file_mtx, portMAX_DELAY);
     FRESULT res = f_open(&file, filename, FA_WRITE | FA_CREATE_ALWAYS);
     if (res != FR_OK) {
+        xSemaphoreGive(file_mtx);
         printf("ERROR: Failed to open file (error %d)\r\n", res);
         return;
     }
-
-    printf("Log file: %s\r\n", filename);
     sd_file_open = true;
 
     UINT bw;
     res = f_write(&file, CSV_HEADER, strlen(CSV_HEADER), &bw);
+    xSemaphoreGive(file_mtx);
+
+    printf("Log file: %s\r\n", filename);
     if (res != FR_OK || bw != strlen(CSV_HEADER)) {
         printf("ERROR: Failed to write header\r\n");
         return;
@@ -128,8 +142,14 @@ static void flush_write_buffer(void) {
         return;
     }
 
+    xSemaphoreTake(file_mtx, portMAX_DELAY);
     UINT bw;
     FRESULT res = f_write(&file, write_buffer, buffer_pos, &bw);
+    FRESULT sync_res = FR_OK;
+    if (res == FR_OK) {
+        sync_res = f_sync(&file);
+    }
+    xSemaphoreGive(file_mtx);
 
     if (res != FR_OK) {
         printf("ERROR: SD write failed (error %d)\r\n", res);
@@ -141,9 +161,8 @@ static void flush_write_buffer(void) {
         printf("WARNING: Partial write (%u/%lu)\r\n", bw, buffer_pos);
     }
 
-    res = f_sync(&file);
-    if (res != FR_OK) {
-        printf("ERROR: f_sync failed (error %d)\r\n", res);
+    if (sync_res != FR_OK) {
+        printf("ERROR: f_sync failed (error %d)\r\n", sync_res);
     }
 
     buffer_pos = 0;
@@ -264,6 +283,13 @@ void sd_card_thread_function(void *argument) {
     printf("SD Logger thread started...\r\n");
     fsm_report_thread_started("SD_CARD");
 
+    file_mtx = xSemaphoreCreateMutex();
+    if (file_mtx == NULL) {
+        printf("ERROR: SD file mutex create failed\r\n");
+        fsm_report_init_status("SD_CARD", false);
+        vTaskSuspend(NULL);
+    }
+
     sd_card_init();  // Inside this, report status
     sd_card_configure();
 
@@ -315,10 +341,12 @@ void sd_card_thread_function(void *argument) {
 
 void sd_card_pause(void) {
     // Flush any pending data before pausing (while motor is still off)
-    if (buffer_pos > 0 && sd_file_open) {
+    if (buffer_pos > 0 && sd_file_open && file_mtx != NULL) {
+        xSemaphoreTake(file_mtx, portMAX_DELAY);
         UINT bw;
         f_write(&file, write_buffer, buffer_pos, &bw);
         f_sync(&file);
+        xSemaphoreGive(file_mtx);
         buffer_pos = 0;
     }
     sd_paused = true;
@@ -337,16 +365,23 @@ bool sd_card_is_paused(void) {
 void sd_card_close(void) {
     printf("Closing SD...\r\n");
 
+    // flush_write_buffer() takes the mutex internally; do it before
+    // re-acquiring below to avoid nesting on a non-recursive mutex.
     flush_write_buffer();
 
+    if (file_mtx != NULL) {
+        xSemaphoreTake(file_mtx, portMAX_DELAY);
+    }
     if (sd_file_open) {
         f_sync(&file);
         f_close(&file);
         sd_file_open = false;
     }
-
     f_mount(NULL, "", 0);
     sd_initialized = false;
+    if (file_mtx != NULL) {
+        xSemaphoreGive(file_mtx);
+    }
 
     printf("SD closed\r\n");
 }

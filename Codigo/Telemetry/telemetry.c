@@ -70,7 +70,8 @@ uint16_t telemetry_build_fast(telemetry_fast_t *pkt, uint8_t frame_id, uint8_t s
 
 uint16_t telemetry_build_slow(telemetry_slow_t *pkt, uint8_t frame_id, uint8_t seq,
                                const GPS_t *gps, const BARO_t *baro,
-                               uint8_t battery_pct, uint8_t sd_status) {
+                               uint8_t battery_pct, uint8_t sd_status,
+                               uint8_t tdma_mode, uint8_t slow_slot) {
     if (!pkt) return 0;
 
     memset(pkt, 0, sizeof(telemetry_slow_t));
@@ -78,7 +79,7 @@ uint16_t telemetry_build_slow(telemetry_slow_t *pkt, uint8_t frame_id, uint8_t s
     // Header
     pkt->packet_type = TELEM_PACKET_SLOW;
     pkt->frame_id = frame_id;
-    pkt->slot_id = TDMA_SLOW_SLOT;
+    pkt->slot_id = slow_slot;
     pkt->seq = seq;
     pkt->time = HAL_GetTick();
 
@@ -100,8 +101,9 @@ uint16_t telemetry_build_slow(telemetry_slow_t *pkt, uint8_t frame_id, uint8_t s
     pkt->battery_pct = battery_pct;
     pkt->sd_status = sd_status;
     pkt->free_heap = (uint16_t)(xPortGetFreeHeapSize() / 10);  // In units of 10 bytes
+    pkt->tdma_mode = tdma_mode;
 
-    // CRC
+    // CRC (must be after every field is populated)
     pkt->crc16 = crc16_calculate((uint8_t*)pkt, sizeof(telemetry_slow_t) - 2);
 
     return sizeof(telemetry_slow_t);

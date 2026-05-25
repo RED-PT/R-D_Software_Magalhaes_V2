@@ -1,13 +1,15 @@
-/*
- * INA219.c
+/**
+ * @file INA219.c
+ * @brief INA219 High-Side Current/Voltage/Power Monitor driver implementation
+ * @author Tomas Teixeira
+ * @date March 2026
  *
- * INA219 High-Side Current/Voltage/Power Monitor (I2C)
- *
- *  Created on: Mar 25, 2026
- *      Author: Tomas Teixeira
+ * Blocking I2C implementation for the INA219 on the Buzz V4 PCB.
+ * Configured for a 1 mOhm shunt resistor with 10 mA/LSB current resolution.
  */
 
 #include "INA219.h"
+#include "cmsis_os.h"
 
 #define INA219_TIMEOUT_MS  50
 
@@ -15,6 +17,13 @@
 // Low-level I2C helpers (blocking, 16-bit register access)
 // ============================================================================
 
+/**
+ * @brief Write a 16-bit value to an INA219 register
+ * @param[in] dev   Pointer to driver context
+ * @param[in] reg   Register address to write
+ * @param[in] value 16-bit value to write (sent MSB first)
+ * @return true on success, false on I2C error
+ */
 static bool INA219_WriteReg(INA219_t *dev, uint8_t reg, uint16_t value) {
     uint8_t data[2];
     data[0] = (value >> 8) & 0xFF;  // MSB first
@@ -23,6 +32,13 @@ static bool INA219_WriteReg(INA219_t *dev, uint8_t reg, uint16_t value) {
                              I2C_MEMADD_SIZE_8BIT, data, 2, INA219_TIMEOUT_MS) == HAL_OK;
 }
 
+/**
+ * @brief Read a 16-bit value from an INA219 register
+ * @param[in]  dev   Pointer to driver context
+ * @param[in]  reg   Register address to read
+ * @param[out] value Pointer to store the 16-bit result (MSB first)
+ * @return true on success, false on I2C error
+ */
 static bool INA219_ReadReg(INA219_t *dev, uint8_t reg, uint16_t *value) {
     uint8_t data[2];
     if (HAL_I2C_Mem_Read(dev->hi2c, dev->i2c_addr, reg,
@@ -37,6 +53,18 @@ static bool INA219_ReadReg(INA219_t *dev, uint8_t reg, uint16_t *value) {
 // Public API
 // ============================================================================
 
+/**
+ * @brief Initialize the INA219 and write the calibration register
+ *
+ * Resets the device, configures it for 32 V bus range, PGA /8 (+-320 mV),
+ * 12-bit ADC, continuous shunt+bus mode, and writes the calibration register
+ * for a 1 mOhm shunt with 10 mA/LSB current resolution.
+ *
+ * @param[in,out] dev  Pointer to driver context to initialize
+ * @param[in]     hi2c HAL I2C peripheral handle
+ * @return true if the device responds and is configured successfully
+ * @return false on I2C communication error
+ */
 bool INA219_Init(INA219_t *dev, I2C_HandleTypeDef *hi2c) {
     if (!dev || !hi2c) return false;
 
@@ -48,7 +76,7 @@ bool INA219_Init(INA219_t *dev, I2C_HandleTypeDef *hi2c) {
     if (!INA219_WriteReg(dev, INA219_REG_CONFIG, INA219_CONFIG_RESET)) {
         return false;
     }
-    HAL_Delay(5);
+    osDelay(5);
 
     // Configure: 32V range, PGA ÷8 (±320mV → ±320A @ 1mΩ), 12-bit, continuous
     uint16_t config = INA219_CONFIG_BVOLTAGERANGE_32V |
@@ -81,6 +109,16 @@ bool INA219_Init(INA219_t *dev, I2C_HandleTypeDef *hi2c) {
     return true;
 }
 
+/**
+ * @brief Read shunt voltage, bus voltage, current, and power registers
+ *
+ * Updates all measurement fields in the driver context. Sets dev->valid
+ * to true on success, false on any I2C error.
+ *
+ * @param[in,out] dev Pointer to driver context (readings stored in struct fields)
+ * @return true if all register reads succeeded
+ * @return false on I2C communication error
+ */
 bool INA219_ReadAll(INA219_t *dev) {
     uint16_t raw;
     dev->valid = false;
@@ -106,6 +144,12 @@ bool INA219_ReadAll(INA219_t *dev) {
     return true;
 }
 
+/**
+ * @brief Software reset the INA219 by setting the RST bit in the config register
+ * @param[in,out] dev Pointer to driver context
+ * @return true if the reset command was acknowledged over I2C
+ * @return false on I2C communication error
+ */
 bool INA219_Reset(INA219_t *dev) {
     return INA219_WriteReg(dev, INA219_REG_CONFIG, INA219_CONFIG_RESET);
 }

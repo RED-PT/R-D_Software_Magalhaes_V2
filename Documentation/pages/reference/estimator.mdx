@@ -1,0 +1,190 @@
+---
+title: Estimator reference
+---
+
+import { Callout } from 'nextra/components';
+import { FuncRef } from '../../components/FuncRef';
+
+# Estimator reference
+
+The estimator runs at 100 Hz on its own thread, reads sensor packets
+off `queue_to_estimator`, fuses them into altitude / vertical
+velocity, and pushes flight-event notifications to the FSM.
+
+For the rationale, see [Estimation subsystem](/subsystems/estimation).
+
+---
+
+## What it produces
+
+| Field | Source | Update rate |
+|---|---|---|
+| `altitude_agl_m` | `BARO_t.altitude_m`, calibrated against ground | 50 Hz |
+| `velocity_vertical_ms` | derivative of altitude | 50 Hz |
+| Internal flight-event detection | accel + altitude history | 50 Hz |
+
+Outputs are written to the FSM context (`fsm_ctx.altitude_agl_m`,
+`fsm_ctx.velocity_vertical_ms`) and to the controller via
+`controller_update_estimator_state`.
+
+<Callout type="info" emoji="ℹ️">
+  The current implementation is intentionally simple: no Kalman
+  fusion, just barometer + derivative. IMU integration is wired but
+  unused (`TODO` in source). When a Kalman filter is added, the
+  function signatures here won't change — only the body of
+  `estimator_thread_function`.
+</Callout>
+
+---
+
+## Public API
+
+### `estimator_init`
+
+```c
+void estimator_init(void);
+```
+
+Called once at thread start. Resets internal state, primes the
+detection windows.
+
+### `estimator_get_altitude` / `estimator_get_velocity`
+
+```c
+float estimator_get_altitude(void);
+float estimator_get_velocity(void);
+```
+
+Read-only accessors on the latest fused values. Used by telemetry and
+the controller; safe from any thread (returns a snapshot).
+
+### `reset_flight_detection`
+
+```c
+void reset_flight_detection(void);
+```
+
+Called when the FSM enters `STATE_FLIGHT`. Clears the history windows
+the liftoff/apogee/landing detectors use.
+
+### `check_flight_events`
+
+```c
+void check_flight_events(float altitude_m, float velocity_ms);
+```
+
+Inspects the current and recent values. If a transition is detected,
+pushes an `fsm_internal_event_t` onto `queue_event_to_fsm`. Detected
+transitions (in order):
+
+| Detection | Condition | Event |
+|---|---|---|
+| Liftoff | accel magnitude > threshold for N samples | `FSM_EVT_LIFTOFF` |
+| Apogee | vario crosses zero (≈ 0 for N samples) after liftoff | `FSM_EVT_APOGEE` |
+| Descent start | vario < −threshold | `FSM_EVT_DESCENT_START` |
+| Flare altitude | altitude < `flare_altitude_m` | `FSM_EVT_FLARE_ALT` |
+| Touchdown | accel magnitude > threshold (impact spike) | `FSM_EVT_TOUCHDOWN` |
+| Landed | accel + altitude both stable for N seconds | `FSM_EVT_LANDED` |
+
+Thresholds and window sizes live as `static const` at the top of
+`estimator_thread.c`.
+
+---
+
+## Thread main loop
+
+```c title="Codigo/Estimator/estimator_thread.c"
+void estimator_thread_function(void) {
+    data_packet_t packet;
+    float current_altitude_m = 0.0f;
+    float current_velocity_ms = 0.0f;
+    float prev_altitude_m = 0.0f;
+    uint32_t prev_time_ms = 0;
+
+    while (1) {
+        if (xQueueReceive(queue_to_estimator, &packet,
+                          pdMS_TO_TICKS(100)) == pdTRUE) {
+            data_packet_lock(&packet);
+
+            switch (packet.type) {
+                case DATA_TYPE_BARO: {
+                    BARO_t baro;
+                    data_packet_copy_baro(&packet, &baro);
+                    current_altitude_m = baro.altitude_m;
+
+                    uint32_t now = HAL_GetTick();
+                    if (prev_time_ms > 0) {
+                        float dt_s = (now - prev_time_ms) / 1000.0f;
+                        if (dt_s > 0.001f) {
+                            current_velocity_ms =
+                                (current_altitude_m - prev_altitude_m) / dt_s;
+                        }
+                    }
+                    prev_altitude_m = current_altitude_m;
+                    prev_time_ms = now;
+                    break;
+                }
+
+                case DATA_TYPE_IMU:
+                    /* TODO: IMU integration for better attitude */
+                    break;
+
+                default: break;
+            }
+
+            data_packet_unlock(&packet);
+            check_flight_events(current_altitude_m, current_velocity_ms);
+            controller_update_estimator_state(current_altitude_m,
+                                              current_velocity_ms);
+        }
+
+        /* Reset detection on FLIGHT entry */
+        static fsm_state_t prev_state = STATE_BOOT;
+        if (fsm_ctx.state == STATE_FLIGHT && prev_state != STATE_FLIGHT) {
+            reset_flight_detection();
+        }
+        prev_state = fsm_ctx.state;
+    }
+}
+```
+
+The thread is **created suspended** along with the controller and
+resumed by the FSM on entering `STATE_ARMED`. Pre-arm sensor data is
+still logged to SD by the data handler — it just isn't fed into the
+estimator.
+
+---
+
+## Inputs
+
+`queue_to_estimator` is filled by the DataHandler. It carries
+`data_packet_t` items wrapping any of the sensor structs:
+
+```c
+typedef enum {
+    DATA_TYPE_NONE = 0,
+    DATA_TYPE_IMU,
+    DATA_TYPE_BARO,
+    DATA_TYPE_BNO,
+    DATA_TYPE_MAG,
+    DATA_TYPE_GPS
+} data_packet_type_t;
+```
+
+The estimator currently only acts on `DATA_TYPE_BARO`, but the queue
+delivers everything so adding fusion is a matter of expanding the
+`switch`.
+
+---
+
+## Outputs
+
+| Sink | Mechanism | Field |
+|---|---|---|
+| `fsm_ctx.altitude_agl_m` | direct global write (single-writer rule) | float, m |
+| `fsm_ctx.velocity_vertical_ms` | direct global write | float, m/s |
+| `fsm_ctx.max_altitude_reached_m` | max-tracker | float, m |
+| Controller | `controller_update_estimator_state()` | floats |
+| FSM | `queue_event_to_fsm` | `fsm_event_msg_t` |
+
+[Concept: how the estimator, controller, and FSM cooperate →](/subsystems/estimation)

@@ -1,0 +1,71 @@
+---
+title: Modifying the FSM
+---
+
+# Modifying the FSM
+
+The flight state machine is the safety boundary. Two rules.
+
+<figure style={{ textAlign: 'center', margin: '1.5rem 0' }}>
+  <img
+    src="/images/fsm-rules.svg"
+    alt="Two rules illustration — left: Add states, don't repurpose them. Right: Anything that arms must check state"
+    loading="lazy"
+    style={{ maxWidth: '100%', height: 'auto', borderRadius: '0.5rem' }}
+  />
+</figure>
+
+## Rule 1 — add a state, don't repurpose one
+
+The FSM enum is read numerically by:
+
+- The telemetry packet (state field is one byte)
+- The SD log (state byte stamped on every record)
+- The dashboard (state-aware UI)
+
+Reusing a value silently breaks all three. Always add a new entry to
+the enum.
+
+## Rule 2 — anything that arms must check state
+
+The driver-level functions don't enforce safety. The FSM does.
+
+```c
+// CORRECT — gated by FSM state
+if (fsm_state == STATE_ARMED || fsm_state == STATE_FLIGHT) {
+    ESC_Arm();
+}
+
+// WRONG — driver-level, no safety
+ESC_Arm();
+```
+
+Pyro fires, ESC arming, deploy charges — all behind a state check.
+
+## Adding a state
+
+```c
+typedef enum {
+    STATE_BOOT,
+    STATE_IDLE,
+    STATE_CONFIGED,
+    STATE_ARMED,
+    STATE_TEST_STAND,
+    STATE_FLIGHT,
+    STATE_ABORT,
+    STATE_SAFE,
+    STATE_<NEW>,        // ← append, never insert in the middle
+    STATE_COUNT
+} flight_state_t;
+```
+
+Update:
+
+- The transition table in `flight_computer.c`
+- `StateToString()` for logging
+- The dashboard's state colour map
+
+## Adding a command
+
+Same pattern in `Commands` enum — append, don't reuse. Wire up the
+handler in `process_command()`.

@@ -1,0 +1,223 @@
+---
+title: Magalhães Flight Computer
+---
+
+import { Cards } from 'nextra/components';
+
+<div className="magalhaes-hero">
+  <span className="magalhaes-eyebrow">R&amp;D Software · AeroTéc</span>
+
+  # Magalhães Flight Computer
+
+  <p className="lead">
+    A thrust-vector-controlled rocket flight computer. One firmware,
+    two boards. Built around eight cooperating FreeRTOS threads, a
+    fixed-slot TDMA radio link, and a state machine that takes a
+    vehicle from power-on to recovery without intervention.
+  </p>
+
+  <div className="cta">
+    <a className="magalhaes-btn magalhaes-btn--primary" href="/get-started/quick-start">
+      Get started →
+    </a>
+    <a className="magalhaes-btn magalhaes-btn--ghost" href="/story/a-flight">
+      Read the story
+    </a>
+    <a className="magalhaes-btn magalhaes-btn--ghost" href="/concepts/architecture">
+      Architecture tour
+    </a>
+  </div>
+</div>
+
+<div className="magalhaes-feature">
+  <div>
+    ### One firmware, two boards
+    <p>
+      Application code in <code>Codigo/</code> never references a HAL
+      handle, GPIO, or timer directly. Everything routes through
+      <code>config.h</code>. The Buzz V4 (STM32H743) and the Nucleo
+      F446ZE share the same source verbatim — the abstraction does the
+      rest.
+    </p>
+    <p>
+      <a href="/concepts/hal">→ Hardware abstraction</a>
+    </p>
+  </div>
+  <div>
+    ```c filename="Codigo/Sensors/sensors_thread.c"
+    /* Same line, same source — both boards */
+    bool ok = ASM330LHHX_Init(&imu_device, SPI_IMU_BARO);
+
+    /* On Buzz V4 (H743), SPI_IMU_BARO == &hspi1 */
+    /* On Nucleo (F446), SPI_IMU_BARO == &hspi1 */
+    ```
+  </div>
+</div>
+
+<div className="magalhaes-feature">
+  <div>
+    ### Eight threads, one job each
+    <p>
+      Sensors fires on DMA-complete IRQs; DataHandler fans out;
+      Estimator and Controller close the loop at 100 Hz; FSM owns
+      transitions; Radio runs the TDMA superframe; Telemetry packs
+      bytes; SD logs everything. No shared globals, no surprise
+      blocking.
+    </p>
+    <p>
+      <a href="/concepts/threads">→ Per-thread breakdown</a>
+    </p>
+  </div>
+  <div>
+    ```text filename="Thread priorities"
+    osPriorityHigh3   Sensors      event-driven (DMA)
+    osPriorityHigh2   DataHandler  routes samples
+    osPriorityHigh1   Radio        TDMA, slot 0–9
+    osPriorityHigh    Estimator    100 Hz fusion
+    osPriorityHigh    Controller   100 Hz PID + ESC
+    osPriorityAbvN1   FSM          20 Hz state machine
+    osPriorityAbvN    Telemetry    20 Hz packet builder
+    osPriorityNormal  SDCard       drain at FatFS speed
+    ```
+  </div>
+</div>
+
+<div className="magalhaes-feature">
+  <div>
+    ### TDMA, not "send when ready"
+    <p>
+      A 1000 ms superframe split into ten 100 ms slots. Eight for fast
+      telemetry, one for slow GPS, one for ground-station uplink. No
+      retries, no ACKs, no collisions. Predictable airtime is more
+      useful than reliability for a vehicle that is already moving.
+    </p>
+    <p>
+      <a href="/concepts/tdma">→ TDMA &amp; timing</a>
+    </p>
+  </div>
+  <div>
+    ```text filename="Superframe"
+    |--0--|--1--|--2--|--3--|--4--|--5--|--6--|--7--|--8--|--9--|
+    |sync |fast |fast |fast |fast |fast |fast |fast |slow | RX  |
+    |GS→FC|     |          flight computer          |GPS  |GS→FC|
+    | 100 | 100 | 100 | 100 | 100 | 100 | 100 | 100 | 100 | 100 | ms
+    ```
+  </div>
+</div>
+
+<div className="magalhaes-feature">
+  <div>
+    ### A finite state machine you can trust
+    <p>
+      Eight top-level states, three sub-state families. The FSM is the
+      safety boundary: anything that arms the motor or fires a pyro
+      lives downstream of <code>STATE_ARMED</code>. The estimator and
+      controller threads are <em>created suspended</em>, resumed only
+      when the FSM transitions into ARMED.
+    </p>
+    <p>
+      <a href="/concepts/flight-lifecycle">→ Flight lifecycle</a>
+    </p>
+  </div>
+  <div>
+    ```c filename="flight_computer.h"
+    typedef enum {
+        STATE_BOOT = 0, STATE_IDLE, STATE_CONFIGED,
+        STATE_ARMED,    STATE_TEST_STAND,
+        STATE_FLIGHT,   STATE_ABORT,   STATE_SAFE
+    } fsm_state_t;
+    ```
+  </div>
+</div>
+
+## Browse the docs
+
+<Cards>
+  <Cards.Card icon="🚀" title="Get started" href="/get-started/quick-start">
+    Set up the toolchain, flash a board, see telemetry land in the dashboard
+    in under ten minutes.
+  </Cards.Card>
+  <Cards.Card icon="📖" title="A flight, end-to-end" href="/story/a-flight">
+    Walk through a complete mission — from power-on through recovery —
+    showing every subsystem in action.
+  </Cards.Card>
+  <Cards.Card icon="🧭" title="Concepts" href="/concepts/architecture">
+    The eight-thread architecture, the FSM, TDMA, hardware
+    abstraction, M7 cache. The mental model.
+  </Cards.Card>
+  <Cards.Card icon="⚙️" title="Subsystems" href="/subsystems">
+    Deep dives on sensors, estimation, control, radio, storage, and
+    the bench test mode. With real code.
+  </Cards.Card>
+  <Cards.Card icon="📚" title="Reference" href="/reference">
+    Function-level reference for every public API in the firmware —
+    parameters, returns, error paths, examples. Hand-curated, not
+    auto-generated.
+  </Cards.Card>
+  <Cards.Card icon="🛠️" title="Porting" href="/porting">
+    Add a new MCU target, swap a sensor, or change the FSM without
+    breaking either board.
+  </Cards.Card>
+  <Cards.Card icon="🔬" title="Auto-generated reference" href="/api/index.html">
+    Doxygen output for every file in <code>Codigo/</code>. Search every
+    function, struct, and macro. (Linked from each module page.)
+  </Cards.Card>
+  <Cards.Card icon="💾" title="Source on GitHub" href="https://github.com/RED-PT/R-D_Software_Magalhaes_V2">
+    Full firmware source, schematics, ground-station Arduino, and the
+    Python dashboard.
+  </Cards.Card>
+</Cards>
+
+## Hardware
+
+<div className="magalhaes-feature">
+  <div>
+    ### Buzz V4
+    <p>The flight target. Custom four-layer PCB built around the STM32H743ZIT6.</p>
+    <div className="magalhaes-spec">
+      <dl>
+        <dt>MCU</dt><dd>STM32H743ZIT6 · Cortex-M7 · 480 MHz</dd>
+        <dt>IMU</dt><dd>ASM330LHHX · SPI1 (DMA) · 6.6 kHz</dd>
+        <dt>Mag</dt><dd>MMC5983MA · SPI6 (BDMA → D3 SRAM)</dd>
+        <dt>Baro</dt><dd>MS5607 · SPI1 · 50 Hz</dd>
+        <dt>Orient</dt><dd>BNO055 · I2C1 (DMA) · 100 Hz</dd>
+        <dt>GPS</dt><dd>u-blox NEO-M9N · UART1 (DMA)</dd>
+        <dt>Radio</dt><dd>E22-900M22S · SX1262 · SPI5</dd>
+        <dt>Power</dt><dd>INA219 · I2C1 · 1 mΩ shunt</dd>
+        <dt>Storage</dt><dd>microSD · SPI2 · FatFS</dd>
+      </dl>
+    </div>
+  </div>
+  <div>
+    ### Nucleo F446ZE
+    <p>The development board. Same firmware, different config.</p>
+    <div className="magalhaes-spec">
+      <dl>
+        <dt>MCU</dt><dd>STM32F446ZE · Cortex-M4 · 180 MHz</dd>
+        <dt>IMU</dt><dd>ASM330LHHX · SPI1 (DMA)</dd>
+        <dt>Mag</dt><dd>MMC5983MA · SPI3 (DMA)</dd>
+        <dt>Baro</dt><dd>MS5607 · SPI1</dd>
+        <dt>Orient</dt><dd>BNO055 · I2C1 (DMA)</dd>
+        <dt>GPS</dt><dd>u-blox NEO-7M · UART2 (DMA)</dd>
+        <dt>Radio</dt><dd>E22-xxxT30D · UART (transparent)</dd>
+        <dt>Storage</dt><dd>microSD · SPI4 · FatFS</dd>
+        <dt>Debug</dt><dd>ST-Link · UART3</dd>
+      </dl>
+    </div>
+  </div>
+</div>
+
+[Full hardware breakdown →](/get-started/hardware)
+
+## Why this documentation exists
+
+Embedded firmware is hostile to newcomers. Hardware-specific quirks
+live next to portable logic, the build system fights you, and the
+obvious question — *“where does this run, and when?”* — is rarely
+answered on any one page.
+
+These docs are organised as a guided tour. Read top to bottom and the
+codebase becomes navigable. Skip ahead if you already know what you
+need. Every concept page links into the matching reference page.
+Every reference page links back into the concept page that explains
+the *why*.

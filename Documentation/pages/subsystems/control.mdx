@@ -1,0 +1,186 @@
+---
+title: Control & TVC
+---
+
+import { Callout } from 'nextra/components';
+import { CodeDemo } from '../../components/CodeDemo';
+import { FuncRef } from '../../components/FuncRef';
+
+# Control & TVC
+
+The controller is the only thread that touches the ESC PWM output. It
+runs at 50 Hz and supports five modes — selected by the FSM.
+
+<figure style={{ textAlign: 'center', margin: '1.5rem 0' }}>
+  <img
+    src="/images/control-loop.svg"
+    alt="TVC loop diagram — estimator state into PID controller, output to gimbal servos. Separate path: throttle command to ESC"
+    loading="lazy"
+    style={{ maxWidth: '100%', height: 'auto', borderRadius: '0.5rem' }}
+  />
+</figure>
+
+## The five modes
+
+```c title="Codigo/Controller/controller_thread.h"
+typedef enum {
+    CTRL_MODE_IDLE = 0,         /**< No motor control, motors off */
+    CTRL_MODE_MANUAL,           /**< Direct throttle from user/FSM */
+    CTRL_MODE_ALTITUDE_HOLD,    /**< PID hold at target altitude */
+    CTRL_MODE_VELOCITY_CTRL,    /**< PID control vertical velocity */
+    CTRL_MODE_LANDING           /**< Autonomous landing sequence */
+} ctrl_mode_t;
+```
+
+The FSM commands the controller into a mode (e.g., "ramp to 50%
+manual"); the controller manages the trajectory.
+
+## Thread main loop
+
+```c title="Codigo/Controller/controller_thread.c"
+#define CONTROL_LOOP_PERIOD_MS  20    // 50 Hz
+
+void controller_thread_function() {
+    memset(&ctrl_state, 0, sizeof(ctrl_state));
+    ctrl_state.mode = CTRL_MODE_IDLE;
+    ctrl_state.throttle_min = 0.0f;
+    ctrl_state.throttle_max = 1.0f;
+
+    // Thread starts SUSPENDED — only resumed by FSM in ARMED transition
+    vTaskSuspend(NULL);
+
+    // Pull profile limits once we're armed
+    ctrl_state.throttle_min = fsm_ctx.profile.throttle_min;
+    ctrl_state.throttle_max = fsm_ctx.profile.throttle_max;
+
+    TickType_t last_loop_tick = xTaskGetTickCount();
+
+    while (1) {
+        TickType_t now = xTaskGetTickCount();
+        float dt = (float)(now - last_loop_tick) / 1000.0f;
+        if (dt < 0.001f) dt = 0.001f;
+        last_loop_tick = now;
+
+        controller_update_ramp();      // smooth throttle changes
+        run_control_loop(dt);          // dispatch on ctrl_state.mode
+
+        vTaskDelay(pdMS_TO_TICKS(CONTROL_LOOP_PERIOD_MS));
+    }
+}
+```
+
+<Callout type="warning" emoji="⚠️">
+  The controller thread is **created suspended**. It only runs after
+  the FSM transitions into `STATE_ARMED` and calls
+  `osThreadResume(controller_thread_id)`. This is the safety guarantee
+  that the motor cannot run before the operator has armed.
+</Callout>
+
+## The control loop dispatcher
+
+```c title="Codigo/Controller/controller_thread.c — run_control_loop()"
+switch (ctrl_state.mode) {
+    case CTRL_MODE_IDLE:
+        throttle_cmd = 0.0f;
+        break;
+
+    case CTRL_MODE_MANUAL:
+        throttle_cmd = ctrl_state.manual_throttle;
+        break;
+
+    case CTRL_MODE_ALTITUDE_HOLD:
+        throttle_cmd = compute_altitude_control(
+            ctrl_state.target_altitude_m,
+            ctrl_state.current_altitude_m, dt);
+        break;
+
+    case CTRL_MODE_VELOCITY_CTRL:
+        throttle_cmd = compute_velocity_control(
+            ctrl_state.target_velocity_ms,
+            ctrl_state.current_velocity_ms, dt);
+        break;
+
+    case CTRL_MODE_LANDING:
+        // Negative target velocity — controlled descent
+        throttle_cmd = compute_velocity_control(
+            -fsm_ctx.profile.touchdown_velocity_ms,
+            ctrl_state.current_velocity_ms, dt);
+        break;
+}
+```
+
+## PID gains
+
+The two PIDs (altitude, velocity) are tuned constants. Re-tune for a
+new vehicle:
+
+```c
+static pid_gains_t altitude_pid = {
+    .kp = 0.5f,
+    .ki = 0.1f,
+    .kd = 0.2f,
+    .integral_limit = 0.3f
+};
+
+static pid_gains_t velocity_pid = {
+    .kp = 0.8f,
+    .ki = 0.05f,
+    .kd = 0.1f,
+    .integral_limit = 0.2f
+};
+```
+
+`integral_limit` is anti-windup — caps the I-term so a long error
+doesn't saturate the actuator.
+
+## Modes diagram
+
+<figure style={{ textAlign: 'center', margin: '1.5rem 0' }}>
+  <img
+    src="/images/controller-modes.svg"
+    alt="Controller modes — disarmed, idle, ramping, holding, controlled flight, transition arrows between"
+    loading="lazy"
+    style={{ maxWidth: '100%', height: 'auto', borderRadius: '0.5rem' }}
+  />
+</figure>
+
+## ESC PWM driver
+
+The actual PWM output is wrapped by `PWM_FUNCTIONS`. The driver functions
+and what they do:
+
+<CodeDemo>
+
+```c filename="Code"
+PWM_Init();
+PWM_ArmESC(2000);
+PWM_SetThrottle(0.5f);
+```
+
+```text filename="Behaviour"
+[PWM] timer = htim4 (Buzz V4)
+[PWM] arming ESC: 2000 ms at min...
+[PWM] armed
+[PWM] duty = 1500 us  (50% throttle)
+```
+
+</CodeDemo>
+
+The timer used for ESC PWM is board-specific (`htim3` on F446ZE,
+`htim4` on Buzz V4) and resolved through `PWM_ESC_TIM` /
+`PWM_ESC_CHANNEL` macros in `config.h`.
+
+Driver functions (full signatures in the API reference):
+
+- <FuncRef name="PWM_Init"            file="PWM_FUNCTIONS.h" /> — configure timer + channel
+- <FuncRef name="PWM_ArmESC"          file="PWM_FUNCTIONS.h" /> — send min throttle for N ms
+- <FuncRef name="PWM_SetThrottle"     file="PWM_FUNCTIONS.h" /> — 0.0..1.0 → PWM duty
+- <FuncRef name="PWM_StopMotor"       file="PWM_FUNCTIONS.h" /> — duty = 0
+
+## Files
+
+```
+Codigo/Controller/controller_thread.c    ← thread, mode dispatcher, PIDs
+Codigo/Controller/controller_thread.h    ← public API + ctrl_mode_t
+Codigo/Atuadores/ESC/PWM_FUNCTIONS.c     ← timer/PWM wrapper
+```

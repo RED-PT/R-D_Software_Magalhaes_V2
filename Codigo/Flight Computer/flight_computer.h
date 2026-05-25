@@ -51,10 +51,16 @@ typedef enum {
     STATE_IDLE,         /**< Idle state, waiting for profile configuration */
     STATE_CONFIGED,     /**< Profile configured, ready to arm */
     STATE_ARMED,        /**< Armed and ready for launch or test */
-    STATE_TEST_STAND,   /**< Test stand mode for static testing */
+    STATE_TEST_STAND,   /**< Test stand mode for static testing (legacy, replaced by STATE_TEST_<KIND> in Phase 3-A) */
     STATE_FLIGHT,       /**< Active flight mode with guidance */
     STATE_ABORT,        /**< Emergency abort sequence active */
-    STATE_SAFE          /**< Safe/recovery mode, motors disabled */
+    STATE_SAFE,         /**< Safe/recovery mode, motors disabled */
+    /* Phase 2 — per-test parent states. Each has its own sub-FSM defined
+     * by SUB_TEST_* below; dispatch goes via test_kind_table[] in test_runner.h. */
+    STATE_TEST_STATIC,      /**< Static thrust test active (parent state, see SUB_TEST_*) */
+    STATE_TEST_TORQUE,      /**< Torque test active */
+    STATE_TEST_TORQUE_CAL,  /**< Torque-calibration test (with servo sweep) */
+    STATE_TEST_GUTTER,      /**< Vertical-rail tracking test (closed-loop) */
 } fsm_state_t;
 
 /**
@@ -80,7 +86,17 @@ typedef enum {
     /* ARM sub-states */
     SUB_ARM_MOTOR_INIT,         /**< Initializing motor/ESC */
     SUB_ARM_MOTOR_CALIBRATING,  /**< ESC calibration in progress */
-    SUB_ARM_READY               /**< Armed and ready */
+    SUB_ARM_READY,              /**< Armed and ready */
+    /* Phase 2 — sub-states shared by every STATE_TEST_<KIND>. The parent
+     * state distinguishes which test type; the sub-state tracks lifecycle. */
+    SUB_TEST_CONFIGED,          /**< Profile loaded, hardware reachable */
+    SUB_TEST_ARMED,             /**< Load cell tared, ESC armed, awaiting RUN */
+    SUB_TEST_COUNTDOWN,         /**< 3..2..1..0 sequence broadcasted to GS */
+    SUB_TEST_RUNNING,           /**< Motor live, on_run_tick driving actuators */
+    SUB_TEST_HOLD,              /**< Manual-mode pause: motor at 0, test still live */
+    SUB_TEST_FINISHING,         /**< Decelerating, flushing samples */
+    SUB_TEST_DONE,              /**< Completed normally */
+    SUB_TEST_ABORTED            /**< Aborted: heartbeat timeout, abort cmd, fault */
 } fsm_substate_t;
 
 /**
@@ -323,8 +339,12 @@ typedef enum {
     CMD_FORCE_SAFE,         /**< Force transition to SAFE state */
     CMD_CALIBRATE_BARO,     /**< Calibrate barometer (set ground reference) */
     CMD_CALIBRATE_MOTOR,    /**< ESC min/max throttle calibration */
-    CMD_STATIC_TEST,        /**< Static thrust test (payload: max_throttle_percent) */
-    CMD_RESYNC              /**< Force TDMA resynchronization */
+    CMD_STATIC_TEST,        /**< (Legacy) Static thrust test fast-path; superseded by CMD_SET_TEST_PROFILE */
+    CMD_RESYNC,             /**< Force TDMA resynchronization */
+    CMD_SET_TEST_PROFILE,   /**< Phase 3-A: load a profile_t for the new test FSM (kind in byte 0) */
+    CMD_HOLD,               /**< Phase 3-A: pause manual test (RUNNING → HOLD) */
+    CMD_RESUME,             /**< Phase 3-A: resume manual test (HOLD → RUNNING) */
+    CMD_STOP_TEST,          /**< Phase 3-A: graceful end (RUNNING → FINISHING → DONE) */
 } fsm_command_t;
 
 /** @} */ /* End of Commands group */
@@ -364,7 +384,10 @@ typedef enum {
     EVT_STATIC_TEST_STARTED,    /**< Static thrust test started */
     EVT_STATIC_TEST_PROGRESS,   /**< Static test progress update */
     EVT_STATIC_TEST_COMPLETE,   /**< Static test completed successfully */
-    EVT_STATIC_TEST_FAILED      /**< Static test failed */
+    EVT_STATIC_TEST_FAILED,     /**< Static test failed */
+    EVT_THREAD_STAT,            /**< One task's runtime stats (round-robin, see thread_stat_payload_t) */
+    EVT_SYSTEM_STAT,            /**< Global system stats: heap, uptime, etc (see system_stat_payload_t) */
+    EVT_TEST_COUNTDOWN          /**< Phase 3-A (A6): countdown 3·2·1·0 during SUB_TEST_COUNTDOWN. Payload: 1 byte = seconds remaining */
 } telemetry_event_type_t;
 
 /** @} */ /* End of Events group */
@@ -388,6 +411,41 @@ typedef struct __attribute__((packed)) {
 } calibration_payload_t;
 
 /**
+ * @brief Thread stats payload (for EVT_THREAD_STAT)
+ *
+ * One of these is emitted per task per round-robin tick (~1/s) so the
+ * Ground Station can build the full table over a few superframes without
+ * exceeding the event payload size.
+ *
+ * @note Must fit in telemetry_event_t.payload (24 bytes). Currently 22 bytes.
+ */
+typedef struct __attribute__((packed)) {
+    uint8_t  task_idx;          /**< Index of this task within the round-robin (0..total-1) */
+    uint8_t  total_tasks;       /**< Total task count this iteration */
+    uint8_t  priority;          /**< FreeRTOS priority */
+    uint8_t  state;             /**< eTaskState: 0=Running, 1=Ready, 2=Blocked, 3=Suspended, 4=Deleted */
+    uint16_t stack_high_water;  /**< Min stack words remaining since boot (lower = closer to overflow) */
+    uint32_t runtime_counter;   /**< Raw runtime counter (relative — divide by total to get %) */
+    char     name[12];          /**< Task name, NUL-terminated where possible */
+    uint16_t reserved;          /**< Padding/reserved for future use */
+} thread_stat_payload_t;        /* 22 bytes */
+
+/**
+ * @brief Global system stats payload (for EVT_SYSTEM_STAT)
+ *
+ * Emitted once per round-robin cycle (~every 8s) so the GS can show heap
+ * health, uptime, and a denominator for accurate per-task CPU percentages.
+ */
+typedef struct __attribute__((packed)) {
+    uint32_t uptime_ms;             /**< HAL_GetTick() at emission */
+    uint32_t free_heap_bytes;       /**< xPortGetFreeHeapSize() */
+    uint32_t min_ever_free_heap;    /**< xPortGetMinimumEverFreeHeapSize() */
+    uint32_t total_runtime;         /**< Sum of all per-task runtime counters at this snapshot */
+    uint16_t task_count;            /**< Number of tasks currently in the system */
+    uint16_t reserved;              /**< Reserved for future use */
+} system_stat_payload_t;            /* 18 bytes */
+
+/**
  * @brief Command message structure (radio_thread → fsm_thread)
  *
  * Commands received from GS are packaged in this structure
@@ -404,7 +462,7 @@ typedef struct {
             float param2;           /**< Second parameter */
         } profile;
         float target_altitude;      /**< Target altitude for flight */
-        uint8_t raw[16];            /**< Raw payload bytes */
+        uint8_t raw[32];            /**< Raw payload bytes (Phase 3-A: 16→32 to fit gutter profile) */
     } payload;                  /**< Command-specific payload */
 } fsm_cmd_msg_t;
 

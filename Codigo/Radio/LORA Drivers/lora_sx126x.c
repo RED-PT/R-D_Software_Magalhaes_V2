@@ -1,10 +1,18 @@
-/*
- * lora_sx126x.c
+/**
+ * @file lora_sx126x.c
+ * @brief SX126x LoRa radio driver implementation (SPI, blocking + DMA TX)
+ * @author Tomas Teixeira
+ * @date November 2025
+ *
+ * Supports dual-board targets via config.h:
+ *  - Buzz V4 (STM32H743): SPI to SX1262 with external RF switch (E22 module)
+ *  - F446ZE dev board: SPI to bare SX1262 with DIO2-based RF switch
  */
 
 #include "lora_sx126x.h"
 #include "FreeRTOS.h"
 #include "task.h"
+#include "cmsis_os.h"
 #include <string.h>
 
 static DMA_BUFFER SX126x_DMA_t sx126x_state;
@@ -131,9 +139,9 @@ void SX126x_SetRx(uint32_t timeout_ms) {
 
 bool SX126x_Reset(void) {
     SX126X_RESET_LOW();
-    HAL_Delay(10);
+    osDelay(10);
     SX126X_RESET_HIGH();
-    HAL_Delay(10);
+    osDelay(10);
     wait_not_busy();
     return true;
 }
@@ -150,7 +158,7 @@ bool SX126x_Init(SX126x_LoRaConfig_t *config) {
 
     uint8_t calib = 0x7F;
     SX126x_WriteCommand(SX126X_CMD_CALIBRATE, &calib, 1);
-    HAL_Delay(10);
+    osDelay(10);
 
     uint8_t pkt_type = SX126X_PACKET_TYPE_LORA;
     SX126x_WriteCommand(SX126X_CMD_SET_PKT_TYPE, &pkt_type, 1);
@@ -355,6 +363,12 @@ void SX126x_DIO1_IRQ_Handler(void) {
     if (irq_status & SX126X_IRQ_TX_DONE) {
         sx126x_state.tx_done = true;
         SX126x_ClearIrqStatus(SX126X_IRQ_TX_DONE);
+        /* Phase 3-A bugfix: after TX completes the SX126x defaults to
+         * STANDBY_RC. Without an explicit SetRx here, the modem stays deaf
+         * until something else (CRC error, manual call) restores RX —
+         * which on FC means most GS packets land in a dead window and the
+         * "Lost sync (no rx for 5000 ms)" cycle becomes permanent. */
+        SX126x_SetRx(0xFFFFFF);
     }
 
     if (irq_status & SX126X_IRQ_RX_DONE) {

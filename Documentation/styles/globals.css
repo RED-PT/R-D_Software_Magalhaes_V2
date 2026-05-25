@@ -1,0 +1,609 @@
+/* ============================================================================
+ * Magalhães docs — Shopify-inspired palette and tokens.
+ * ============================================================================ */
+
+:root {
+  /* Shopify Polaris-style greens */
+  --shopify-green:        #008060;   /* Polaris primary */
+  --shopify-green-hover:  #00a074;
+  --shopify-green-deep:   #004c3f;
+  --shopify-lime:         #95bf47;   /* the bag accent */
+
+  /* Surface + text tokens (light) */
+  --shopify-bg:           #ffffff;
+  --shopify-bg-subtle:    #fafbfb;
+  --shopify-bg-card:      #ffffff;
+  --shopify-text:         #1a1a1a;
+  --shopify-muted:        #5c5f62;
+  --shopify-muted-2:      #8c9196;
+  --shopify-border:       #e1e3e5;
+  --shopify-border-soft:  #f1f1f1;
+
+  /* Code surface (dark even in light mode, like shopify.dev) */
+  --shopify-code-bg:      #0e1116;
+  --shopify-code-bg-2:    #161b22;
+  --shopify-code-text:    #e6edf3;
+  --shopify-code-border:  #21262d;
+
+  /* Override Nextra's primary so links/buttons use Shopify green */
+  --nextra-primary-hue: 165;
+  --nextra-primary-saturation: 80%;
+}
+
+html.dark {
+  --shopify-bg:           #0b0d10;
+  --shopify-bg-subtle:    #11141a;
+  --shopify-bg-card:      #14171c;
+  --shopify-text:         #e8eaee;
+  --shopify-muted:        #a8aeb5;
+  --shopify-muted-2:      #6c727b;
+  --shopify-border:       #232830;
+  --shopify-border-soft:  #1a1d22;
+
+  --shopify-code-bg:      #0a0c10;
+  --shopify-code-bg-2:    #11141a;
+  --shopify-code-border:  #20242a;
+}
+
+/* ============================================================================
+ * Typography
+ * ============================================================================ */
+
+html {
+  font-feature-settings: "cv11", "ss01", "ss03";
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  background: var(--shopify-bg);
+  color: var(--shopify-text);
+  letter-spacing: -0.005em;
+}
+
+.nx-text-primary-600,
+.nx-text-primary-500 {
+  color: var(--shopify-green) !important;
+}
+html.dark .nx-text-primary-600,
+html.dark .nx-text-primary-500 {
+  color: var(--shopify-green-hover) !important;
+}
+
+a {
+  color: var(--shopify-green);
+}
+html.dark a {
+  color: var(--shopify-green-hover);
+}
+a:hover {
+  color: var(--shopify-green-hover);
+}
+
+/* Nextra primary buttons */
+.nx-bg-primary-600,
+button.nx-bg-primary-600,
+.nx-text-primary-600 {
+  --tw-bg-opacity: 1 !important;
+}
+
+/* Headings — tighter, more presence */
+.nx-text-3xl,
+.nx-text-4xl,
+h1, h2, h3 {
+  letter-spacing: -0.02em;
+  font-feature-settings: "cv11", "ss01";
+}
+
+article h1 {
+  font-size: clamp(2rem, 1.6rem + 1.4vw, 2.6rem) !important;
+  line-height: 1.1 !important;
+  font-weight: 700 !important;
+  margin-top: 0.5rem !important;
+}
+
+article h2 {
+  margin-top: 2.5rem !important;
+  border-top: 1px solid var(--shopify-border-soft);
+  padding-top: 2rem !important;
+  font-weight: 650 !important;
+  letter-spacing: -0.018em !important;
+}
+
+article h2:first-of-type {
+  border-top: none;
+  padding-top: 0 !important;
+}
+
+article h3 {
+  margin-top: 2rem !important;
+  font-weight: 600 !important;
+}
+
+article p, article li {
+  line-height: 1.7;
+}
+
+/* ============================================================================
+ * Code blocks — dark Shopify-style, even in light mode
+ * ============================================================================ */
+
+article pre,
+.nextra-code-block pre,
+pre[class*="language-"] {
+  background: var(--shopify-code-bg) !important;
+  border: 1px solid var(--shopify-code-border) !important;
+  border-radius: 10px !important;
+  padding: 1rem 1.1rem !important;
+  font-size: 0.875rem !important;
+  line-height: 1.55 !important;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.02);
+}
+
+article pre code,
+.nextra-code-block pre code {
+  color: var(--shopify-code-text) !important;
+  font-family: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas,
+    monospace !important;
+}
+
+/* Filename caption above code blocks */
+.nextra-code-block [data-rehype-pretty-code-title],
+.nextra-code-block .nextra-code-block-filename,
+.nextra-code-block ~ div > .nextra-code-block-filename {
+  background: var(--shopify-code-bg-2) !important;
+  color: var(--shopify-muted) !important;
+  border: 1px solid var(--shopify-code-border) !important;
+  border-bottom: none !important;
+  border-radius: 10px 10px 0 0 !important;
+  padding: 0.45rem 0.85rem !important;
+  font-size: 0.78rem !important;
+  font-family: "JetBrains Mono", ui-monospace, monospace !important;
+  letter-spacing: 0 !important;
+}
+
+article :not(pre) > code {
+  background: rgba(0, 128, 96, 0.08) !important;
+  color: var(--shopify-green-deep) !important;
+  border: 1px solid rgba(0, 128, 96, 0.18);
+  padding: 0.1rem 0.35rem !important;
+  border-radius: 5px !important;
+  font-size: 0.86em !important;
+  font-weight: 500;
+}
+html.dark article :not(pre) > code {
+  background: rgba(0, 160, 116, 0.15) !important;
+  color: #6ee7b7 !important;
+  border-color: rgba(0, 160, 116, 0.25);
+}
+
+/* ============================================================================
+ * Sidebar refinements
+ * ============================================================================ */
+
+.nextra-sidebar-container {
+  background: var(--shopify-bg) !important;
+  border-right: 1px solid var(--shopify-border-soft) !important;
+}
+
+.nextra-sidebar a {
+  font-weight: 450 !important;
+  font-size: 0.875rem !important;
+  letter-spacing: -0.005em;
+}
+
+.nextra-sidebar .nextra-focus-visible:focus-visible {
+  box-shadow: inset 2px 0 0 var(--shopify-green) !important;
+}
+
+/* Active sidebar item: green left bar, subtle bg */
+.nextra-sidebar a[aria-current="page"],
+.nextra-sidebar .active > a,
+.nextra-sidebar .nx-bg-primary-100,
+.nextra-sidebar [class*="nx-bg-primary"] {
+  background: rgba(0, 128, 96, 0.06) !important;
+  color: var(--shopify-green-deep) !important;
+  font-weight: 600 !important;
+  box-shadow: inset 2px 0 0 var(--shopify-green);
+}
+html.dark .nextra-sidebar a[aria-current="page"],
+html.dark .nextra-sidebar .active > a,
+html.dark .nextra-sidebar [class*="nx-bg-primary"] {
+  background: rgba(0, 160, 116, 0.12) !important;
+  color: #6ee7b7 !important;
+  box-shadow: inset 2px 0 0 var(--shopify-green-hover);
+}
+
+/* TOC */
+.nextra-toc {
+  font-size: 0.82rem;
+}
+
+/* ============================================================================
+ * Top nav
+ * ============================================================================ */
+
+.nextra-nav-container .nextra-nav-container-blur {
+  background: rgba(255, 255, 255, 0.86) !important;
+  backdrop-filter: saturate(180%) blur(12px);
+  border-bottom: 1px solid var(--shopify-border-soft) !important;
+}
+
+html.dark .nextra-nav-container .nextra-nav-container-blur {
+  background: rgba(11, 13, 16, 0.86) !important;
+  border-bottom-color: var(--shopify-border-soft) !important;
+}
+
+.nextra-nav-container nav a {
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+/* ============================================================================
+ * Tables — Shopify minimal style
+ * ============================================================================ */
+
+article table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.5rem 0;
+  font-size: 0.92rem;
+}
+article thead th {
+  background: var(--shopify-bg-subtle) !important;
+  border-bottom: 1px solid var(--shopify-border) !important;
+  text-align: left;
+  font-weight: 600;
+  padding: 0.7rem 0.85rem;
+  letter-spacing: -0.005em;
+}
+article tbody td {
+  border-bottom: 1px solid var(--shopify-border-soft) !important;
+  padding: 0.6rem 0.85rem;
+  vertical-align: top;
+}
+article tbody tr:hover td {
+  background: var(--shopify-bg-subtle);
+}
+
+/* ============================================================================
+ * Card grid (Nextra <Cards>) — Shopify dev style
+ * ============================================================================ */
+
+.nx-not-prose [class*="nx-grid"] {
+  gap: 1rem !important;
+}
+
+article [class*="nextra-card"],
+article a[class*="nx-rounded"]:has(>span):has(>p) {
+  border: 1px solid var(--shopify-border) !important;
+  border-radius: 12px !important;
+  background: var(--shopify-bg-card) !important;
+  transition: border-color .12s ease, transform .12s ease, box-shadow .12s ease !important;
+}
+
+article a[class*="nx-rounded"]:hover,
+article [class*="nextra-card"]:hover {
+  border-color: var(--shopify-green) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(0, 128, 96, 0.08);
+}
+
+/* ============================================================================
+ * Admonitions / Callouts — Shopify-flavoured
+ * ============================================================================ */
+
+.nextra-callout,
+[class*="nextra-callout"] {
+  border-radius: 10px !important;
+  border-left-width: 3px !important;
+  background: var(--shopify-bg-subtle) !important;
+  border-color: var(--shopify-border) !important;
+}
+
+[class*="nextra-callout"][class*="error"],
+[class*="nextra-callout"][class*="danger"] {
+  background: rgba(217, 45, 32, 0.05) !important;
+  border-color: rgba(217, 45, 32, 0.3) !important;
+}
+
+[class*="nextra-callout"][class*="warning"] {
+  background: rgba(254, 176, 25, 0.06) !important;
+  border-color: rgba(254, 176, 25, 0.3) !important;
+}
+
+[class*="nextra-callout"][class*="info"] {
+  background: rgba(0, 128, 96, 0.05) !important;
+  border-color: rgba(0, 128, 96, 0.3) !important;
+}
+
+/* ============================================================================
+ * CodeDemo — Shopify "input / output" two-pane block
+ * ============================================================================ */
+
+.magalhaes-code-demo {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+  margin: 1.75rem 0;
+}
+
+.magalhaes-code-demo > * {
+  margin: 0 !important;
+}
+
+.magalhaes-code-demo p:empty {
+  display: none;
+}
+
+/* ============================================================================
+ * Function reference pill
+ * ============================================================================ */
+
+.magalhaes-funcref {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.1rem 0.55rem;
+  border: 1px solid var(--shopify-border);
+  border-radius: 999px;
+  text-decoration: none !important;
+  font-size: 0.84em;
+  background: var(--shopify-bg-card);
+  color: var(--shopify-text);
+  transition: background .12s, border-color .12s;
+  margin-right: 0.25rem;
+}
+
+.magalhaes-funcref:hover {
+  background: var(--shopify-bg-subtle);
+  border-color: var(--shopify-green);
+  color: var(--shopify-green-deep);
+}
+
+.magalhaes-funcref code {
+  background: transparent !important;
+  padding: 0 !important;
+  border: none !important;
+  font-size: 0.94em;
+  color: inherit !important;
+}
+
+.magalhaes-funcref span {
+  font-size: 0.7em;
+  opacity: 0.55;
+}
+
+html.dark .magalhaes-funcref:hover {
+  color: var(--shopify-green-hover);
+}
+
+/* ============================================================================
+ * Hero (landing)
+ * ============================================================================ */
+
+.magalhaes-hero {
+  position: relative;
+  text-align: left;
+  padding: 5rem 0 3rem;
+  border-bottom: 1px solid var(--shopify-border-soft);
+  margin-bottom: 3rem;
+}
+
+.magalhaes-hero h1 {
+  font-size: clamp(2.4rem, 1.6rem + 3vw, 3.6rem) !important;
+  font-weight: 750 !important;
+  letter-spacing: -0.025em !important;
+  line-height: 1.05 !important;
+  margin: 0 0 1.25rem !important;
+}
+
+.magalhaes-hero .lead {
+  font-size: clamp(1.05rem, 1rem + 0.4vw, 1.2rem);
+  color: var(--shopify-muted);
+  max-width: 38rem;
+  margin-bottom: 2rem;
+  line-height: 1.6;
+}
+
+.magalhaes-hero .cta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.magalhaes-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.7rem 1.3rem;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 550;
+  text-decoration: none !important;
+  transition: transform .12s, background .12s, border-color .12s;
+}
+
+.magalhaes-btn--primary {
+  background: var(--shopify-green);
+  color: #ffffff !important;
+  border: 1px solid var(--shopify-green);
+}
+.magalhaes-btn--primary:hover {
+  background: var(--shopify-green-deep);
+  border-color: var(--shopify-green-deep);
+  transform: translateY(-1px);
+  color: #ffffff !important;
+}
+
+.magalhaes-btn--ghost {
+  background: transparent;
+  color: var(--shopify-text) !important;
+  border: 1px solid var(--shopify-border);
+}
+.magalhaes-btn--ghost:hover {
+  border-color: var(--shopify-green);
+  color: var(--shopify-green-deep) !important;
+}
+html.dark .magalhaes-btn--ghost:hover {
+  color: var(--shopify-green-hover) !important;
+}
+
+/* Eyebrow label above hero */
+.magalhaes-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--shopify-green);
+  margin-bottom: 1rem;
+}
+
+.magalhaes-eyebrow::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--shopify-green);
+}
+
+/* ============================================================================
+ * Two-column "feature row" used on landing
+ * ============================================================================ */
+
+.magalhaes-feature {
+  display: grid;
+  gap: 2rem;
+  grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+  align-items: start;
+  margin: 3rem 0;
+  padding: 2rem 0;
+  border-top: 1px solid var(--shopify-border-soft);
+}
+
+.magalhaes-feature:first-of-type {
+  border-top: none;
+  margin-top: 0;
+  padding-top: 0;
+}
+
+.magalhaes-feature h3 {
+  margin-top: 0 !important;
+  font-size: 1.4rem !important;
+  font-weight: 650 !important;
+  letter-spacing: -0.018em;
+}
+
+.magalhaes-feature p {
+  color: var(--shopify-muted);
+}
+
+/* ============================================================================
+ * Spec table — used on reference pages
+ * ============================================================================ */
+
+.magalhaes-spec {
+  border: 1px solid var(--shopify-border);
+  border-radius: 10px;
+  overflow: hidden;
+  margin: 1.5rem 0;
+  font-size: 0.92rem;
+}
+
+.magalhaes-spec dl {
+  margin: 0;
+  display: grid;
+  grid-template-columns: minmax(8rem, 12rem) 1fr;
+}
+
+.magalhaes-spec dt {
+  background: var(--shopify-bg-subtle);
+  padding: 0.6rem 0.95rem;
+  border-bottom: 1px solid var(--shopify-border-soft);
+  font-weight: 600;
+  color: var(--shopify-muted);
+  font-size: 0.85rem;
+  letter-spacing: 0.005em;
+}
+
+.magalhaes-spec dd {
+  padding: 0.6rem 0.95rem;
+  border-bottom: 1px solid var(--shopify-border-soft);
+  margin: 0;
+}
+
+.magalhaes-spec dt:last-of-type,
+.magalhaes-spec dd:last-of-type {
+  border-bottom: none;
+}
+
+/* ============================================================================
+ * Step list — for the "story" pages
+ * ============================================================================ */
+
+.magalhaes-steps {
+  counter-reset: step;
+  padding: 0;
+  margin: 2rem 0;
+  list-style: none;
+}
+
+.magalhaes-steps > li {
+  counter-increment: step;
+  position: relative;
+  padding-left: 3.25rem;
+  margin: 0 0 2rem 0;
+  padding-bottom: 2rem;
+  border-bottom: 1px solid var(--shopify-border-soft);
+}
+
+.magalhaes-steps > li:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.magalhaes-steps > li::before {
+  content: counter(step);
+  position: absolute;
+  left: 0;
+  top: 0.05rem;
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 999px;
+  background: var(--shopify-green);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 650;
+  font-size: 0.95rem;
+  box-shadow: 0 0 0 4px rgba(0, 128, 96, 0.12);
+}
+
+.magalhaes-steps > li > h3:first-child,
+.magalhaes-steps > li > h4:first-child {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+  border-top: none !important;
+}
+
+/* Mobile tweaks */
+
+@media (max-width: 768px) {
+  article pre, .nextra-code-block pre {
+    font-size: 0.78rem !important;
+  }
+  .magalhaes-hero {
+    padding-top: 3rem;
+  }
+  .magalhaes-spec dl {
+    grid-template-columns: 1fr;
+  }
+  .magalhaes-spec dt {
+    border-bottom: none;
+    padding-bottom: 0.2rem;
+  }
+}

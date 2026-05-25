@@ -9,6 +9,7 @@
  */
 
 #include "MS5607.h"
+#include "cmsis_os.h"
 #include <string.h>
 #include <math.h>
 
@@ -32,8 +33,8 @@ bool MS5607_Init(MS5607_t *dev, SPI_HandleTypeDef *hspi,
     // Reset sensor
     uint8_t cmd = CMD_RESET;
     MS5607_Select(dev);
-    HAL_Delay(1);
-    HAL_StatusTypeDef status = HAL_SPI_Transmit(dev->hspi, &cmd, 1, HAL_MAX_DELAY);
+    osDelay(1);
+    HAL_StatusTypeDef status = HAL_SPI_Transmit(dev->hspi, &cmd, 1, 100);
     MS5607_Deselect(dev);
 
     if (status != HAL_OK) {
@@ -41,7 +42,7 @@ bool MS5607_Init(MS5607_t *dev, SPI_HandleTypeDef *hspi,
         return false;
     }
 
-    HAL_Delay(10);
+    osDelay(10);
 
     // Read calibration coefficients from PROM
     for (uint8_t i = 0; i < 7; i++) {
@@ -49,14 +50,14 @@ bool MS5607_Init(MS5607_t *dev, SPI_HandleTypeDef *hspi,
         uint8_t rx_buf[2];
 
         MS5607_Select(dev);
-        status = HAL_SPI_Transmit(dev->hspi, &addr, 1, HAL_MAX_DELAY);
+        status = HAL_SPI_Transmit(dev->hspi, &addr, 1, 100);
         if (status != HAL_OK) {
             MS5607_Deselect(dev);
             printf("ERROR: Failed to send PROM read command for C[%d]\r\n", i);
             return false;
         }
 
-        status = HAL_SPI_Receive(dev->hspi, rx_buf, 2, HAL_MAX_DELAY);
+        status = HAL_SPI_Receive(dev->hspi, rx_buf, 2, 100);
         MS5607_Deselect(dev);
 
         if (status != HAL_OK) {
@@ -94,26 +95,26 @@ bool MS5607_ReadTemperatureandPressure(MS5607_t *dev, BARO_t *output) {
     // Read temperature (D2)
     cmd = CMD_CONV_D2;
     MS5607_Select(dev);
-    status = HAL_SPI_Transmit(dev->hspi, &cmd, 1, HAL_MAX_DELAY);
+    status = HAL_SPI_Transmit(dev->hspi, &cmd, 1, 100);
     MS5607_Deselect(dev);
 
     if (status != HAL_OK) {
         return false;
     }
 
-    HAL_Delay(10);  // Wait for conversion
+    osDelay(10);  // Wait for conversion
 
     // Read D2 ADC value
     cmd = CMD_ADC_READ;
     uint8_t rx_buf[3];
     MS5607_Select(dev);
-    status = HAL_SPI_Transmit(dev->hspi, &cmd, 1, HAL_MAX_DELAY);
+    status = HAL_SPI_Transmit(dev->hspi, &cmd, 1, 100);
     if (status != HAL_OK) {
         MS5607_Deselect(dev);
         return false;
     }
 
-    status = HAL_SPI_Receive(dev->hspi, rx_buf, 3, HAL_MAX_DELAY);
+    status = HAL_SPI_Receive(dev->hspi, rx_buf, 3, 100);
     MS5607_Deselect(dev);
 
     if (status != HAL_OK) {
@@ -125,25 +126,25 @@ bool MS5607_ReadTemperatureandPressure(MS5607_t *dev, BARO_t *output) {
     // Read pressure (D1)
     cmd = CMD_CONV_D1;
     MS5607_Select(dev);
-    status = HAL_SPI_Transmit(dev->hspi, &cmd, 1, HAL_MAX_DELAY);
+    status = HAL_SPI_Transmit(dev->hspi, &cmd, 1, 100);
     MS5607_Deselect(dev);
 
     if (status != HAL_OK) {
         return false;
     }
 
-    HAL_Delay(10);  // Wait for conversion
+    osDelay(10);  // Wait for conversion
 
     // Read D1 ADC value
     cmd = CMD_ADC_READ;
     MS5607_Select(dev);
-    status = HAL_SPI_Transmit(dev->hspi, &cmd, 1, HAL_MAX_DELAY);
+    status = HAL_SPI_Transmit(dev->hspi, &cmd, 1, 100);
     if (status != HAL_OK) {
         MS5607_Deselect(dev);
         return false;
     }
 
-    status = HAL_SPI_Receive(dev->hspi, rx_buf, 3, HAL_MAX_DELAY);
+    status = HAL_SPI_Receive(dev->hspi, rx_buf, 3, 100);
     MS5607_Deselect(dev);
 
     if (status != HAL_OK) {

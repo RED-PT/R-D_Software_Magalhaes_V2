@@ -13,6 +13,7 @@
 #include "e22_uart_dma.h"
 #include "FreeRTOS.h"
 #include "task.h"
+#include "cmsis_os.h"
 #include <string.h>
 
 static UART_HandleTypeDef *e22_uart = NULL;
@@ -45,7 +46,7 @@ void E22_SetMode(uint8_t mode) {
         case E22_MODE_CONFIG: M0_LOW(); M1_HIGH(); break;
         case E22_MODE_SLEEP:  M0_HIGH(); M1_HIGH(); break;
     }
-    HAL_Delay(50);  // Mode switch settling time
+    osDelay(50);  // Mode switch settling time
 }
 
 bool E22_Init(UART_HandleTypeDef *huart) {
@@ -59,7 +60,7 @@ bool E22_Init(UART_HandleTypeDef *huart) {
     // Force normal mode
     M0_LOW();
     M1_LOW();
-    HAL_Delay(200);
+    osDelay(200);
 
     // Start circular DMA reception
     HAL_UART_Receive_DMA(e22_uart, rx_dma_buffer, RX_BUFFER_SIZE);
@@ -69,9 +70,9 @@ bool E22_Init(UART_HandleTypeDef *huart) {
 
 bool E22_Reset(void) {
     E22_SetMode(E22_MODE_SLEEP);
-    HAL_Delay(100);
+    osDelay(100);
     E22_SetMode(E22_MODE_NORMAL);
-    HAL_Delay(100);
+    osDelay(100);
 
     // Restart DMA
     HAL_UART_AbortReceive(e22_uart);

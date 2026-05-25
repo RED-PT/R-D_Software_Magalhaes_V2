@@ -1,0 +1,31 @@
+---
+title: Concepts
+---
+
+import { Cards } from 'nextra/components';
+
+# Concepts
+
+The mental model. Read these in order; the codebase becomes findable
+once they click.
+
+<Cards>
+  <Cards.Card icon="🧭" title="Architecture" href="/concepts/architecture">
+    The eight threads, the data flow, the *why* behind each boundary.
+  </Cards.Card>
+  <Cards.Card icon="🧵" title="The 8 threads" href="/concepts/threads">
+    Priority, rate, and one-line job description for each.
+  </Cards.Card>
+  <Cards.Card icon="🚦" title="Flight lifecycle" href="/concepts/flight-lifecycle">
+    Every FSM state from BOOT to SAFE.
+  </Cards.Card>
+  <Cards.Card icon="📡" title="TDMA & timing" href="/concepts/tdma">
+    The 1000 ms superframe, slot allocation, sync.
+  </Cards.Card>
+  <Cards.Card icon="🔌" title="Hardware abstraction" href="/concepts/hal">
+    How `config.h` keeps `Codigo/` portable.
+  </Cards.Card>
+  <Cards.Card icon="🧠" title="Cortex-M7 cache" href="/concepts/cortex-m7">
+    Why `DMA_BUFFER` and `BDMA_BUFFER` exist.
+  </Cards.Card>
+</Cards>

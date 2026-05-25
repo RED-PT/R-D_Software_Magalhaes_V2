@@ -8,6 +8,8 @@
  * @details
  * Implements the driver for the ST ASM330LHHX 6-axis IMU (accelerometer + gyroscope).
  * Uses DMA transfers for efficient, non-blocking sensor reads at high data rates.
+ * Board-agnostic: SPI instance and chip-select pins are resolved via config.h macros
+ * (SPI_IMU_BARO, CS_IMU_PORT/PIN).
  *
  * ## Sensor Specifications
  * | Parameter | Value |
@@ -68,7 +70,7 @@ bool ASM330LHHX_Init(ASM330LHHX_t *dev, SPI_HandleTypeDef *hspi) {
     dev_ctx.handle = (void*)hspi;
 
 
-    HAL_Delay(BOOT_TIME);
+    osDelay(BOOT_TIME);
 
     // Check device ID - initialize to invalid value first
     whoami = 0x00;
@@ -177,8 +179,8 @@ bool ASM330LHHX_ProcessData(ASM330LHHX_t *dev, IMU_t *output) {
 
 static int32_t platform_write(void *handle, uint8_t reg, const uint8_t *bufp, uint16_t len) {
 	HAL_GPIO_WritePin(CS_IMU_PORT, CS_IMU_PIN, GPIO_PIN_RESET);
-    HAL_SPI_Transmit((SPI_HandleTypeDef*)handle, &reg, 1, HAL_MAX_DELAY);
-    HAL_SPI_Transmit((SPI_HandleTypeDef*)handle, (uint8_t*)bufp, len, HAL_MAX_DELAY);
+    HAL_SPI_Transmit((SPI_HandleTypeDef*)handle, &reg, 1, 100);
+    HAL_SPI_Transmit((SPI_HandleTypeDef*)handle, (uint8_t*)bufp, len, 100);
     HAL_GPIO_WritePin(CS_IMU_PORT, CS_IMU_PIN, GPIO_PIN_SET);
     return 0;
 }
@@ -186,8 +188,8 @@ static int32_t platform_write(void *handle, uint8_t reg, const uint8_t *bufp, ui
 static int32_t platform_read(void *handle, uint8_t reg, uint8_t *bufp, uint16_t len) {
     reg |= 0x80;
     HAL_GPIO_WritePin(CS_IMU_PORT, CS_IMU_PIN, GPIO_PIN_RESET);
-    HAL_SPI_Transmit((SPI_HandleTypeDef*)handle, &reg, 1, HAL_MAX_DELAY);
-    HAL_SPI_Receive((SPI_HandleTypeDef*)handle, bufp, len, HAL_MAX_DELAY);
+    HAL_SPI_Transmit((SPI_HandleTypeDef*)handle, &reg, 1, 100);
+    HAL_SPI_Receive((SPI_HandleTypeDef*)handle, bufp, len, 100);
     HAL_GPIO_WritePin(CS_IMU_PORT, CS_IMU_PIN, GPIO_PIN_SET);
     return 0;
 }

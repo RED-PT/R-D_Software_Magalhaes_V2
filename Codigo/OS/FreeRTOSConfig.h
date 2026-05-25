@@ -56,6 +56,12 @@
   extern unsigned long getRunTimeCounterValue(void);
 /* USER CODE END 0 */
 #endif
+/*
+ * CMSIS device header selection for dual-board support.
+ * STM32H743xx is defined by the H7 HAL when building for the Buzz V4
+ * (STM32H743ZIT6). All other targets (F446ZE, F413ZH) fall through
+ * to the STM32F4 header.
+ */
 #ifndef CMSIS_device_header
   #if defined(STM32H743xx)
     #define CMSIS_device_header "stm32h7xx.h"

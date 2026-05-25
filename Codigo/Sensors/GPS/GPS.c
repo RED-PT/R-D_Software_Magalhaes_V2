@@ -1,14 +1,28 @@
-/*
- * GPS.c
+/**
+ * @file GPS.c
+ * @brief U-Blox GPS Driver and NMEA Parser Implementation
+ * @author Tomas Teixeira
+ * @date October 2025
+ * @version 2.0
  *
- *  Created on: Oct 19, 2025
- *      Author: texman
+ * @details
+ * Implements NMEA sentence parsing (GGA, RMC) and the U-Blox GPS driver
+ * with circular DMA reception and UBX binary protocol configuration.
+ * Board-agnostic: UART instance is resolved via config.h macro (UART_UBLOX).
+ *
+ * @see GPS.h for interface documentation
+ * @ingroup Sensors
  */
 
 #include "GPS.h"
+#include "cmsis_os.h"
 #include <string.h>
 #include <stdio.h>
 
+/** @brief Validate and parse a raw NMEA sentence, storing results in @p gps.
+ *  @param[out] gps        GPS data structure to populate
+ *  @param[in]  gps_buffer Raw NMEA sentence string (null-terminated)
+ */
 void GPS_save_data(GPS_t *gps, char *gps_buffer) {
     // validate message
     if (GPS_validate(gps_buffer)) {
@@ -24,6 +38,12 @@ void GPS_save_data(GPS_t *gps, char *gps_buffer) {
     }
 }
 
+/**
+ * @brief Convert NMEA coordinate (DDDMM.MMMM) to decimal degrees.
+ * @param[in] deg_coord NMEA-format coordinate value
+ * @param[in] nsew      Hemisphere indicator ('N','S','E','W'); S/W yield negative result
+ * @return Coordinate in decimal degrees
+ */
 float GPS_nmea_to_dec(float deg_coord, char nsew) {
     int degree = (int)(deg_coord / 100);
     float minutes = deg_coord - degree * 100;
@@ -35,6 +55,11 @@ float GPS_nmea_to_dec(float deg_coord, char nsew) {
     return decimal;
 }
 
+/**
+ * @brief Validate an NMEA sentence by verifying its XOR checksum.
+ * @param[in] nmeastr Null-terminated NMEA sentence (must start with '$')
+ * @return 1 if checksum valid, 0 otherwise
+ */
 int GPS_validate(char *nmeastr) {
     char check[3];
     char checkcalcstr[3];
@@ -66,6 +91,15 @@ int GPS_validate(char *nmeastr) {
             1 : 0;
 }
 
+/**
+ * @brief Parse a validated NMEA sentence (GGA or RMC) into a GPS_t structure.
+ *
+ * Supports $GNGGA, $GPGGA, and $GPRMC sentence types. Coordinates are
+ * converted from NMEA DDDMM.MMMM format to decimal degrees.
+ *
+ * @param[out] gps         GPS data structure to populate
+ * @param[in]  GPSstrParse Null-terminated, checksum-validated NMEA sentence
+ */
 void GPS_parse(GPS_t *gps, char *GPSstrParse) {
     // Temporary variables for NMEA format conversion
     float nmea_lat, nmea_lon;
@@ -305,7 +339,7 @@ bool UBLOX_GPS_SendUBX(UBLOX_GPS_t *dev, uint8_t msg_class, uint8_t msg_id,
 
     // Send via UART
     HAL_StatusTypeDef status = HAL_UART_Transmit(dev->huart, buffer, idx, 100);
-    HAL_Delay(50);  // Give GPS time to process
+    osDelay(50);  // Give GPS time to process
 
     return (status == HAL_OK);
 }
@@ -335,7 +369,7 @@ bool UBLOX_GPS_ConfigureMinimal(UBLOX_GPS_t *dev) {
     UBLOX_GPS_SetNMEAMessage(dev, 0xF0, 0x08, 0);  // ZDA off
     UBLOX_GPS_SetNMEAMessage(dev, 0xF0, 0x09, 0);  // GBS off
 
-    HAL_Delay(200);
+    osDelay(200);
 
     // Enable ONLY GGA (position + altitude)
     // Or enable ONLY RMC if you prefer (has speed but less accurate altitude)

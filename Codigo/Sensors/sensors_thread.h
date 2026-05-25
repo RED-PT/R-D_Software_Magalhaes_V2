@@ -9,13 +9,16 @@
  * (SPI, I2C, UART) using DMA for efficient data transfer.
  *
  * @section sensor_hw Sensor Hardware
- * | Sensor | Interface | Function |
- * |--------|-----------|----------|
- * | ASM330LHHX | SPI1 | 6-axis IMU (accel + gyro) |
- * | MMC5983MA | SPI1 | 3-axis magnetometer |
- * | MS5607 | SPI3 | Barometric pressure/altitude |
- * | BNO055 | I2C1 | 9-DOF with sensor fusion |
- * | UBLOX GPS | UART | Position/velocity |
+ * SPI instances vary by board; actual peripherals are abstracted via
+ * config.h macros (SPI_IMU_BARO, SPI_MAG, I2C_BNO, UART_UBLOX).
+ *
+ * | Sensor | config.h macro | F446ZE (Nucleo) | H743ZI (Buzz V4) | Function |
+ * |------------|----------------|-----------------|------------------|---------------------------|
+ * | ASM330LHHX | SPI_IMU_BARO | SPI1 | SPI1 | 6-axis IMU (accel + gyro) |
+ * | MMC5983MA | SPI_MAG | SPI3 | SPI6 | 3-axis magnetometer |
+ * | MS5607 | SPI_IMU_BARO | SPI1 | SPI1 | Barometric pressure/altitude |
+ * | BNO055 | I2C_BNO | I2C1 | I2C1 | 9-DOF with sensor fusion |
+ * | UBLOX GPS | UART_UBLOX | USART2 | USART1 | Position/velocity |
  *
  * @section sensor_timing Timing
  * - IMU/Magnetometer: Interrupt-driven (data ready)
@@ -88,10 +91,10 @@ typedef enum {
     ACTIVE_SENSOR_BNO           /**< BNO055 is using the bus */
 } active_sensor_t;
 
-/** @brief Current active sensor on SPI1 bus */
+/** @brief Current active sensor on SPI_IMU_BARO bus (IMU or barometer) */
 extern volatile active_sensor_t spi1_active_sensor;
 
-/** @brief Current active sensor on MAG SPI bus */
+/** @brief Current active sensor on SPI_MAG bus (magnetometer; SPI3 on F446ZE, SPI6 on H743ZI) */
 extern volatile active_sensor_t spi_mag_active_sensor;
 
 /** @brief Current active sensor on I2C1 bus */
@@ -139,11 +142,11 @@ extern volatile active_sensor_t i2c1_active_sensor;
  * Must be called before starting the sensor thread.
  *
  * Initialization sequence:
- * 1. ASM330LHHX (IMU) - SPI1
- * 2. MMC5983MA (Magnetometer) - SPI1
- * 3. MS5607 (Barometer) - SPI3
- * 4. BNO055 (9-DOF) - I2C1
- * 5. UBLOX GPS - UART
+ * 1. ASM330LHHX (IMU) - SPI_IMU_BARO
+ * 2. MMC5983MA (Magnetometer) - SPI_MAG
+ * 3. MS5607 (Barometer) - SPI_IMU_BARO
+ * 4. BNO055 (9-DOF) - I2C_BNO
+ * 5. UBLOX GPS - UART_UBLOX
  *
  * @note Assumes HAL peripheral handles are already initialized
  */

@@ -216,10 +216,9 @@ void data_handler_store_baro(const BARO_t *baro_data) {
             .sequence = seq_baro++,
             .source_cb = &cb_baro
         };
-        // Send to estimator immediately (high priority)
-        xQueueSend(queue_to_estimator, &packet, 0);
 
-        // Check if buffer crossed threshold (data_handler will flush to other queues)
+        distribute_data_packet(&packet);
+
         check_and_notify_threshold();
     }
 }

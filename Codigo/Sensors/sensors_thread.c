@@ -10,14 +10,17 @@
  * Computer. This thread manages all hardware sensors using DMA transfers
  * for efficient, low-latency data collection.
  *
+ * Supports multiple board targets; peripheral instances are abstracted
+ * through config.h macros (SPI_IMU_BARO, SPI_MAG, I2C_BNO, UART_UBLOX).
+ *
  * ## Sensor Overview
- * | Sensor | Interface | Rate | Data Type |
- * |--------|-----------|------|-----------|
- * | ASM330LHHX | SPI1 DMA | 416 Hz | 6-axis IMU |
- * | MMC5983MA | SPI3 DMA | 100 Hz | 3-axis MAG |
- * | MS5607 | SPI1 Poll | 50 Hz | Barometer |
- * | BNO055 | I2C1 DMA | 100 Hz | 9-DOF Fusion |
- * | u-blox GPS | UART DMA | 1 Hz | Position/Velocity |
+ * | Sensor | config.h macro | Rate | Data Type |
+ * |------------|----------------|--------|-------------------|
+ * | ASM330LHHX | SPI_IMU_BARO | 416 Hz | 6-axis IMU (DMA) |
+ * | MMC5983MA | SPI_MAG | 100 Hz | 3-axis MAG (DMA) |
+ * | MS5607 | SPI_IMU_BARO | 50 Hz | Barometer (poll) |
+ * | BNO055 | I2C_BNO | 100 Hz | 9-DOF Fusion (DMA)|
+ * | u-blox GPS | UART_UBLOX | 1 Hz | Position/Vel (DMA)|
  *
  * ## Data Flow
  *
@@ -49,25 +52,34 @@
 
 #include "sensors_thread.h"
 #include "Flight Computer/flight_computer.h"  // For fsm_get_baro_calibration()
+#include "cmsis_os.h"  // For osDelay()
 
 /** @name Sensor Device Instances
  *  @brief Global sensor device structures
  *  @{
  */
-DMA_BUFFER  ASM330LHHX_t imu_device;    /**< 6-axis IMU (accel + gyro) — SPI1 DMA */
-BDMA_BUFFER MMC5983MA_t mag_device;     /**< 3-axis magnetometer — SPI6 BDMA */
-MS5607_t baro_device;                   /**< Barometric pressure sensor — blocking SPI */
-DMA_BUFFER  BNO055_t bno_device;        /**< 9-DOF orientation sensor — I2C1 DMA */
-DMA_BUFFER  UBLOX_GPS_t gps_device;     /**< u-blox GPS receiver — UART1 DMA */
+DMA_BUFFER  ASM330LHHX_t imu_device;    /**< 6-axis IMU (accel + gyro) — SPI_IMU_BARO DMA */
+BDMA_BUFFER MMC5983MA_t mag_device;     /**< 3-axis magnetometer — SPI_MAG BDMA */
+MS5607_t baro_device;                   /**< Barometric pressure sensor — SPI_IMU_BARO blocking */
+DMA_BUFFER  BNO055_t bno_device;        /**< 9-DOF orientation sensor — I2C_BNO DMA */
+DMA_BUFFER  UBLOX_GPS_t gps_device;     /**< u-blox GPS receiver — UART_UBLOX DMA */
 /** @} */
+
+/** @brief Per-sensor readiness flags. Set by sensors_thread_init() once
+ *  init+configure both succeed. The thread loop skips reads for sensors
+ *  whose flag is false (i.e. absent or failed at boot). */
+static bool imu_ready = false;
+static bool mag_ready = false;
+static bool baro_ready = false;
+static bool bno_ready = false;
 
 /** @name Bus Tracking Variables
  *  @brief Track which sensor is currently using each bus (for DMA routing)
  *  @{
  */
-volatile active_sensor_t spi1_active_sensor = ACTIVE_SENSOR_NONE;  /**< SPI1: IMU or BARO */
-volatile active_sensor_t spi_mag_active_sensor = ACTIVE_SENSOR_NONE;  /**< MAG SPI bus */
-volatile active_sensor_t i2c1_active_sensor = ACTIVE_SENSOR_NONE;  /**< I2C1: BNO055 */
+volatile active_sensor_t spi1_active_sensor = ACTIVE_SENSOR_NONE;  /**< SPI_IMU_BARO bus: IMU or BARO */
+volatile active_sensor_t spi_mag_active_sensor = ACTIVE_SENSOR_NONE;  /**< SPI_MAG bus: magnetometer */
+volatile active_sensor_t i2c1_active_sensor = ACTIVE_SENSOR_NONE;  /**< I2C_BNO bus: BNO055 */
 /** @} */
 
 /**
@@ -101,11 +113,11 @@ static void I2C_BusRecovery(I2C_HandleTypeDef *hi2c) {
 
     // Abort any pending DMA
     //HAL_I2C_Abort_IT(hi2c);
-    HAL_Delay(1);
+    osDelay(1);
 
     // De-init and re-init I2C
     HAL_I2C_DeInit(hi2c);
-    HAL_Delay(11);
+    osDelay(11);
     HAL_I2C_Init(hi2c);
 
     sensor_stats.i2c_recoveries++;
@@ -150,6 +162,7 @@ void sensors_thread_init(void) {
         if (!imu_cfg) {
             printf("ERROR: IMU configure failed!\r\n");
         }
+        imu_ready = imu_cfg;
     }
 
     // Initialize Magnetometer
@@ -165,6 +178,7 @@ void sensors_thread_init(void) {
         if (!mag_cfg) {
             printf("ERROR: MAG configure failed!\r\n");
         }
+        mag_ready = mag_cfg;
     }
 
     // Initialize Barometer
@@ -173,6 +187,8 @@ void sensors_thread_init(void) {
     fsm_report_init_status("BARO_INIT", baro_ok);
     if (!baro_ok) {
         printf("ERROR: BARO init failed!\r\n");
+    } else {
+        baro_ready = true;  // MS5607 needs no separate Configure step
     }
 
     // Initialize BNO055
@@ -188,6 +204,7 @@ void sensors_thread_init(void) {
         if (!bno_cfg) {
             printf("ERROR: BNO configure failed!\r\n");
         }
+        bno_ready = bno_cfg;
     }
 
     // Initialize GPS
@@ -199,16 +216,16 @@ void sensors_thread_init(void) {
         printf("ERROR: GPS init failed!\r\n");
     } else {
         // Wait for GPS to boot
-        HAL_Delay(1000);
+        osDelay(1000);
 
         // Configure minimal output - NEO-7M won't save this!
         UBLOX_GPS_ConfigureMinimal(&gps_device);
-        HAL_Delay(200);
+        osDelay(200);
 
         #if UBLOX_GPS_HAS_FLASH
         UBLOX_GPS_SaveConfig(&gps_device);
         printf("GPS config saved to flash\r\n");
-        HAL_Delay(500);
+        osDelay(500);
         #else
         printf("GPS config NOT saved (ROM-only module)\r\n");
         #endif
@@ -251,7 +268,7 @@ void sensors_thread_function(void *argument) {
         // [REST OF YOUR ORIGINAL LOOP CODE - UNCHANGED]
 
         if (ulNotificationValue & SENSOR_NOTIFY_IMU_DRDY) {
-            if (spi1_active_sensor == ACTIVE_SENSOR_NONE) {
+            if (imu_ready && spi1_active_sensor == ACTIVE_SENSOR_NONE) {
                 spi1_active_sensor = ACTIVE_SENSOR_IMU;
                 if (!ASM330LHHX_StartReadDMA(&imu_device)) {
                     spi1_active_sensor = ACTIVE_SENSOR_NONE;
@@ -261,7 +278,7 @@ void sensors_thread_function(void *argument) {
         }
 
         if (ulNotificationValue & SENSOR_NOTIFY_MAG_DRDY) {
-            if (spi_mag_active_sensor == ACTIVE_SENSOR_NONE) {
+            if (mag_ready && spi_mag_active_sensor == ACTIVE_SENSOR_NONE) {
                 spi_mag_active_sensor = ACTIVE_SENSOR_MAG;
                 if (!MMC5983MA_StartReadDMA(&mag_device)) {
                     spi_mag_active_sensor = ACTIVE_SENSOR_NONE;
@@ -270,7 +287,7 @@ void sensors_thread_function(void *argument) {
             }
         }
 
-        if (ulNotificationValue & SENSOR_NOTIFY_BARO_TIMER) {
+        if ((ulNotificationValue & SENSOR_NOTIFY_BARO_TIMER) && baro_ready) {
             BARO_t baro_data;
             // Use calibrated reading to get AGL altitude (0 at launch pad)
             if (MS5607_ReadWithCalibration(&baro_device, &baro_data, fsm_get_baro_calibration())) {
@@ -282,7 +299,7 @@ void sensors_thread_function(void *argument) {
         }
 
         if (ulNotificationValue & SENSOR_NOTIFY_BNO_TIMER) {
-            if (i2c1_active_sensor == ACTIVE_SENSOR_NONE) {
+            if (bno_ready && i2c1_active_sensor == ACTIVE_SENSOR_NONE) {
                 i2c1_active_sensor = ACTIVE_SENSOR_BNO;
                 i2c1_dma_start_tick = HAL_GetTick();  // Track DMA start time
                 if (!BNO055_StartReadDMA(&bno_device)) {

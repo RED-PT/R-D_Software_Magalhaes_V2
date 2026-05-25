@@ -4,7 +4,7 @@
  *  Created on: Nov 19, 2025
  *      Author: Tomas Teixeira
  *
- *  SX126x LoRa Driver for STM32F446ZE
+ *  SX126x LoRa Driver for Magalhães Flight Computer (Buzz V4 H743 / F446ZE)
  */
 
 #ifndef RADIO_SX126X_H_
@@ -16,13 +16,10 @@
 #include "defs.h"
 
 // ============================================================================
-// Pin Mapping from config.h
+// Pin Mapping from config.h (varies by board)
 // ============================================================================
-// SPI2: LoRa SPI interface
-// CS:    PG1  (CS_LORA_PORT/PIN)
-// RESET: PF9  (RESET_LORA_PORT/PIN)
-// BUSY:  PG0  (BUSY_LORA_PORT/PIN)
-// DIO1:  PB2  (EXTI_LORA_PORT/PIN)
+// Pin mapping is defined in config.h per target board.
+// Macros below abstract the CS, RESET, BUSY, and DIO1 pins.
 
 // Use macros from config.h
 #define SX126X_CS_LOW()      CS_LORA_LOW()

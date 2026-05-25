@@ -26,7 +26,7 @@ bool BNO055_Init(BNO055_t *dev, I2C_HandleTypeDef *hi2c) {
     dev->data_ready = 0;
     memset(dev->read_buffer, 0, sizeof(dev->read_buffer));
 
-    HAL_Delay(50);  // Power-up time
+    osDelay(50);  // Power-up time
 
     // Read and verify chip ID
     if (!BNO055_ReadRegister(dev, BNO055_REG_CHIP_ID, &chip_id)) {
@@ -49,19 +49,19 @@ bool BNO055_Configure(BNO055_t *dev) {
     if (!BNO055_SetOpMode(dev, BNO055_MODE_CONFIGMODE)) {
         return false;
     }
-    HAL_Delay(25);
+    osDelay(25);
 
     // Set to NDOF mode (full 9-DOF sensor fusion)
     if (!BNO055_SetOpMode(dev, BNO055_MODE_NDOF)) {
         return false;
     }
-    HAL_Delay(100);  // Mode change takes time
+    osDelay(100);  // Mode change takes time
 
     // Set power mode to normal
     if (!BNO055_WriteRegister(dev, BNO055_REG_PWR_MODE, BNO055_POWER_NORMAL)) {
         return false;
     }
-    HAL_Delay(10);
+    osDelay(10);
 
     return true;
 }
@@ -80,8 +80,7 @@ bool BNO055_StartReadDMA(BNO055_t *dev) {
 
     // Prepare command: I2C address write, then register address, then read
     if (HAL_I2C_Mem_Read_DMA(dev->hi2c, dev->i2c_addr, start_reg, I2C_MEMADD_SIZE_8BIT, dev->read_buffer, num_bytes) != HAL_OK) {
-    	printf("ERROR123\r\n");
-    	return false;
+        return false;
     }
 
     return true;
@@ -188,7 +187,7 @@ static bool BNO055_ReadRegister(BNO055_t *dev, uint8_t reg, uint8_t *data) {
     }
 
     if (HAL_I2C_Mem_Read(dev->hi2c, dev->i2c_addr, reg,
-                         I2C_MEMADD_SIZE_8BIT, data, 1, HAL_MAX_DELAY) != HAL_OK) {
+                         I2C_MEMADD_SIZE_8BIT, data, 1, 100) != HAL_OK) {
         return false;
     }
 
@@ -201,7 +200,7 @@ static bool BNO055_WriteRegister(BNO055_t *dev, uint8_t reg, uint8_t data) {
     }
 
     if (HAL_I2C_Mem_Write(dev->hi2c, dev->i2c_addr, reg,
-                          I2C_MEMADD_SIZE_8BIT, &data, 1, HAL_MAX_DELAY) != HAL_OK) {
+                          I2C_MEMADD_SIZE_8BIT, &data, 1, 100) != HAL_OK) {
         return false;
     }
 

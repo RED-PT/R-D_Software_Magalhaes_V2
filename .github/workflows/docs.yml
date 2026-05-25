@@ -8,9 +8,7 @@ on:
       - 'STM32*/Core/Inc/config.h'
       - 'arduino_gs_software/**'
       - 'Dashboard Python/**'
-      - 'docs_pages/**'
-      - 'mainpage.md'
-      - 'Doxyfile'
+      - 'Documentation/**'
       - '.github/workflows/docs.yml'
   workflow_dispatch:
 
@@ -26,22 +24,56 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_BASE_PATH: /R-D_Software_Magalhaes_V2
+    defaults:
+      run:
+        working-directory: Documentation
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: Documentation/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
+
+      - name: Build Nextra site (static export)
+        run: npm run build
 
       - name: Install Doxygen and Graphviz
         run: |
           sudo apt-get update
           sudo apt-get install -y doxygen graphviz
 
-      - name: Run Doxygen
+      - name: Fetch Doxygen Awesome theme
+        run: bash scripts/fetch-docs-deps.sh
+
+      - name: Build Doxygen API reference
         run: doxygen Doxyfile
+
+      - name: Embed Doxygen output as /api/
+        run: |
+          mkdir -p out/api
+          cp -r docs/html/* out/api/
+
+      - name: Add .nojekyll
+        run: touch out/.nojekyll
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: docs/html
+          path: Documentation/out
 
   deploy:
     needs: build

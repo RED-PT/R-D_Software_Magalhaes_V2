@@ -1,8 +1,22 @@
-/*
- * PWM_FUNCTIONS.c
+/**
+ * @file PWM_FUNCTIONS.c
+ * @brief PWM control implementation for ESC motor control
+ * @author Tomas Teixeira
+ * @date October 2025
  *
- * PWM control for ESC motor
- * Uses PWM_ESC_TIM for ESC (per config.h)
+ * Implementation of PWM-based ESC control for the Magalhaes flight computer.
+ * Supports multiple target boards through config.h macros:
+ * - **NUCLEO-F446ZE:** TIM3 CH1, PSC=83 @ 84 MHz (1 count = 1 us)
+ * - **Buzz V4 (STM32H743ZIT6):** TIM4 CH1, PSC=239 @ 240 MHz (1 count = 1 us)
+ *
+ * The PWM_DebugTest() function has two implementations selected at compile
+ * time via the RADIO_INTERFACE_UART / RADIO_INTERFACE_SPI preprocessor
+ * guard (defined in config.h). The UART variant is F446ZE-specific and
+ * exercises PC6 GPIO toggling and TIM3 registers directly; the SPI variant
+ * is a generic test that uses the config.h PWM_ESC_* macros.
+ *
+ * @see PWM_FUNCTIONS.h for public API
+ * @see config.h for PWM_ESC_TIM, PWM_ESC_CHANNEL, etc.
  */
 
 #include "PWM_FUNCTIONS.h"
@@ -13,11 +27,18 @@
 // Current state
 float currentThrottle = 0.0f;
 
-// ESC pulse width limits (µs)
-// Timer configured so 1 count = 1µs (F446: PSC=83 @84MHz, H743: PSC=239 @240MHz)
-// Hobbywing FlyFun / Futaba standard: 1100µs = min, 1940µs = max
-#define PULSE_MIN_US  1100U
-#define PULSE_MAX_US  1940U
+/**
+ * @defgroup ESCPulseLimits ESC Pulse Width Limits
+ * @brief Pulse width range for the ESC signal in microseconds
+ *
+ * The timer prescaler is set so that 1 timer count equals 1 us on both
+ * supported boards (F446ZE: PSC=83 @ 84 MHz, H743: PSC=239 @ 240 MHz).
+ * Values follow the Hobbywing FlyFun / Futaba standard.
+ * @{
+ */
+#define PULSE_MIN_US  1100U  /**< Minimum pulse width (arm / idle) */
+#define PULSE_MAX_US  1940U  /**< Maximum pulse width (full throttle) */
+/** @} */
 
 // Ramp state (for non-blocking ramps)
 static bool ramp_active = false;
@@ -43,9 +64,18 @@ void PWM_Init(void) {
     printf("[PWM] ESC PWM Initialized\r\n");
 }
 
-// Debug function to test PWM output directly
-// NOTE: This test is Nucleo-F446ZE specific (PC6, TIM3, LD1/LD2)
-#ifdef RADIO_INTERFACE_UART  // F446ZE dev board
+/**
+ * @brief Debug test function for PWM output
+ *
+ * Two compile-time variants exist, selected by the radio interface macro
+ * in config.h:
+ * - @c RADIO_INTERFACE_UART (NUCLEO-F446ZE): Tests PC6 as GPIO then as
+ *   TIM3_CH1 PWM. Uses LD1/LD2 LEDs as visual indicators. Board-specific
+ *   register access (TIM3->CCR1, GPIO_AF2_TIM3, etc.).
+ * - @c RADIO_INTERFACE_SPI (Buzz V4 / H743): Generic test using the
+ *   config.h PWM_ESC_* macros. No board-specific pin references.
+ */
+#ifdef RADIO_INTERFACE_UART  /* NUCLEO-F446ZE dev board */
 void PWM_DebugTest(void) {
     printf("\r\n========== PWM DEBUG TEST ==========\r\n");
     printf("[PWM DEBUG] Testing PC6 (TIM3_CH1)\r\n");
@@ -142,7 +172,7 @@ void PWM_DebugTest(void) {
     printf("If GPIO toggle didn't work: Check PC6 wiring\r\n");
     printf("PC6 location on NUCLEO-F446ZE: CN10 pin 4 (Arduino D1)\r\n");
 }
-#else  // Buzz V4 / other boards
+#else  /* Buzz V4 / other boards (RADIO_INTERFACE_SPI) */
 void PWM_DebugTest(void) {
     printf("\r\n========== PWM DEBUG TEST ==========\r\n");
     printf("[PWM DEBUG] Testing ESC PWM output\r\n");

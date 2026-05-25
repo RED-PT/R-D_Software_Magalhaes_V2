@@ -1,0 +1,382 @@
+---
+title: Sensors reference
+---
+
+import { Callout } from 'nextra/components';
+import { CodeDemo } from '../../components/CodeDemo';
+import { FuncRef } from '../../components/FuncRef';
+
+# Sensors reference
+
+Every sensor driver follows the same shape — `_Init / _Configure /
+_Read or _StartReadDMA / _ProcessData`. The orchestration thread
+(`Codigo/Sensors/sensors_thread.c`) owns the global instances and
+calls these functions in response to interrupts and timer ticks.
+
+For *how* the thread orchestrates these reads, see
+[Sensors subsystem](/subsystems/sensors). For the underlying types
+(`IMU_t`, `BARO_t`, …) see [Shared types](/reference/types).
+
+---
+
+## ASM330LHHX — 6-axis IMU
+
+ST's ASM330LHHX (3-axis accelerometer + 3-axis gyroscope, automotive
+grade). Read over SPI1 with DMA.
+
+<div className="magalhaes-spec">
+  <dl>
+    <dt>Header</dt><dd>`Codigo/Sensors/ASM330LHHX/ASM330LHHX.h`</dd>
+    <dt>Bus</dt><dd>`SPI_IMU_BARO` (`&hspi1` on both boards)</dd>
+    <dt>Output rate</dt><dd>416 Hz (configured), data-ready IRQ</dd>
+    <dt>Output struct</dt><dd>[`IMU_t`](/reference/types#imu_t)</dd>
+    <dt>Memory</dt><dd>`DMA_BUFFER ASM330LHHX_t imu_device;` (D2 SRAM on H743)</dd>
+  </dl>
+</div>
+
+### `ASM330LHHX_Init`
+
+```c
+bool ASM330LHHX_Init(ASM330LHHX_t *dev, SPI_HandleTypeDef *hspi);
+```
+
+Initializes the driver context and verifies the device responds. Reads
+`WHO_AM_I` and confirms the expected ID.
+
+| Param | Direction | Description |
+|---|---|---|
+| `dev` | `[out]` | Driver context to initialize. Caller-owned storage. |
+| `hspi` | `[in]` | SPI peripheral handle (must be initialized by CubeMX/HAL). |
+
+**Returns** `true` on success, `false` if the device doesn't respond
+or returns the wrong WHO_AM_I.
+
+### `ASM330LHHX_Configure`
+
+```c
+bool ASM330LHHX_Configure(ASM330LHHX_t *dev);
+```
+
+Programs the operating parameters:
+
+- Accelerometer: ±16 g range, 416 Hz ODR
+- Gyroscope: ±2000 dps range, 416 Hz ODR
+- Data-ready IRQ on INT1 pin
+
+**Pre-condition:** `ASM330LHHX_Init` returned `true` for `dev`.
+**Returns** `true` on success.
+
+### `ASM330LHHX_StartReadDMA`
+
+```c
+bool ASM330LHHX_StartReadDMA(ASM330LHHX_t *dev);
+```
+
+Starts a non-blocking DMA burst read of accelerometer + gyroscope +
+temperature registers. Call from a thread context after a data-ready
+notification.
+
+**Returns** `false` if SPI is busy or HAL returned an error.
+
+<Callout type="warning" emoji="⚠️">
+  Only one sensor can drive SPI1 at a time. Set
+  `spi1_active_sensor = ACTIVE_SENSOR_IMU` before calling this so the
+  DMA-complete handler knows whose buffer just finished.
+</Callout>
+
+### `ASM330LHHX_ParseDMABuffer`
+
+```c
+void ASM330LHHX_ParseDMABuffer(ASM330LHHX_t *dev);
+```
+
+Called from the DMA-complete callback. Walks the receive buffer and
+populates `dev->accel_raw`, `dev->gyro_raw`, `dev->temp_raw`.
+
+### `ASM330LHHX_ProcessData`
+
+```c
+bool ASM330LHHX_ProcessData(ASM330LHHX_t *dev, IMU_t *output);
+```
+
+Converts the raw counts into engineering units (g, dps, °C) and writes
+them to `output`. Adds a timestamp via `HAL_GetTick()`.
+
+| Param | Direction | Description |
+|---|---|---|
+| `dev` | `[in]` | Driver context with valid raw data. |
+| `output` | `[out]` | Caller-owned [`IMU_t`](/reference/types#imu_t) to populate. |
+
+### Usage pattern
+
+<CodeDemo>
+
+```c filename="One-shot read"
+DMA_BUFFER ASM330LHHX_t imu_device;
+
+ASM330LHHX_Init(&imu_device, SPI_IMU_BARO);
+ASM330LHHX_Configure(&imu_device);
+
+// later, on data-ready IRQ:
+spi1_active_sensor = ACTIVE_SENSOR_IMU;
+ASM330LHHX_StartReadDMA(&imu_device);
+
+// in DMA-complete callback:
+ASM330LHHX_ParseDMABuffer(&imu_device);
+xTaskNotifyFromISR(sensors_thread_id,
+    SENSOR_NOTIFY_DMA_COMPLETE, eSetBits, &woken);
+
+// in sensors thread, on the notification:
+IMU_t imu;
+if (ASM330LHHX_ProcessData(&imu_device, &imu)) {
+    data_handler_store_imu(&imu);
+}
+```
+
+```text filename="What it produces"
+imu = {
+  accel_x = +0.02 g,
+  accel_y = -0.01 g,
+  accel_z = +1.00 g,
+  gyro_x  =  -0.4 dps,
+  gyro_y  =  +0.1 dps,
+  gyro_z  =  +0.0 dps,
+  temperature_c = 28.4,
+  timestamp_ms  = 12345
+}
+```
+
+</CodeDemo>
+
+[Concept: how the sensors thread uses this →](/subsystems/sensors) ·
+<FuncRef name="ASM330LHHX_Init" file="ASM330LHHX.h" />
+
+---
+
+## MMC5983MA — 3-axis magnetometer
+
+MEMSIC magnetometer with on-chip SET/RESET cycle for stray-field
+rejection. On Buzz V4 it sits on SPI6, which means **BDMA** — the
+buffer must live in D3 SRAM.
+
+<div className="magalhaes-spec">
+  <dl>
+    <dt>Header</dt><dd>`Codigo/Sensors/MMC5983MA/MMC5983MA.h`</dd>
+    <dt>Bus</dt><dd>`SPI_MAG` — `&hspi6` (H743, BDMA) / `&hspi3` (F446, DMA)</dd>
+    <dt>Output rate</dt><dd>100 Hz, data-ready IRQ</dd>
+    <dt>Output struct</dt><dd>[`MAG_t`](/reference/types#mag_t)</dd>
+    <dt>Memory</dt><dd>`BDMA_BUFFER MMC5983MA_t mag_device;` (D3 SRAM on H743)</dd>
+  </dl>
+</div>
+
+### `MMC5983MA_Init`
+
+```c
+bool MMC5983MA_Init(MMC5983MA_t *dev, SPI_HandleTypeDef *hspi);
+```
+
+Verifies the device, runs the initial SET cycle, and configures
+sensitivity.
+
+### `MMC5983MA_Configure`
+
+```c
+bool MMC5983MA_Configure(MMC5983MA_t *dev);
+```
+
+100 Hz continuous mode, data-ready interrupt on the dedicated pin.
+
+### `MMC5983MA_StartReadDMA`, `MMC5983MA_ProcessData`
+
+Same shape as the IMU — start non-blocking read on data-ready,
+convert raw to Gauss in the thread context.
+
+<Callout type="warning" emoji="⚠️">
+  **The biggest portability gotcha.** On the H743, `MMC5983MA_t` *must*
+  carry the `BDMA_BUFFER` macro so its DMA buffer lands in D3 SRAM.
+  BDMA cannot reach D1 or D2 — the transfer silently produces garbage
+  if you forget. See [Cortex-M7 cache](/concepts/cortex-m7).
+</Callout>
+
+<FuncRef name="MMC5983MA_Init" file="MMC5983MA.h" />
+
+---
+
+## MS5607 — barometric pressure
+
+TE Connectivity barometer. Higher precision with a 9 ms conversion
+delay — driven by a software timer at 50 Hz, blocking read inside the
+sensors thread.
+
+<div className="magalhaes-spec">
+  <dl>
+    <dt>Header</dt><dd>`Codigo/Sensors/MS5607/MS5607.h`</dd>
+    <dt>Bus</dt><dd>`SPI_IMU_BARO` (shared with IMU)</dd>
+    <dt>Output rate</dt><dd>50 Hz, timer-driven</dd>
+    <dt>Output struct</dt><dd>[`BARO_t`](/reference/types#baro_t)</dd>
+  </dl>
+</div>
+
+### `MS5607_Init`
+
+```c
+bool MS5607_Init(MS5607_t *dev, SPI_HandleTypeDef *hspi,
+                 GPIO_TypeDef *cs_port, uint16_t cs_pin);
+```
+
+Reads the factory PROM (calibration coefficients).
+
+### `MS5607_ReadWithCalibration`
+
+```c
+bool MS5607_ReadWithCalibration(MS5607_t *dev, BARO_t *out,
+                                 const baro_calibration_t *cal);
+```
+
+Triggers conversions for pressure and temperature, reads them, applies
+the FSM-managed ground reference. The output `altitude_m` is
+**altitude above ground** — zero at the launch pad.
+
+The calibration struct is filled by `CMD_CALIBRATE_BARO` on the FSM
+side and exposed via `fsm_get_baro_calibration()`.
+
+<FuncRef name="MS5607_ReadWithCalibration" file="MS5607.h" />
+
+---
+
+## BNO055 — 9-DOF orientation
+
+Bosch sensor with on-chip fusion firmware. Driver reads quaternions
+and Euler angles directly. I2C — uses the same recovery logic as the
+load cell.
+
+<div className="magalhaes-spec">
+  <dl>
+    <dt>Header</dt><dd>`Codigo/Sensors/BNO055/BNO055.h`</dd>
+    <dt>Bus</dt><dd>`I2C_BNO` (`&hi2c1`)</dd>
+    <dt>Output rate</dt><dd>100 Hz, timer-driven (DMA)</dd>
+    <dt>Output struct</dt><dd>[`BNO_t`](/reference/types#bno_t)</dd>
+  </dl>
+</div>
+
+### `BNO055_Init`, `BNO055_Configure`
+
+```c
+bool BNO055_Init(BNO055_t *dev, I2C_HandleTypeDef *hi2c);
+bool BNO055_Configure(BNO055_t *dev);
+```
+
+`Configure` sets `NDOF` mode (full sensor fusion) and configures the
+output rate.
+
+### `BNO055_StartReadDMA`, `BNO055_ProcessData`
+
+```c
+bool BNO055_StartReadDMA(BNO055_t *dev);
+bool BNO055_ProcessData(BNO055_t *dev, BNO_t *out);
+```
+
+The `BNO_t` output carries both Euler angles (`heading_deg`,
+`pitch_deg`, `roll_deg`) and quaternions (`quat_w`, `quat_x`,
+`quat_y`, `quat_z`). Use whichever your control law prefers.
+
+<FuncRef name="BNO055_Init" file="BNO055.h" />
+
+---
+
+## u-blox GPS (NEO-M9N / NEO-7M)
+
+UART. The same driver handles both modules; the only divergence is
+that NEO-7M is ROM-only, so its config is lost on power cycle.
+
+<div className="magalhaes-spec">
+  <dl>
+    <dt>Header</dt><dd>`Codigo/Sensors/GPS/GPS.h`</dd>
+    <dt>Bus</dt><dd>`UART_UBLOX`</dd>
+    <dt>Output rate</dt><dd>1–10 Hz (configured)</dd>
+    <dt>Output struct</dt><dd>[`GPS_t`](/reference/types#gps_t)</dd>
+  </dl>
+</div>
+
+### `UBLOX_GPS_Init`
+
+```c
+bool UBLOX_GPS_Init(UBLOX_GPS_t *dev, UART_HandleTypeDef *huart);
+```
+
+### `UBLOX_GPS_ConfigureMinimal`, `UBLOX_GPS_SaveConfig`
+
+```c
+bool UBLOX_GPS_ConfigureMinimal(UBLOX_GPS_t *dev);
+bool UBLOX_GPS_SaveConfig(UBLOX_GPS_t *dev);   /* M9N only */
+```
+
+`ConfigureMinimal` disables the noisy NMEA sentences we don't use
+(GSV, GLL, …) and keeps GGA + RMC. `SaveConfig` persists to BBR /
+flash on the M9N.
+
+### `UBLOX_GPS_StartDMA`, `UBLOX_GPS_Update`, `UBLOX_GPS_ProcessData`
+
+```c
+bool UBLOX_GPS_StartDMA(UBLOX_GPS_t *dev);
+bool UBLOX_GPS_Update(UBLOX_GPS_t *dev);
+bool UBLOX_GPS_ProcessData(UBLOX_GPS_t *dev, GPS_t *out);
+```
+
+`Update` is called from the sensors thread when the UART RX
+notification fires. It walks the DMA ring buffer and tries to extract
+a complete sentence. If one is found, `ProcessData` parses it into a
+`GPS_t`.
+
+<FuncRef name="UBLOX_GPS_Init" file="GPS.h" />
+
+---
+
+## FX29 — load cell (bench only)
+
+I2C. Used exclusively by the static thrust test. Polled at ~80 Hz.
+
+<div className="magalhaes-spec">
+  <dl>
+    <dt>Header</dt><dd>`Codigo/Sensors/FX29/FX29.h`</dd>
+    <dt>Bus</dt><dd>`I2C_LOADCELL` (`&hi2c2`)</dd>
+    <dt>Output struct</dt><dd>[`LOADCELL_t`](/reference/types#loadcell_t)</dd>
+  </dl>
+</div>
+
+```c
+bool FX29_Init(FX29_t *dev, I2C_HandleTypeDef *hi2c,
+               uint8_t address, fx29_range_t range);
+bool FX29_Tare(FX29_t *dev);
+void FX29_SetScaleFactor(FX29_t *dev, float scale);
+bool FX29_Read(FX29_t *dev, LOADCELL_t *out);
+```
+
+`SetScaleFactor` applies the calibration constant
+(`LOADCELL_SCALE_FACTOR = 0.4481` from a linear regression over 11
+known weights). `Tare` zeroes the offset before each test.
+
+<FuncRef name="FX29_Init" file="FX29.h" />
+
+---
+
+## INA219 — power monitor (Buzz V4 only)
+
+I2C. Reads bus voltage + current via a 1 mΩ shunt. Used to track
+battery health during a flight.
+
+<div className="magalhaes-spec">
+  <dl>
+    <dt>Header</dt><dd>`Codigo/Sensors/INA219/INA219.h`</dd>
+    <dt>Bus</dt><dd>`I2C_INA` (`&hi2c1`)</dd>
+    <dt>Available on</dt><dd>Buzz V4 only — gated by `#ifdef I2C_INA`</dd>
+  </dl>
+</div>
+
+```c
+bool INA219_Init(INA219_t *dev, I2C_HandleTypeDef *hi2c, uint8_t address);
+bool INA219_ReadBusVoltage(INA219_t *dev, float *volts);
+bool INA219_ReadCurrent(INA219_t *dev, float *amps);
+```
+
+[Concept: how sensors fit together →](/subsystems/sensors)

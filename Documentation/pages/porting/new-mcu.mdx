@@ -1,0 +1,64 @@
+---
+title: Adding an MCU target
+---
+
+# Adding a new MCU target
+
+Skeleton process. If you stay inside the abstraction, no driver
+changes are needed.
+
+<figure style={{ textAlign: 'center', margin: '1.5rem 0' }}>
+  <img
+    src="/images/porting-mcu-steps.svg"
+    alt="Five-step illustration — 1) generate CubeMX project, 2) link Codigo/, 3) write config.h, 4) handle cache (if applicable), 5) update Doxyfile"
+    loading="lazy"
+    style={{ maxWidth: '100%', height: 'auto', borderRadius: '0.5rem' }}
+  />
+</figure>
+
+## Steps
+
+### 1. Generate the CubeIDE project
+
+Create the `.ioc`, configure peripherals, let CubeMX produce
+`Core/Inc` and `Core/Src`.
+
+### 2. Link `Codigo/`
+
+Right-click the project → **New → Folder → Advanced → Link to alternate
+location**. Point at `Codigo/`.
+
+### 3. Write `config.h`
+
+Mirror the existing two boards. Provide every macro from the
+[abstraction contract](/concepts/hal). For peripherals the new
+board doesn't have, *leave the macro undefined* and gate the consumer
+with `#ifdef`.
+
+### 4. Handle cache (Cortex-M7 only)
+
+Define `DMA_BUFFER` and `BDMA_BUFFER` to place buffers in
+non-cacheable SRAM regions. Add `.dma_buffer` and `.bdma_buffer`
+sections to the linker script. Copy from
+`STM32H743ZIT6_Magalhaes/STM32H743ZITX_FLASH.ld`.
+
+For boards without a D-Cache (Cortex-M0/M3/M4), expand the macros to
+nothing.
+
+### 5. Update Doxyfile
+
+Add the new `config.h` to `INPUT` and `INCLUDE_PATH`.
+
+```
+INPUT = Codigo \
+        STM32F446ZE_Magalhaes/Core/Inc/config.h \
+        STM32H743ZIT6_Magalhaes/Core/Inc/config.h \
+        STM32<NEW>/Core/Inc/config.h \
+        ...
+```
+
+## Verification
+
+A clean build on the new board, with no edits to `Codigo/`, is the
+test that you got the abstraction right. If you had to touch `Codigo/`,
+something belongs in `config.h` instead.

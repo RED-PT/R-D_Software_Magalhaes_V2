@@ -1,0 +1,118 @@
+---
+title: Quick start
+---
+
+import { Callout, Tabs, Cards } from 'nextra/components';
+
+# Quick start
+
+From a fresh clone to a flashed board talking to the ground station.
+About ten minutes if your toolchain is already installed.
+
+## Prerequisites
+
+<Callout type="info" emoji="ℹ️">
+  **What you need**
+
+  - **STM32CubeIDE** 1.13+ (bundles GCC ARM, ST-Link drivers, CubeMX)
+  - **Python 3.10+** for the dashboard
+  - **Doxygen 1.9+** *(optional — only if you want to rebuild docs locally)*
+  - **Git Bash** on Windows (`cmd.exe` does not have `ls` or `grep`)
+</Callout>
+
+## Repository layout
+
+<figure style={{ textAlign: 'center', margin: '1.5rem 0' }}>
+  <img
+    src="/images/repo-layout.svg"
+    alt="Repository layout — coloured tree showing Codigo (shared) at the centre, both CubeIDE projects branching off, plus dashboard and ground-station satellites"
+    style={{ maxWidth: '100%', height: 'auto', borderRadius: '0.5rem' }}
+  />
+</figure>
+
+```
+R-D_Software_Magalhaes_V2/
+├── Codigo/                          ← shared source, both boards
+│   ├── Sensors/                     ← drivers + sensors thread
+│   ├── Radio/                       ← LoRa drivers + radio thread
+│   ├── Telemetry/                   ← packet builders, TDMA constants
+│   ├── Flight Computer/             ← FSM, command dispatch
+│   ├── Controller/                  ← TVC + motor control
+│   ├── Estimator/                   ← altitude / velocity estimation
+│   ├── Storage/                     ← SD card thread, FatFS glue
+│   ├── Data Handler/                ← circular buffers, queue routing
+│   ├── Threads/                     ← FreeRTOS thread creation
+│   ├── Atuadores/                   ← actuators (ESC PWM)
+│   ├── Tests/                       ← bench-only modes
+│   ├── hal_callbacks.{c,h}
+│   └── defs.{c,h}
+│
+├── STM32H743ZIT6_Magalhaes/         ← Buzz V4 CubeIDE project
+├── STM32F446ZE_Magalhaes/           ← Nucleo F446 CubeIDE project
+│
+├── Buzz_V4 - STM32H7/               ← KiCad PCB design files
+├── Dashboard Python/                ← web UI ground station
+└── arduino_gs_software/             ← ground station radio firmware
+```
+
+The two CubeIDE projects each include the *same* `Codigo/` tree as a
+linked sibling source folder. They differ only in `Core/Inc/config.h`.
+
+## Build the firmware
+
+<Tabs items={['Buzz V4 (recommended)', 'Nucleo F446ZE']}>
+  <Tabs.Tab>
+    1. **File → Import → Existing Projects into Workspace**
+    2. Point to `STM32H743ZIT6_Magalhaes/`
+    3. Build with `Ctrl+B`
+    4. Flash with `F11`
+  </Tabs.Tab>
+  <Tabs.Tab>
+    1. **File → Import → Existing Projects into Workspace**
+    2. Point to `STM32F446ZE_Magalhaes/`
+    3. Build with `Ctrl+B`
+    4. Flash with `F11`
+  </Tabs.Tab>
+</Tabs>
+
+<Callout type="warning" emoji="⚠️">
+  **If you get `RADIO_M0_PORT undeclared`** — you're including the wrong
+  radio driver. The H743 build uses `RADIO_INTERFACE_SPI`, not UART. Drivers
+  self-gate via `#ifdef`, so this should never happen unless `config.h`
+  was edited.
+</Callout>
+
+## Talk to the board
+
+<figure style={{ textAlign: 'center', margin: '1.5rem 0' }}>
+  <img
+    src="/images/groundstation-setup.svg"
+    alt="Ground station setup illustration — laptop running dashboard, USB to Arduino bridge, antenna to flight computer"
+    style={{ maxWidth: '100%', height: 'auto', borderRadius: '0.5rem' }}
+  />
+  <figcaption style={{ fontSize: '0.85rem', opacity: 0.7, marginTop: '0.5rem' }}>
+    Ground-station data path: dashboard → USB-serial → Arduino radio bridge → LoRa → flight computer.
+  </figcaption>
+</figure>
+
+After boot, the FC sits in `IDLE`, waiting for a configuration packet
+from the ground station.
+
+1. Plug the **E22-900M22T** Waveshare hat into the host running the
+   dashboard.
+2. From the repo root: `cd "Dashboard Python"` and start the dashboard.
+3. Click **Connect**. The dashboard opens the serial port to the
+   Arduino bridge running `arduino_gs_software/`.
+4. Telemetry should appear within a second — the FC broadcasts a
+   fast-telemetry packet every 125 ms once synchronised.
+
+## What's next
+
+<Cards>
+  <Cards.Card icon="🧭" title="Architecture tour" href="/concepts/architecture">
+    See how the eight FreeRTOS threads cooperate.
+  </Cards.Card>
+  <Cards.Card icon="🚦" title="Flight lifecycle" href="/concepts/flight-lifecycle">
+    Walk every FSM state from BOOT to SAFE.
+  </Cards.Card>
+</Cards>

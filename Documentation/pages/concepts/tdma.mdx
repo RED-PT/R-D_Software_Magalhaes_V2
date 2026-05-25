@@ -1,0 +1,191 @@
+---
+title: TDMA & timing
+---
+
+import { Callout } from 'nextra/components';
+
+# TDMA & timing
+
+Time Division Multiple Access — every radio transmits in pre-allocated
+time slots, never on demand.
+
+## The superframe
+
+<figure style={{ textAlign: 'center', margin: '1.5rem 0' }}>
+  <img
+    src="/images/tdma-superframe-detailed.svg"
+    alt="1000ms superframe — annotated detailed bar showing slot 0 (sync), slots 1-7 (fast telemetry), slot 8 (slow GPS), slot 9 (ground station RX). Each slot 100ms"
+    loading="lazy"
+    style={{ maxWidth: '100%', height: 'auto', borderRadius: '0.5rem' }}
+  />
+</figure>
+
+| Slot   | Duration       | Owner            | Purpose                       |
+| ------ | -------------- | ---------------- | ----------------------------- |
+| 0      | 100 ms         | Ground station   | Sync packet                   |
+| 1–7    | 100 ms each    | Flight computer  | Fast telemetry (8 Hz)         |
+| 8      | 100 ms         | Flight computer  | Slow telemetry (GPS, status)  |
+| 9      | 100 ms         | Ground station   | Command uplink                |
+
+## Constants
+
+```c title="Codigo/Telemetry/telemetry.h"
+#define TDMA_SUPERFRAME_MS      1000    /* Total superframe duration */
+#define TDMA_SLOT_MS            100     /* Each slot */
+#define TDMA_SLOTS_PER_FRAME    10
+#define TDMA_TX_SLOTS           8       /* Fast telemetry, slots 0-7 */
+#define TDMA_SLOW_SLOT          8
+#define TDMA_RX_SLOT            9
+```
+
+```c title="Codigo/Radio/radio_thread.c"
+#define SLOT_DURATION_MS        TDMA_SLOT_MS
+#define FRAME_DURATION_MS       TDMA_SUPERFRAME_MS
+#define SYNC_TIMEOUT_FRAMES     10      /* lose sync after 10 missed frames */
+
+#define TX_START_OFFSET_MS      5       /* Start TX 5 ms into slot   */
+#define TX_END_OFFSET_MS        70      /* Stop TX 70 ms in (30 ms guard) */
+#define RX_SLOT_GUARD_MS        20      /* Don't TX in last 20 ms of slot 8 */
+```
+
+## Slot arithmetic
+
+The radio thread polls `HAL_GetTick()` against a frame anchor:
+
+```c title="Codigo/Radio/radio_thread.c"
+static uint8_t get_current_slot(void) {
+    uint32_t elapsed = HAL_GetTick() - tdma_ctx.frame_start_tick;
+    return (elapsed / SLOT_DURATION_MS) % TDMA_SLOTS_PER_FRAME;
+}
+
+static uint32_t get_time_in_slot(void) {
+    uint32_t elapsed = HAL_GetTick() - tdma_ctx.frame_start_tick;
+    return elapsed % SLOT_DURATION_MS;
+}
+```
+
+`frame_start_tick` is set on every sync-packet receive — that's how
+the FC's timing locks to the GS's clock.
+
+## The synced-mode handler
+
+```c title="Codigo/Radio/radio_thread.c — handle_synced_mode()"
+uint32_t now = HAL_GetTick();
+
+// Frame rollover — count missed syncs
+if ((now - tdma_ctx.frame_start_tick) >= FRAME_DURATION_MS) {
+    advance_frame();
+    tdma_ctx.missed_sync_count++;
+    if (tdma_ctx.missed_sync_count >= SYNC_TIMEOUT_FRAMES) {
+        tdma_ctx.state = TDMA_UNSYNCED;            // gave up on the GS
+        return;
+    }
+}
+
+uint8_t  slot         = get_current_slot();        // 0..9
+uint32_t time_in_slot = get_time_in_slot();        // 0..99 ms
+
+// Slot change → reset TX-done flag
+static uint8_t last_slot = 255;
+if (slot != last_slot) {
+    last_slot = slot;
+    tx_done_this_slot = false;
+}
+
+if (slot < TDMA_TX_SLOTS) {
+    // Slots 0-7: fast telemetry
+    if (time_in_slot >= TX_START_OFFSET_MS &&
+        time_in_slot <  TX_END_OFFSET_MS) {
+        tx_pending_events();      // priority: PONG, EVT_*
+        tx_fast_telemetry(slot);
+    }
+    // RX in second half of slot
+    if (time_in_slot >= TX_END_OFFSET_MS || tx_done_this_slot) {
+        process_rx_data();
+    }
+}
+else if (slot == TDMA_SLOW_SLOT) {
+    // Slot 8: slow telemetry — guard before slot 9 (GS uplink)
+    if (time_in_slot >= TX_START_OFFSET_MS &&
+        time_in_slot <  (SLOT_DURATION_MS - RX_SLOT_GUARD_MS)) {
+        // ... TX slow telemetry ...
+    }
+}
+else /* slot == TDMA_RX_SLOT */ {
+    // Slot 9: pure RX — listen for GS command
+    process_rx_data();
+}
+```
+
+A few invariants worth understanding:
+
+- **TX window is 5–70 ms inside each slot.** The 5 ms head margin
+  absorbs clock skew between FC and GS; the 30 ms tail margin is so
+  the SX1262 can finish its packet and switch back to RX before the
+  next slot starts.
+- **Events have priority over telemetry inside a slot.** A `PONG`
+  (round-trip-time reply) goes out first; if there's still time, the
+  regular fast telemetry packet follows.
+- **Slot 8 has an extra 20 ms guard** at the end so the FC's slow
+  telemetry can never overlap into slot 9 — that's the GS's command
+  window.
+
+## Sync flow
+
+<figure style={{ textAlign: 'center', margin: '1.5rem 0' }}>
+  <img
+    src="/images/tdma-sync-flow.svg"
+    alt="Sync flow — ground station emits sync at slot 0, FC RX receives it, FC clock locks, slot timing established"
+    loading="lazy"
+    style={{ maxWidth: '100%', height: 'auto', borderRadius: '0.5rem' }}
+  />
+</figure>
+
+The ground station is the timing master. At slot 0 it broadcasts a sync
+packet; the FC's radio thread time-stamps the receive event and aligns
+its slot scheduler.
+
+If the FC doesn't see a sync packet within `SYNC_TIMEOUT_FRAMES` (=
+10 frames = 10 seconds), it enters **unsynced mode** — transmits at
+fixed intervals using its own clock until sync returns.
+
+<Callout type="info" emoji="ℹ️">
+  Unsynced mode is graceful, not a failure. It means "the GS isn't
+  responding, but I'll keep broadcasting so when it comes back, it
+  can re-acquire me." This is how the FC behaves on the launch pad
+  before the GS dashboard is connected.
+</Callout>
+
+## Packet headers carry frame and slot info
+
+Every packet stamps the current frame and slot, so the GS can detect
+loss:
+
+```c
+typedef struct __attribute__((packed)) {
+    uint8_t packet_type;        // TELEM_PACKET_FAST
+    uint8_t frame_id;           // superframe counter (wraps at 256)
+    uint8_t slot_id;            // 0-9
+    uint8_t seq;                // packet sequence
+    /* ... rest of payload ... */
+} telemetry_fast_t;
+```
+
+Frame and slot together uniquely identify "when" — the dashboard plots
+time on this axis rather than wall-clock.
+
+## Why TDMA over CSMA?
+
+<figure style={{ textAlign: 'center', margin: '1.5rem 0' }}>
+  <img
+    src="/images/csma-vs-tdma.svg"
+    alt="CSMA vs TDMA comparison — CSMA: stations transmit, collide, back off, retry. TDMA: each station has a fixed slot, no collisions"
+    loading="lazy"
+    style={{ maxWidth: '100%', height: 'auto', borderRadius: '0.5rem' }}
+  />
+</figure>
+
+The flight computer can't afford retries. Old data is dead data —
+better to skip a sample than waste airtime collision-resolving with a
+ground station that doesn't have the same constraint. TDMA removes
+the question entirely.

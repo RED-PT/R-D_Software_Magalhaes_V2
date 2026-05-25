@@ -1,0 +1,26 @@
+{
+  "index": {
+    "title": "Home",
+    "type": "page",
+    "display": "hidden",
+    "theme": {
+      "layout": "full",
+      "toc": false,
+      "sidebar": false,
+      "breadcrumb": false,
+      "pagination": false
+    }
+  },
+  "get-started": { "title": "Get started", "type": "page" },
+  "story": { "title": "Story", "type": "page" },
+  "concepts": { "title": "Concepts", "type": "page" },
+  "subsystems": { "title": "Subsystems", "type": "page" },
+  "reference": { "title": "Reference", "type": "page" },
+  "porting": { "title": "Porting", "type": "page" },
+  "auto-api": {
+    "title": "Source ↗",
+    "type": "page",
+    "href": "/api/index.html",
+    "newWindow": true
+  }
+}

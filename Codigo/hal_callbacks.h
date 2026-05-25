@@ -3,11 +3,15 @@
  * @brief HAL Interrupt Callback Declarations
  * @author Tomás Teixeira (texman)
  * @date November 18, 2025
- * @version 2.0
+ * @version 2.1
  *
  * @details
  * This header file provides the interface for HAL (Hardware Abstraction Layer)
  * interrupt callbacks used throughout the Magalhães Flight Computer system.
+ *
+ * Supports dual-board configurations:
+ * - **STM32F446ZE** (dev board): UART radio, SPI3 magnetometer, USART6 debug
+ * - **STM32H743ZIT6** (Buzz V4 PCB): SPI radio, SPI6 magnetometer, USART2 debug
  *
  * ## Overview
  * The HAL callback system provides centralized interrupt handling for:

@@ -545,3 +545,307 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
+/* ============================================================================
+ * Test page (Phase 2B): unified UI for STATIC / TORQUE / TORQUE_CAL / GUTTER,
+ * each with Manual or Automatic mode.
+ * ============================================================================ */
+
+/* Test type tabs */
+.test-type-tabs {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 0.8rem;
+}
+.test-type-btn {
+  flex: 1;
+  padding: 0.55rem 0.5rem;
+  background: var(--panel-soft);
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  color: var(--text);
+  font-weight: 600;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.test-type-btn:hover { background: var(--panel-border); }
+.test-type-btn.active {
+  background: var(--accent, #22c55e);
+  color: #0b1117;
+  border-color: var(--accent, #22c55e);
+}
+
+/* Mode toggle (Manual / Automatic) */
+.test-mode-toggle {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.6rem;
+}
+.test-mode-toggle label {
+  flex: 1;
+  padding: 0.45rem 0.5rem;
+  background: var(--panel-soft);
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  text-align: center;
+  cursor: pointer;
+  font-size: 0.85rem;
+  user-select: none;
+}
+.test-mode-toggle label.active {
+  background: var(--panel-border);
+  border-color: #888;
+}
+.test-mode-toggle input[type="radio"] { display: none; }
+
+.test-setup-hint {
+  font-size: 0.8rem;
+  opacity: 0.7;
+  font-style: italic;
+}
+
+/* Math-like notation: <var>x</var><sub>sub</sub> reads as "x_sub". */
+var {
+  font-style: italic;
+  font-family: "Cambria Math", "Times New Roman", serif;
+  font-weight: 500;
+}
+var + sub, sub { font-size: 0.7em; vertical-align: -0.25em; }
+
+/* Help page — Tests reference block */
+.help-block { font-size: 0.88rem; line-height: 1.55; }
+.help-block h4 { margin: 1rem 0 0.3rem; font-size: 0.95rem; opacity: 0.85; }
+.help-block ul { margin: 0.3rem 0; padding-left: 1.4rem; }
+.help-block li { margin-bottom: 0.2rem; }
+.help-pre {
+  background: var(--panel-soft);
+  padding: 0.6rem;
+  border-radius: 4px;
+  font-size: 0.78rem;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  white-space: pre;
+  overflow-x: auto;
+}
+.help-block code {
+  background: var(--panel-soft);
+  padding: 0.05rem 0.35rem;
+  border-radius: 3px;
+  font-size: 0.85em;
+}
+
+/* Profile config panels — fields lay out as label / input rows */
+.test-config-panel .row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.45rem;
+}
+.test-config-panel .row label {
+  flex: 0 0 11rem;
+  font-size: 0.85rem;
+  opacity: 0.85;
+}
+.test-config-panel .row input,
+.test-config-panel .row select {
+  background: var(--panel-soft);
+  border: 1px solid var(--panel-border);
+  color: var(--text);
+  padding: 0.3rem 0.45rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  width: 6.5rem;
+}
+.test-config-panel .row .unit { opacity: 0.6; font-size: 0.8rem; }
+.test-config-panel .cfg-help {
+  font-size: 0.78rem;
+  opacity: 0.65;
+  margin-top: 0.3rem;
+  font-style: italic;
+}
+
+/* Lifecycle pill + buttons */
+.lifecycle-status {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin-bottom: 0.7rem;
+  font-size: 0.85rem;
+}
+.lifecycle-pill {
+  padding: 0.25rem 0.7rem;
+  border-radius: 999px;
+  background: var(--panel-soft);
+  border: 1px solid var(--panel-border);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  font-size: 0.75rem;
+}
+.lifecycle-pill[data-state="ARMED"]      { background: #fbbf24; color: #1a1a1a; }
+.lifecycle-pill[data-state="COUNTDOWN"]  { background: #f59e0b; color: #1a1a1a; }
+.lifecycle-pill[data-state="RUNNING"]    { background: #22c55e; color: #1a1a1a; }
+.lifecycle-pill[data-state="HOLD"]       { background: #94a3b8; color: #1a1a1a; }
+.lifecycle-pill[data-state="ABORTED"]    { background: #ef4444; color: white; }
+.lifecycle-pill[data-state="DONE"]       { background: #3b82f6; color: white; }
+.lifecycle-mode { opacity: 0.6; font-size: 0.78rem; }
+.heartbeat-wrap {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  opacity: 0.85;
+  cursor: help;
+}
+.heartbeat-indicator {
+  font-size: 1.1rem;
+  color: #22c55e;
+  transition: color 0.2s;
+}
+.heartbeat-indicator.stale  { color: #f59e0b; }
+.heartbeat-indicator.dead   { color: #ef4444; }
+.heartbeat-label { letter-spacing: 0.04em; }
+
+/* Phase 3-A (A4): TDMA mode badge on Communications page */
+.tdma-mode-badge {
+  display: inline-block;
+  padding: 0.15rem 0.55rem;
+  border-radius: 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+.tdma-mode-badge[data-mode="FLIGHT"] { background: #1e293b; color: #94a3b8; }
+.tdma-mode-badge[data-mode="TEST"]   { background: #f59e0b; color: #1f2937; }
+
+.lifecycle-buttons {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.6rem;
+}
+.lifecycle-buttons button {
+  padding: 0.45rem 0.8rem;
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: var(--panel-soft);
+  color: var(--text);
+}
+.lifecycle-buttons button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.btn-primary { background: #3b82f6 !important; color: white !important; }
+.btn-arm     { background: #f59e0b !important; color: #1a1a1a !important; }
+.btn-run     { background: #22c55e !important; color: #1a1a1a !important; }
+.btn-hold    { background: #94a3b8 !important; color: #1a1a1a !important; }
+.btn-stop    { background: #6b7280 !important; color: white !important; }
+.btn-abort   { background: #ef4444 !important; color: white !important; margin-left: auto; }
+
+.countdown-display {
+  text-align: center;
+  font-size: 3rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  padding: 0.5rem;
+  margin: 0.5rem 0;
+  background: var(--panel-soft);
+  border-radius: 6px;
+  color: #f59e0b;
+}
+
+.legacy-test-buttons {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  margin: 0.6rem 0;
+  padding: 0.5rem;
+  border-top: 1px dashed var(--panel-border);
+  font-size: 0.75rem;
+  opacity: 0.85;
+}
+.legacy-test-buttons button {
+  padding: 0.4rem 0.7rem;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.78rem;
+  cursor: pointer;
+  color: white;
+}
+
+/* Manual control sliders */
+.manual-sliders-panel .slider-row {
+  display: grid;
+  grid-template-columns: 6rem 1fr 6rem;
+  align-items: center;
+  gap: 0.7rem;
+  margin-bottom: 0.6rem;
+}
+/* `display: grid` above outranks the default [hidden] { display: none } —
+ * restore it explicitly so JS-driven row hiding actually hides them. */
+.manual-sliders-panel .slider-row[hidden] { display: none; }
+.manual-sliders-panel .slider-row label {
+  font-size: 0.85rem;
+  opacity: 0.85;
+}
+.manual-sliders-panel .slider-row input[type="range"] { width: 100%; }
+.manual-sliders-panel .slider-row output {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.82rem;
+  text-align: right;
+}
+.manual-send-rate {
+  font-size: 0.72rem;
+  opacity: 0.55;
+  margin-top: 0.4rem;
+}
+
+/* Live data grid */
+.live-data-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.4rem 1rem;
+  margin-bottom: 0.7rem;
+  font-size: 0.85rem;
+}
+.live-data-grid > div {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.2rem 0;
+  border-bottom: 1px dotted var(--panel-border);
+}
+.live-data-grid .label { opacity: 0.6; }
+.live-data-grid strong { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+
+/* FreeRTOS thread stats header line — heap, uptime, task count. */
+.thread-stats-header {
+  font-size: 0.8rem;
+  opacity: 0.75;
+  margin-bottom: 0.6rem;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+
+/* FreeRTOS thread stats table (Communications page). */
+.thread-stats {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+.thread-stats th,
+.thread-stats td {
+  padding: 0.35rem 0.6rem;
+  border-bottom: 1px solid var(--panel-border);
+  text-align: left;
+}
+.thread-stats th {
+  font-weight: 600;
+  opacity: 0.7;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+}

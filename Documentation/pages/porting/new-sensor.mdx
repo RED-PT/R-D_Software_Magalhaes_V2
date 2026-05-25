@@ -1,0 +1,62 @@
+---
+title: Adding a sensor
+---
+
+# Adding a sensor
+
+Drop a new driver under `Codigo/Sensors/`. Same shape as the existing
+ones.
+
+<figure style={{ textAlign: 'center', margin: '1.5rem 0' }}>
+  <img
+    src="/images/porting-sensor-steps.svg"
+    alt="New sensor flow — 1) driver folder, 2) instance in sensors_thread, 3) bus init, 4) DMA wiring, 5) DataHandler queue, 6) telemetry struct (optional)"
+    loading="lazy"
+    style={{ maxWidth: '100%', height: 'auto', borderRadius: '0.5rem' }}
+  />
+</figure>
+
+## Steps
+
+### 1. Driver folder
+
+```
+Codigo/Sensors/<NAME>/
+├── <NAME>.h    ← public API (Init, Read, Calibrate)
+└── <NAME>.c    ← implementation
+```
+
+### 2. Instance and init
+
+Add a global handle in `sensors_thread.c` and call `_Init()` from
+the boot path.
+
+### 3. Wire up the bus
+
+If the bus is shared with an existing sensor, the bus is already
+initialised — just call into it. If it's a new bus, add the macro to
+`config.h` on every supported board.
+
+### 4. Read path
+
+If the bus supports DMA, register the completion callback in
+`hal_callbacks.c` and notify the sensors thread on a unique bit.
+If the bus is polled, schedule reads from the sensors thread loop.
+
+### 5. Hand off to the DataHandler
+
+Push samples to a queue. The DataHandler routes from there to
+estimator and SD.
+
+### 6. (Optional) telemetry
+
+If the sample should be visible to the ground station, add a field
+to the appropriate packet struct in `Codigo/Telemetry/telemetry.h`
+and a writer in `telemetry_thread.c`.
+
+## Don't
+
+- Don't read sensors directly from the FSM, controller, or estimator.
+  Everything goes through the sensors thread → DataHandler chain.
+- Don't add the read to a tight loop without DMA. Polling at 6 kHz
+  from a thread context will eat the CPU.

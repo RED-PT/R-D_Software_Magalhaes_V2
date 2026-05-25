@@ -1,0 +1,231 @@
+---
+title: The 8 threads
+---
+
+import { Callout } from 'nextra/components';
+
+# The 8 threads
+
+Each thread has one job and one rate. This page is the reference card —
+table first, then concrete code from the thread bodies.
+
+<figure style={{ textAlign: 'center', margin: '1.5rem 0' }}>
+  <img
+    src="/images/threads-priority-ladder.svg"
+    alt="Thread priority ladder — vertical stack of eight thread blocks ordered by priority, with rate badges and one-line job descriptions"
+    loading="lazy"
+    style={{ maxWidth: '100%', height: 'auto', borderRadius: '0.5rem' }}
+  />
+</figure>
+
+## Reference table
+
+| Priority      | Thread       | Stack    | Rate    | Source file                                       |
+| ------------- | ------------ | -------- | ------- | ------------------------------------------------- |
+| `osPriorityHigh3`        | Sensors      | 6 KB     | event   | `Codigo/Sensors/sensors_thread.c`                 |
+| `osPriorityHigh2`        | DataHandler  | 4 KB     | event   | `Codigo/Data Handler/data_handler_thread.c`       |
+| `osPriorityHigh1`        | Radio        | 6 KB     | TDMA    | `Codigo/Radio/radio_thread.c`                     |
+| `osPriorityHigh`         | Estimator    | 4 KB     | 100 Hz  | `Codigo/Estimator/estimator_thread.c`             |
+| `osPriorityHigh`         | Controller   | 4 KB     | 100 Hz  | `Codigo/Controller/controller_thread.c`           |
+| `osPriorityAboveNormal1` | FSM          | 4 KB     | 20 Hz   | `Codigo/Flight Computer/flight_computer_thread.c` |
+| `osPriorityAboveNormal`  | Telemetry    | 6 KB     | 20 Hz   | `Codigo/Telemetry/telemetry_thread.c`             |
+| `osPriorityNormal`       | SDCard       | 6 KB     | event   | `Codigo/Storage/sd_card_thread.c`                 |
+
+## How threads are created
+
+`create_threads.c` is the single place where every thread, queue, and
+software timer is instantiated. CMSIS-RTOS v2 (a thin shim over
+FreeRTOS) is used:
+
+```c title="Codigo/Threads/create_threads.c — excerpt"
+const osThreadAttr_t sensors_thread_attr = {
+    .name = "Sensors",
+    .stack_size = 1536 * 4,
+    .priority = osPriorityHigh3      // Highest — sensor IRQs first
+};
+
+const osThreadAttr_t radio_thread_attr = {
+    .name = "Radio",
+    .stack_size = 1536 * 4,
+    .priority = osPriorityHigh1,     // High for command reception
+};
+
+void create_threads() {
+    osThreadTerminate(defaultTaskHandle);   // free the CubeMX default
+
+    queue_fsm_events    = xQueueCreate(5, sizeof(telemetry_event_t));
+    queue_cmd_to_fsm    = xQueueCreate(8, sizeof(fsm_cmd_msg_t));
+    queue_event_to_fsm  = xQueueCreate(8, sizeof(fsm_event_msg_t));
+
+    xBaroTimer = xTimerCreate("BaroTimer",
+        pdMS_TO_TICKS(BARO_UPDATE_RATE_MS), pdTRUE, NULL, vBaroTimerCallback);
+    xBnoTimer  = xTimerCreate("BnoTimer",
+        pdMS_TO_TICKS(BNO_UPDATE_RATE_MS),  pdTRUE, NULL, vBnoTimerCallback);
+
+    sd_card_thread_id      = osThreadNew(sd_card_thread_function,      NULL, &sd_card_thread_attr);
+    data_handler_thread_id = osThreadNew(data_handler_thread_function, NULL, &data_handler_thread_attr);
+    sensors_thread_id      = osThreadNew(sensors_thread_function,      NULL, &sensors_thread_attr);
+    fsm_thread_id          = osThreadNew(fsm_thread_function,          NULL, &fsm_thread_attr);
+    estimator_thread_id    = osThreadNew(estimator_thread_function,    NULL, &estimator_thread_attr);
+    controller_thread_id   = osThreadNew(controller_thread_function,   NULL, &controller_thread_attr);
+    telemetry_thread_id    = osThreadNew(telemetry_thread_function,    NULL, &telemetry_thread_attr);
+    radio_thread_id        = osThreadNew(radio_thread_function,        NULL, &radio_thread_attr);
+
+    HAL_TIM_PWM_Start(PWM_ESC_TIM, PWM_ESC_CHANNEL);
+    PWM_ESC_CHANNEL_WRITE = 0;          // ESC at 0% until ARMED
+}
+```
+
+<Callout type="info" emoji="ℹ️">
+  Stack sizes are in **words**, not bytes — `1536 * 4` = 6 KB. Tuned
+  per thread; `Sensors` and `Radio` have the largest stacks because of
+  their driver-internal buffers.
+</Callout>
+
+## Per-thread detail
+
+### Sensors
+
+<figure style={{ textAlign: 'center', margin: '1.5rem 0' }}>
+  <img
+    src="/images/thread-sensors.svg"
+    alt="Sensors thread illustration"
+    loading="lazy"
+    style={{ maxWidth: '100%', height: 'auto', borderRadius: '0.5rem' }}
+  />
+</figure>
+
+Highest priority. Wakes on FreeRTOS task notifications — **never spins**.
+Each sensor has a notification bit; the thread reads which bits are set
+and dispatches.
+
+```c title="Codigo/Sensors/sensors_thread.c — main loop"
+while (1) {
+    xTaskNotifyWait(0, ULONG_MAX, &ulNotificationValue, xMaxBlockTime);
+
+    if (ulNotificationValue & SENSOR_NOTIFY_IMU_DRDY) {
+        if (spi1_active_sensor == ACTIVE_SENSOR_NONE) {
+            spi1_active_sensor = ACTIVE_SENSOR_IMU;
+            ASM330LHHX_StartReadDMA(&imu_device);   // non-blocking
+        }
+    }
+
+    if (ulNotificationValue & SENSOR_NOTIFY_DMA_COMPLETE) {
+        if (spi1_active_sensor == ACTIVE_SENSOR_IMU) {
+            IMU_t imu_data;
+            if (ASM330LHHX_ProcessData(&imu_device, &imu_data)) {
+                data_handler_store_imu(&imu_data);   // hand off
+            }
+            spi1_active_sensor = ACTIVE_SENSOR_NONE;
+        }
+        // ...similar branches for MAG and BNO...
+    }
+
+    if (ulNotificationValue & SENSOR_NOTIFY_BARO_TIMER) {
+        BARO_t baro_data;
+        if (MS5607_ReadWithCalibration(&baro_device, &baro_data,
+                                       fsm_get_baro_calibration())) {
+            data_handler_store_baro(&baro_data);
+        }
+    }
+    // ...
+}
+```
+
+Bus-tracking variables (`spi1_active_sensor`, `i2c1_active_sensor`)
+prevent two sensors from claiming the same SPI/I2C bus mid-transfer.
+Notifications come from interrupt handlers in `hal_callbacks.c`.
+
+The thread also runs **I2C bus recovery** if a DMA hangs:
+
+```c
+if (i2c1_active_sensor != ACTIVE_SENSOR_NONE) {
+    uint32_t elapsed = HAL_GetTick() - i2c1_dma_start_tick;
+    if (elapsed > DMA_TIMEOUT_MS) {       // 100 ms
+        I2C_BusRecovery(bno_device.hi2c); // de-init + re-init
+        i2c1_active_sensor = ACTIVE_SENSOR_NONE;
+    }
+}
+```
+
+### DataHandler
+
+<figure style={{ textAlign: 'center', margin: '1.5rem 0' }}>
+  <img
+    src="/images/thread-datahandler.svg"
+    alt="DataHandler illustration"
+    loading="lazy"
+    style={{ maxWidth: '100%', height: 'auto', borderRadius: '0.5rem' }}
+  />
+</figure>
+
+Centralises every sample routing decision. The sensor thread calls
+`data_handler_store_*()`; DataHandler fans out to the SD queue and
+the estimator queue.
+
+If the SD queue is full, the estimator queue still gets the data —
+the routing is non-blocking on each consumer.
+
+### Radio
+
+<figure style={{ textAlign: 'center', margin: '1.5rem 0' }}>
+  <img
+    src="/images/thread-radio.svg"
+    alt="Radio thread illustration"
+    loading="lazy"
+    style={{ maxWidth: '100%', height: 'auto', borderRadius: '0.5rem' }}
+  />
+</figure>
+
+Slot-driven. Two backends behind one TDMA loop:
+[Radio & telemetry](/subsystems/radio).
+
+### Estimator and Controller
+
+Both run at 100 Hz on FreeRTOS notifications from a hardware timer.
+They are **created suspended** and only resumed by the FSM when
+entering `STATE_ARMED`:
+
+```c
+// Inside the FSM transition into ARMED:
+osThreadResume(estimator_thread_id);
+osThreadResume(controller_thread_id);
+```
+
+This guarantees the control loop cannot run until the operator has
+explicitly armed the system.
+
+### FSM
+
+The flight state machine. 20 Hz tick. Reads commands off `queue_cmd_to_fsm`
+and internal events off `queue_event_to_fsm`. Emits telemetry events
+on `queue_fsm_events`.
+
+See [Flight lifecycle](/concepts/flight-lifecycle) for the full state diagram.
+
+### Telemetry
+
+20 Hz tick. Builds packets from the latest sensor / estimator / FSM
+state and pushes them into `queue_to_radio_tx`.
+
+### SDCard
+
+Lowest priority on purpose. Drains its queue at whatever rate FatFS
+allows. If the SD is slow, nothing else slows down — that's the entire
+point of putting it last in the priority list.
+
+## Inter-thread plumbing
+
+Five queues and one stream buffer carry data across thread boundaries.
+Everything else is thread-local.
+
+| Queue / Buffer            | Producer    | Consumer | Items                |
+| ------------------------- | ----------- | -------- | -------------------- |
+| `queue_to_radio_tx`       | Telemetry   | Radio    | TX packets           |
+| `queue_fsm_events`        | FSM         | Radio    | Event packets (5 deep) |
+| `queue_cmd_to_fsm`        | Radio       | FSM      | Parsed commands (8 deep) |
+| `queue_event_to_fsm`      | Estimator   | FSM      | Internal events (8 deep) |
+| `stream_buffer_gps`       | UART IRQ    | Sensors  | NMEA bytes           |
+
+Queue sizes are documented in `create_threads.c`. They're tuned so
+that under nominal load no producer ever blocks.

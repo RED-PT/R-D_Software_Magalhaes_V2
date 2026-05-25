@@ -1,0 +1,278 @@
+---
+title: Radio & TDMA reference
+---
+
+import { Callout } from 'nextra/components';
+import { CodeDemo } from '../../components/CodeDemo';
+import { FuncRef } from '../../components/FuncRef';
+
+# Radio & TDMA reference
+
+Two backends, one TDMA loop, three packet families. Application code
+talks to `radio_thread`; `radio_thread` talks to one of the two
+drivers depending on `RADIO_INTERFACE_*`.
+
+For the design rationale, see [TDMA & timing](/concepts/tdma) and
+[Radio subsystem](/subsystems/radio).
+
+---
+
+## TDMA timing constants
+
+```c title="Codigo/Telemetry/telemetry.h"
+#define TDMA_SUPERFRAME_MS      1000  /* superframe duration */
+#define TDMA_SLOT_MS            100   /* per-slot duration   */
+#define TDMA_SLOTS_PER_FRAME    10
+#define TDMA_TX_SLOTS           8     /* slots 0–7: fast TX  */
+#define TDMA_SLOW_SLOT          8     /* slow TX             */
+#define TDMA_RX_SLOT            9     /* GS uplink           */
+```
+
+```c title="Codigo/Radio/radio_thread.c"
+#define SLOT_DURATION_MS        TDMA_SLOT_MS
+#define FRAME_DURATION_MS       TDMA_SUPERFRAME_MS
+#define SYNC_TIMEOUT_FRAMES     10    /* lose sync after N missed */
+#define TX_START_OFFSET_MS      5     /* TX window inside slot */
+#define TX_END_OFFSET_MS        70
+#define RX_SLOT_GUARD_MS        20    /* leave free at end of slot 8 */
+```
+
+| Constant | Meaning | Tunable? |
+|---|---|---|
+| `TDMA_SUPERFRAME_MS` | Full cycle period | Yes — must match GS |
+| `TDMA_SLOT_MS` | Slot length | Yes — must match GS |
+| `TDMA_TX_SLOTS` | Number of fast-telemetry slots | Yes |
+| `SYNC_TIMEOUT_FRAMES` | Missed-sync threshold before unsync | Yes |
+| `TX_START_OFFSET_MS` | Skew margin at slot start | Tune for clock drift |
+| `TX_END_OFFSET_MS` | Guard before next slot | Tune for SX1262 TX→RX latency |
+
+---
+
+## Slot arithmetic
+
+```c
+static uint8_t  get_current_slot(void);
+static uint32_t get_time_in_slot(void);
+```
+
+Both compute against `tdma_ctx.frame_start_tick`, which is anchored
+on every received sync packet.
+
+```c
+uint8_t  slot         = get_current_slot();   // 0..9
+uint32_t time_in_slot = get_time_in_slot();   // 0..99 ms
+```
+
+---
+
+## Public packet types
+
+Each packet has `packet_type` as its first byte — that's how the
+receiver dispatches.
+
+```c title="Codigo/Telemetry/telemetry.h"
+#define TELEM_PACKET_FAST       0x01
+#define TELEM_PACKET_SLOW       0x02
+#define TELEM_PACKET_EVENT      0x03
+#define TELEM_PACKET_COMMAND    0x04
+#define TELEM_PACKET_SYNC       0x05
+```
+
+### `telemetry_fast_t` — 37 bytes
+
+8 Hz. The packet most-modified during development. Carries IMU,
+altitude, FSM state, and a piggyback command-ack.
+
+```c
+typedef struct __attribute__((packed)) {
+    uint8_t  packet_type;            /* TELEM_PACKET_FAST */
+    uint8_t  frame_id;               /* superframe counter */
+    uint8_t  slot_id;                /* 0..9 */
+    uint8_t  seq;
+    uint8_t  flags;
+    uint32_t time;                   /* HAL_GetTick() */
+
+    uint8_t  state, substate;        /* fsm_state_t / fsm_substate_t */
+
+    uint8_t  last_cmd_seq_acked;     /* piggyback ack */
+    uint8_t  last_cmd_status;
+
+    int16_t  accel_x, accel_y, accel_z;   /* 1 LSB = 1 mg  */
+    int16_t  gyro_x,  gyro_y,  gyro_z;    /* 1 LSB = 0.01 dps */
+
+    int16_t  altitude;               /* 0.1 m  */
+    int16_t  vario;                  /* 0.01 m/s */
+
+    int16_t  pitch, roll, yaw;       /* 0.1 deg */
+
+    uint16_t crc16;
+} telemetry_fast_t;
+```
+
+<Callout type="info" emoji="ℹ️">
+  The integer scaling halves the airtime versus floats. The dashboard
+  re-multiplies on receive. Don't change the encoding without
+  updating the GS — they share the contract.
+</Callout>
+
+### `telemetry_slow_t` — 30 bytes
+
+1 Hz, slot 8. GPS + system health. GPS coordinates use 1e-7 degree
+scaling (≈ 1.1 cm precision).
+
+### `command_packet_t` — uplink
+
+GS → FC, slot 9. See [FSM commands](/reference/fsm#commands).
+
+### `sync_packet_t` — uplink beacon
+
+GS → FC, slot 0. The FC time-stamps the receive event and aligns its
+slot scheduler.
+
+---
+
+## SX1262 driver (Buzz V4 SPI backend)
+
+Selected when `config.h` defines `RADIO_INTERFACE_SPI`. Direct register
+access — the firmware controls every LoRa parameter.
+
+<div className="magalhaes-spec">
+  <dl>
+    <dt>Header</dt><dd>`Codigo/Radio/LORA Drivers/lora_sx126x.h`</dd>
+    <dt>Bus</dt><dd>`SPI_LORA` (`&hspi5` on H743)</dd>
+    <dt>Selector</dt><dd>`#ifdef RADIO_INTERFACE_SPI`</dd>
+  </dl>
+</div>
+
+### `SX126x_LoRaConfig_t`
+
+```c
+typedef struct {
+    uint32_t                  frequency_hz;
+    SX126x_LoRa_SF            spreading_factor;
+    SX126x_LoRa_BW            bandwidth;
+    SX126x_LoRa_CR            coding_rate;
+    int8_t                    tx_power_dbm;
+    uint16_t                  preamble_length;
+    uint16_t                  sync_word;
+    bool                      enable_crc;
+    bool                      invert_iq;
+} SX126x_LoRaConfig_t;
+```
+
+The values used in this firmware (interoperate with the GS E22 module's
+transparent firmware on EBYTE NET ID 23, Channel 18):
+
+```c
+.frequency_hz     = 868125000,          // Ch18
+.spreading_factor = SX126X_LORA_SF5,    // 62.5 kbps
+.bandwidth        = SX126X_LORA_BW_500, // 500 kHz
+.coding_rate      = SX126X_LORA_CR_4_5,
+.tx_power_dbm     = 22,
+.preamble_length  = 12,
+.sync_word        = 0x1474,             // EBYTE NET ID 23
+.enable_crc       = true,
+.invert_iq        = false,
+```
+
+### Public API
+
+```c
+bool   SX126x_Init(const SX126x_LoRaConfig_t *cfg);
+bool   SX126x_TransmitDMA(const uint8_t *data, uint8_t len);
+bool   SX126x_Receive(uint8_t *buf, uint8_t *len);
+void   SX126x_SetRx(uint32_t timeout);     /* 0xFFFFFF = continuous */
+bool   SX126x_IsTxBusy(void);
+bool   SX126x_Available(void);
+int8_t SX126x_GetRssi(void);
+int8_t SX126x_GetSnr(void);
+```
+
+| Function | Semantic |
+|---|---|
+| `SX126x_Init` | Resets the chip, programs config, sets RX. |
+| `SX126x_TransmitDMA` | Non-blocking TX. Returns immediately. |
+| `SX126x_Receive` | Drains pending RX into caller buffer. Returns `false` if nothing was waiting. |
+| `SX126x_SetRx` | Put chip in RX mode (call after every TX cycle). |
+| `SX126x_GetRssi` / `SX126x_GetSnr` | Last packet's link quality. |
+
+<FuncRef name="SX126x_Init" file="lora_sx126x.h" />
+
+---
+
+## E22 UART driver (Nucleo backend)
+
+Selected when `config.h` defines `RADIO_INTERFACE_UART`. EBYTE
+transparent-mode firmware on the radio module presents a UART. LoRa
+parameters are programmed once via the M0/M1 mode pins.
+
+<div className="magalhaes-spec">
+  <dl>
+    <dt>Header</dt><dd>`Codigo/Radio/LORA Drivers/e22_uart_dma.h`</dd>
+    <dt>Bus</dt><dd>`UART_RADIO` (`&huart6` on F446ZE)</dd>
+    <dt>Selector</dt><dd>`#ifdef RADIO_INTERFACE_UART`</dd>
+  </dl>
+</div>
+
+### Public API
+
+```c
+bool E22_Init(UART_HandleTypeDef *huart);
+bool E22_Send(const uint8_t *data, uint16_t len);
+bool E22_Receive(uint8_t *buf, uint16_t *len);
+void E22_SetMode(e22_mode_t mode);
+```
+
+The driver internally manages the M0/M1 GPIOs (`RADIO_M0_PORT`,
+`RADIO_M1_PORT`) which select normal / wake-on-radio / config /
+sleep modes per EBYTE's datasheet.
+
+<FuncRef name="E22_Init" file="e22_uart_dma.h" />
+
+---
+
+## Radio thread (top-level orchestration)
+
+```c
+void radio_thread_function(void);
+```
+
+The thread is created in `create_threads.c` at `osPriorityHigh1`. It
+self-initialises the radio (per-backend), then loops on the TDMA
+state machine.
+
+### TDMA context
+
+```c
+typedef enum { TDMA_UNSYNCED = 0, TDMA_SYNCED } tdma_state_t;
+
+typedef struct {
+    tdma_state_t state;
+    uint8_t      frame_id;
+    uint8_t      slot_index;
+    uint32_t     frame_start_tick;
+    uint32_t     missed_sync_count;
+} tdma_ctx_t;
+
+extern tdma_ctx_t tdma_ctx;        /* read-only outside radio_thread */
+```
+
+### Statistics
+
+```c
+typedef struct {
+    uint32_t tx_fast, tx_slow, tx_event;
+    uint32_t rx_cmd, rx_sync;
+    uint32_t crc_errors;
+} radio_stats_t;
+
+extern radio_stats_t radio_stats;
+```
+
+Dumped every 10 s on the debug UART:
+
+```text
+[RADIO] SYNC F=22 slot=4 | TX: f=176 s=22 | RX: cmd=2 sync=22 | CRC=0 | RSSI=-78 SNR=9
+```
+
+[Concept: how the radio thread cooperates with TDMA →](/concepts/tdma)

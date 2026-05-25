@@ -122,9 +122,6 @@ SoftwareSerial RADIO_SERIAL(E22_RX, E22_TX);
 #define PC_CMD_CALIBRATE    'C'     /**< Calibrate barometer */
 #define PC_CMD_MOTOR_CAL    'M'     /**< ESC calibration */
 #define PC_CMD_STATIC_TEST  'E'     /**< Static thrust test */
-#define PC_CMD_PROFILE1     '1'     /**< Select profile 1 */
-#define PC_CMD_PROFILE2     '2'     /**< Select profile 2 */
-#define PC_CMD_PROFILE3     '3'     /**< Select profile 3 */
 #define PC_CMD_ARM          'A'     /**< Arm for launch */
 #define PC_CMD_DISARM       'D'     /**< Disarm */
 #define PC_CMD_TEST         'T'     /**< Start test */
@@ -140,12 +137,45 @@ SoftwareSerial RADIO_SERIAL(E22_RX, E22_TX);
  * @brief Time slot configuration matching FC
  * @{
  */
-#define TDMA_SUPERFRAME_MS      1000    /**< Superframe duration (ms) */
-#define TDMA_SLOT_MS            100     /**< Slot duration (ms) */
-#define TDMA_SLOTS_PER_FRAME    10      /**< Slots per superframe */
-#define TDMA_TX_SLOT            9       /**< GS transmit slot */
-#define TX_START_OFFSET_MS      10      /**< TX start offset in slot (ms) */
-#define TX_END_OFFSET_MS        80      /**< TX end offset in slot (ms) */
+/* Flight preset (default at boot) */
+#define TDMA_FLIGHT_SUPERFRAME_MS   1000
+#define TDMA_FLIGHT_SLOT_MS         100
+#define TDMA_FLIGHT_SLOTS           10
+#define TDMA_FLIGHT_TX_SLOT         9
+/* Phase 3-A (A4): test-interactive preset (200 ms / 5×40 ms — see telemetry.h) */
+/* Phase 3-A bugfix: must match FC's telemetry.h (TDMA_TI_*). Widened from
+ * 40 ms → 100 ms because LoRa air time of a single sync/cmd exceeded the
+ * old 40 ms slot, causing permanent inter-slot collision after the FC
+ * switched to test-interactive on SET_PROFILE. */
+#define TDMA_TEST_SUPERFRAME_MS     500
+#define TDMA_TEST_SLOT_MS           100
+#define TDMA_TEST_SLOTS             5
+#define TDMA_TEST_TX_SLOT_A         1
+#define TDMA_TEST_TX_SLOT_B         3
+
+/* Active TDMA preset state — flipped via slow.tdma_mode announcement */
+enum TdmaMode { TDMA_MODE_FLIGHT = 0, TDMA_MODE_TEST_INTERACTIVE = 1 };
+uint8_t  tdma_mode_current = TDMA_MODE_FLIGHT;
+uint8_t  tdma_mode_pending = TDMA_MODE_FLIGHT;
+uint16_t tdma_superframe_ms = TDMA_FLIGHT_SUPERFRAME_MS;
+uint8_t  tdma_slot_ms       = TDMA_FLIGHT_SLOT_MS;
+uint8_t  tdma_slots         = TDMA_FLIGHT_SLOTS;
+
+/* Convenience: legacy aliases used by older code. Re-evaluated each call. */
+#define TDMA_SUPERFRAME_MS      tdma_superframe_ms
+#define TDMA_SLOT_MS            tdma_slot_ms
+#define TDMA_SLOTS_PER_FRAME    tdma_slots
+
+/* TX windows scaled per slot (5%..80% of the active slot duration). */
+#define TX_START_OFFSET_MS      ((tdma_slot_ms * 5) / 100)
+#define TX_END_OFFSET_MS        ((tdma_slot_ms * 80) / 100)
+
+/** @brief True iff this slot is a GS-TX slot under the active preset. */
+inline bool tdma_slot_is_tx(uint8_t slot) {
+    if (tdma_mode_current == TDMA_MODE_TEST_INTERACTIVE)
+        return (slot == TDMA_TEST_TX_SLOT_A) || (slot == TDMA_TEST_TX_SLOT_B);
+    return slot == TDMA_FLIGHT_TX_SLOT;
+}
 /** @} */
 
 /**
@@ -166,7 +196,7 @@ SoftwareSerial RADIO_SERIAL(E22_RX, E22_TX);
  * @{
  */
 #define FAST_PKT_SIZE   37      /**< telemetry_fast_t size */
-#define SLOW_PKT_SIZE   30      /**< telemetry_slow_t size */
+#define SLOW_PKT_SIZE   32      /**< telemetry_slow_t size (Phase 3-A: +tdma_mode +reserved) */
 #define EVENT_PKT_SIZE  37      /**< telemetry_event_t size */
 /** @} */
 
@@ -186,8 +216,13 @@ enum FCCommand {
     CMD_FORCE_SAFE,         /**< Force safe state */
     CMD_CALIBRATE_BARO,     /**< Calibrate barometer */
     CMD_CALIBRATE_MOTOR,    /**< ESC calibration */
-    CMD_STATIC_TEST,        /**< Static thrust test */
-    CMD_RESYNC              /**< Resync TDMA */
+    CMD_STATIC_TEST,        /**< Static thrust test (legacy fast-path) */
+    CMD_RESYNC,             /**< Resync TDMA */
+    /* Phase 3-A (A3): new test FSM commands. */
+    CMD_SET_TEST_PROFILE,   /**< Load profile_t into test runner (params[0]=kind) */
+    CMD_HOLD,               /**< Manual: pause running test */
+    CMD_RESUME,             /**< Manual: resume from hold */
+    CMD_STOP_TEST           /**< Graceful end (running → finishing → done) */
 };
 
 /**
@@ -246,6 +281,8 @@ typedef struct {
     uint8_t battery_pct;        /**< Battery percentage */
     uint8_t sd_status;          /**< SD card status */
     uint16_t free_heap;         /**< Free heap (bytes) */
+    uint8_t tdma_mode;          /**< Phase 3-A: active TDMA preset (TdmaMode) */
+    uint8_t reserved;           /**< Reserved (pad to even length) */
     uint16_t crc16;             /**< CRC-16 checksum */
 } TelemetrySlow_t;
 
@@ -259,7 +296,8 @@ typedef struct {
     uint8_t cmd_id;             /**< Command ID */
     uint8_t cmd_seq;            /**< Command sequence for ACK */
     uint32_t time;              /**< GS timestamp (ms) */
-    uint8_t params[8];          /**< Command parameters */
+    /* Phase 3-A (A7): bumped 8 → 32 bytes to fit gutter / torque_cal profiles. */
+    uint8_t params[32];         /**< Command parameters */
     uint16_t crc16;             /**< CRC-16 checksum */
 } CommandPacket_t;
 
@@ -311,6 +349,7 @@ typedef struct {
     uint32_t crc_errors;        /**< CRC errors detected */
     uint32_t ack_ok;            /**< Successful ACKs */
     uint32_t ack_timeout;       /**< ACK timeouts */
+    uint32_t cmd_retries;       /**< Command retry attempts */
 } GSStats_t;
 
 #pragma pack(pop)
@@ -339,6 +378,22 @@ CommandPacket_t pending_cmd = {0};
 
 /** @brief Flag: command waiting to send */
 bool cmd_pending = false;
+
+/* Phase 3-A bugfix: small FIFO so back-to-back clicks (e.g. SET → ARM in
+ * flight mode where TX cadence is 1 Hz) are preserved in order instead of
+ * the second one clobbering the first. */
+#define CMD_QUEUE_DEPTH 6
+CommandPacket_t cmd_queue[CMD_QUEUE_DEPTH];
+uint8_t cmd_queue_head = 0;
+uint8_t cmd_queue_count = 0;
+
+/* Phase 3-A (A5): test_control_packet_t buffer received from PC and queued
+ * for the next TX slot in test-interactive mode. 15 bytes wire format:
+ *   type(1) frame_id(1) seq(1) field_mask(1) throttle_milli(2)
+ *   alpha_centideg(2) h_ref_dm(2) h_ref_dot_cms(2) flags(1) crc16(2). */
+#define TEST_CTRL_PKT_SIZE 15
+uint8_t pending_test_ctrl[TEST_CTRL_PKT_SIZE] = {0};
+bool    test_ctrl_pending = false;
 
 /** @brief Command sequence counter */
 uint8_t cmd_seq = 0;
@@ -565,11 +620,35 @@ uint32_t get_time_in_slot() {
 }
 
 /**
- * @brief Advance to next superframe
+ * @brief Advance to next superframe.
+ *
+ * Phase 3-A (A4): also applies any pending TDMA preset switch announced by
+ * the FC in slow telemetry. Switches happen at superframe boundaries so we
+ * don't reshape a slot mid-frame.
  */
 void advance_frame() {
     frame_id++;
     frame_start_ms += TDMA_SUPERFRAME_MS;
+
+    if (tdma_mode_pending != tdma_mode_current) {
+        tdma_mode_current = tdma_mode_pending;
+        if (tdma_mode_current == TDMA_MODE_TEST_INTERACTIVE) {
+            tdma_superframe_ms = TDMA_TEST_SUPERFRAME_MS;
+            tdma_slot_ms       = TDMA_TEST_SLOT_MS;
+            tdma_slots         = TDMA_TEST_SLOTS;
+            sendLog("TDMA -> TEST_INTERACTIVE (500ms / 5×100ms)");
+        } else {
+            tdma_superframe_ms = TDMA_FLIGHT_SUPERFRAME_MS;
+            tdma_slot_ms       = TDMA_FLIGHT_SLOT_MS;
+            tdma_slots         = TDMA_FLIGHT_SLOTS;
+            sendLog("TDMA -> FLIGHT (1000ms / 10×100ms)");
+        }
+        /* Phase 3-A bugfix: drop sync so the next received packet re-aligns
+         * frame_start_ms to FC's clock under the new slot_ms. Without this,
+         * the old frame_start (computed under the old slot_ms) leaves
+         * Arduino's slot mapping permanently shifted vs FC. */
+        tdma_synced = false;
+    }
 }
 
 /** @} */
@@ -741,7 +820,11 @@ void send_sync() {
     SyncPacket_t sync = {0};
     sync.packet_type = TELEM_PACKET_SYNC;
     sync.frame_id = frame_id;
-    sync.slot_id = TDMA_TX_SLOT;
+    /* Phase 3-A: in test-interactive mode the GS uses two TX slots; the
+     * sync alignment slot is the first one (TX_SLOT_A), matching the FC's
+     * `rx_slot_for_sync`. */
+    sync.slot_id = (tdma_mode_current == TDMA_MODE_TEST_INTERACTIVE)
+                       ? TDMA_TEST_TX_SLOT_A : TDMA_FLIGHT_TX_SLOT;
     sync.gs_time = millis();
     sync.crc16 = crc16_calc((uint8_t*)&sync, sizeof(sync) - 2);
 
@@ -757,34 +840,70 @@ void send_sync() {
  * @param[in] param_len Parameter length
  */
 void send_command(uint8_t cmd_id, uint8_t* params, uint8_t param_len) {
-    pending_cmd.packet_type = TELEM_PACKET_COMMAND;
-    pending_cmd.frame_id = frame_id;
-    pending_cmd.cmd_id = cmd_id;
-    pending_cmd.cmd_seq = ++cmd_seq;
-    pending_cmd.time = millis();
+    /* Build the packet into a queue slot (or drop if queue is full). */
+    if (cmd_queue_count >= CMD_QUEUE_DEPTH) {
+        sendLog("Cmd queue FULL — dropped");
+        return;
+    }
+    uint8_t slot = (cmd_queue_head + cmd_queue_count) % CMD_QUEUE_DEPTH;
+    CommandPacket_t *qp = &cmd_queue[slot];
 
-    memset(pending_cmd.params, 0, sizeof(pending_cmd.params));
+    qp->packet_type = TELEM_PACKET_COMMAND;
+    qp->frame_id = frame_id;
+    qp->cmd_id   = cmd_id;
+    qp->cmd_seq  = ++cmd_seq;
+    qp->time     = millis();
+
+    memset(qp->params, 0, sizeof(qp->params));
     if (params && param_len > 0) {
-        memcpy(pending_cmd.params, params, min(param_len, (uint8_t)8));
+        uint8_t cap = sizeof(qp->params);
+        memcpy(qp->params, params, (param_len < cap) ? param_len : cap);
+    }
+    qp->crc16 = crc16_calc((uint8_t*)qp, sizeof(*qp) - 2);
+
+    cmd_queue_count++;
+    /* If this is the only queued cmd and nothing is currently outgoing,
+     * promote it to pending so the next TX slot picks it up. */
+    if (!cmd_pending) {
+        memcpy(&pending_cmd, qp, sizeof(pending_cmd));
+        cmd_queue_head = (cmd_queue_head + 1) % CMD_QUEUE_DEPTH;
+        cmd_queue_count--;
+        cmd_pending = true;
+        awaiting_ack = true;
+        awaiting_ack_seq = pending_cmd.cmd_seq;
+        cmd_sent_time = millis();
+        cmd_retry_count = 0;
+
+        if (cmd_id == CMD_PING) {
+            ping_seq_sent = pending_cmd.cmd_seq;
+            ping_sent_time = millis();
+            ping_awaiting_pong = true;
+        }
     }
 
-    pending_cmd.crc16 = crc16_calc((uint8_t*)&pending_cmd, sizeof(pending_cmd) - 2);
+    #if SIMULATION_MODE
+    sim_process_command(cmd_id);
+    #endif
+}
 
+/* Phase 3-A bugfix: pop the head of cmd_queue into pending_cmd. Called after
+ * a successful TX so the next slot has something to send. */
+static void cmd_queue_pop_to_pending(void) {
+    if (cmd_queue_count == 0) return;
+    memcpy(&pending_cmd, &cmd_queue[cmd_queue_head], sizeof(pending_cmd));
+    cmd_queue_head = (cmd_queue_head + 1) % CMD_QUEUE_DEPTH;
+    cmd_queue_count--;
     cmd_pending = true;
     awaiting_ack = true;
     awaiting_ack_seq = pending_cmd.cmd_seq;
     cmd_sent_time = millis();
     cmd_retry_count = 0;
 
-    if (cmd_id == CMD_PING) {
+    if (pending_cmd.cmd_id == CMD_PING) {
         ping_seq_sent = pending_cmd.cmd_seq;
         ping_sent_time = millis();
         ping_awaiting_pong = true;
     }
-
-    #if SIMULATION_MODE
-    sim_process_command(cmd_id);
-    #endif
 }
 
 /**
@@ -808,6 +927,12 @@ void transmit_pending_command() {
         PC_SERIAL.println(pending_cmd.cmd_seq);
     }
     #endif
+
+    /* Phase 3-A bugfix: TX done → mark pending_cmd consumed and pull the
+     * next queued command (if any) into pending_cmd so the very next TX
+     * slot can transmit it without waiting for a new send_command call. */
+    cmd_pending = false;
+    cmd_queue_pop_to_pending();
 }
 
 /** @} */
@@ -874,6 +999,15 @@ void process_fc_packet(uint8_t* data, uint16_t len, uint8_t type) {
         case TELEM_PACKET_FAST:
             msgType = MSG_TYPE_FC_FAST;
             stats.rx_fast++;
+            /* Phase 3-A bugfix: detect TDMA mode mismatch from slot_id. In
+             * test-interactive layout, FC fast TX only goes in slots 0 and 2;
+             * in flight, slots 0..7. So a fast packet with slot_id >= 5 means
+             * the FC is in flight mode while we are still in test. Without
+             * this, the slow packet that announces the switch arrives in a
+             * slot where we are TXing → collision → Arduino never recovers. */
+            if (data[2] >= 5 && tdma_mode_current == TDMA_MODE_TEST_INTERACTIVE) {
+                tdma_mode_pending = TDMA_MODE_FLIGHT;
+            }
 
             // Check for command ACK in fast packet
             if (awaiting_ack && data[11] == awaiting_ack_seq) {
@@ -894,6 +1028,15 @@ void process_fc_packet(uint8_t* data, uint16_t len, uint8_t type) {
         case TELEM_PACKET_SLOW:
             msgType = MSG_TYPE_FC_SLOW;
             stats.rx_slow++;
+            /* Phase 3-A (A4): the FC announces its active TDMA preset in the
+             * slow packet. Queue the switch — it's applied on the next GS
+             * superframe rollover so we don't break a slot mid-frame. */
+            if (len >= SLOW_PKT_SIZE) {
+                uint8_t announced = ((TelemetrySlow_t*)data)->tdma_mode;
+                if (announced != tdma_mode_pending) {
+                    tdma_mode_pending = announced;
+                }
+            }
             break;
 
         case TELEM_PACKET_EVENT:
@@ -930,6 +1073,21 @@ void process_fc_packet(uint8_t* data, uint16_t len, uint8_t type) {
     // Sync TDMA timing from received packet
     if (!tdma_synced) {
         tdma_synced = true;
+        /* Phase 3-A (A4): if this first packet is a slow announcing test mode,
+         * apply the preset switch *before* aligning so the slot_id math uses
+         * the correct slot_ms. */
+        if (type == TELEM_PACKET_SLOW && len >= SLOW_PKT_SIZE) {
+            uint8_t announced = ((TelemetrySlow_t*)data)->tdma_mode;
+            if (announced != tdma_mode_current) {
+                tdma_mode_current = announced;
+                tdma_mode_pending = announced;
+                if (announced == TDMA_MODE_TEST_INTERACTIVE) {
+                    tdma_superframe_ms = TDMA_TEST_SUPERFRAME_MS;
+                    tdma_slot_ms       = TDMA_TEST_SLOT_MS;
+                    tdma_slots         = TDMA_TEST_SLOTS;
+                }
+            }
+        }
         frame_start_ms = millis() - (data[2] * TDMA_SLOT_MS);
         frame_id = data[1];
         sendLog("TDMA synced!");
@@ -1018,11 +1176,36 @@ void handle_tx_slot() {
     uint32_t time_in_slot = get_time_in_slot();
 
     if (time_in_slot >= TX_START_OFFSET_MS && time_in_slot < TX_END_OFFSET_MS) {
+        /* Phase 3-A: in test-interactive mode, slot A is the sync-alignment
+         * slot (mirrors flight slot 9). Slot B prefers test_ctrl/cmd. */
+        bool is_sync_slot = (tdma_mode_current != TDMA_MODE_TEST_INTERACTIVE)
+                         || (get_current_slot() == TDMA_TEST_TX_SLOT_A);
+
+        /* Phase 3-A bugfix: in test mode with manual control, test_ctrl is
+         * always pending — without a forced fallback, sync is starved and the
+         * FC trips its 5 s sync timeout. Force a sync at least once per
+         * SYNC_FORCE_INTERVAL_MS, even if test_ctrl is also pending. */
+        static uint32_t last_sync_tx_ms = 0;
+        const uint32_t SYNC_FORCE_INTERVAL_MS = 1000;  // 1 Hz minimum
+        bool force_sync = is_sync_slot
+                       && ((millis() - last_sync_tx_ms) > SYNC_FORCE_INTERVAL_MS);
+
+        /* Priority: cmd > [forced sync] > test_ctrl > opportunistic sync */
         if (cmd_pending) {
             transmit_pending_command();
-        } else {
+        } else if (force_sync) {
             #if !SIMULATION_MODE
             send_sync();
+            last_sync_tx_ms = millis();
+            #endif
+        } else if (test_ctrl_pending) {
+            RADIO_SERIAL.write(pending_test_ctrl, TEST_CTRL_PKT_SIZE);
+            test_ctrl_pending = false;
+            stats.tx_cmd++;
+        } else if (is_sync_slot) {
+            #if !SIMULATION_MODE
+            send_sync();
+            last_sync_tx_ms = millis();
             #endif
         }
         tx_done_this_slot = true;
@@ -1061,7 +1244,13 @@ void check_command_timeout() {
 
             sendLog("CMD timeout");
         } else {
+            /* Phase 3-A bugfix: previous version updated cmd_sent_time but
+             * left cmd_pending=false, so the cmd was never actually
+             * re-transmitted — 5 silent retries × 3 s = a 15 s black hole.
+             * Re-arm cmd_pending so the next TX slot re-sends the packet. */
+            cmd_pending = true;
             cmd_sent_time = millis();
+            stats.cmd_retries++;
             if (debug_enabled) {
                 PC_SERIAL.print(F("[RETRY] attempt "));
                 PC_SERIAL.println(cmd_retry_count);
@@ -1070,125 +1259,129 @@ void check_command_timeout() {
     }
 }
 
-/**
- * @brief Process commands received from PC
- */
+/* Phase 3-A bugfix: non-blocking PC-input state machine.
+ * The previous version did `while (got<N && millis()<deadline)` blocking
+ * reads inside `case '~'` and `case '#'`. At 10 Hz manual-test cadence
+ * that's 500 ms/sec of CPU stall — and any 50 ms blocking call destroys
+ * the 40 ms test-mode TDMA slots, causing collisions and lost packets.
+ *
+ * The state machine consumes whatever bytes are available each loop pass,
+ * accumulates multi-byte sequences across loop iterations, and never
+ * blocks. A 200 ms watchdog recovers from corrupted partials. */
+typedef enum {
+    PC_S_IDLE = 0,            /**< Waiting for the next command char */
+    PC_S_TEST_CTRL,           /**< After '~', collecting 15 binary bytes */
+    PC_S_TEST_PROFILE,        /**< After '#', collecting 32 binary bytes */
+    PC_S_E_DIGITS             /**< After 'E', collecting 0–3 decimal digits */
+} pc_input_state_t;
+
+static pc_input_state_t pc_state = PC_S_IDLE;
+static uint8_t  pc_buf[32];
+static uint8_t  pc_count = 0;
+static uint8_t  pc_e_throttle = 0;
+static uint8_t  pc_e_digits = 0;
+static uint32_t pc_state_started_ms = 0;
+#define PC_STATE_TIMEOUT_MS 200
+
+static void pc_dispatch_static_test(void) {
+    uint8_t throttle = pc_e_throttle == 0 ? 20 : pc_e_throttle;
+    if (throttle > 100) throttle = 100;
+    uint8_t params[8] = {throttle, 0, 0, 0, 0, 0, 0, 0};
+    send_command(CMD_STATIC_TEST, params, 1);
+    char msg[40];
+    snprintf(msg, sizeof(msg), "Static test: %d%% throttle", throttle);
+    sendLog(msg);
+}
+
+static void pc_handle_single_char(char c) {
+    switch (c) {
+        case PC_CMD_PING:        send_command(CMD_PING, NULL, 0);            sendLog("Sending PING"); break;
+        case PC_CMD_CALIBRATE:   send_command(CMD_CALIBRATE_BARO, NULL, 0);  sendLog("Sending CALIBRATE BARO"); break;
+        case PC_CMD_MOTOR_CAL:   send_command(CMD_CALIBRATE_MOTOR, NULL, 0); sendLog("Sending MOTOR CAL - POWER CYCLE ESC NOW!"); break;
+        case PC_CMD_ARM:        send_command(CMD_ARM, NULL, 0);          sendLog("Sending ARM"); break;
+        case PC_CMD_DISARM:     send_command(CMD_DISARM, NULL, 0);       sendLog("Sending DISARM"); break;
+        case PC_CMD_TEST:       send_command(CMD_START_TEST, NULL, 0);   sendLog("Sending TEST"); break;
+        case PC_CMD_LAUNCH:     send_command(CMD_LAUNCH, NULL, 0);       sendLog("Sending LAUNCH"); break;
+        case PC_CMD_ABORT:      send_command(CMD_ABORT, NULL, 0);        sendLog("Sending ABORT"); break;
+        case PC_CMD_SAFE:       send_command(CMD_FORCE_SAFE, NULL, 0);   sendLog("Sending SAFE"); break;
+        case PC_CMD_RESET_STATS: memset(&stats, 0, sizeof(stats));        sendLog("Stats reset"); break;
+        case PC_CMD_DEBUG:      debug_enabled = !debug_enabled;          sendLog(debug_enabled ? "Debug ON" : "Debug OFF"); break;
+        /* Phase 3-A new test-FSM lifecycle commands. */
+        case 'H':               send_command(CMD_HOLD, NULL, 0);          sendLog("Sending HOLD"); break;
+        case 'U':               send_command(CMD_RESUME, NULL, 0);        sendLog("Sending RESUME"); break;
+        case 'K':               send_command(CMD_STOP_TEST, NULL, 0);     sendLog("Sending STOP_TEST"); break;
+        default: break;
+    }
+}
+
 void process_pc_input() {
+    uint32_t now = millis();
+
+    /* Watchdog: if a multi-byte sequence stalls > 200 ms, recover. For
+     * 'E' specifically, dispatch with whatever digits we have (this is how
+     * a bare 'E' with no digits gets the default 20%). */
+    if (pc_state != PC_S_IDLE && (now - pc_state_started_ms) > PC_STATE_TIMEOUT_MS) {
+        if (pc_state == PC_S_E_DIGITS) pc_dispatch_static_test();
+        else if (debug_enabled) {
+            PC_SERIAL.print(F("[PC] state timeout, st=")); PC_SERIAL.print(pc_state);
+            PC_SERIAL.print(F(" cnt=")); PC_SERIAL.println(pc_count);
+        }
+        pc_state = PC_S_IDLE;
+        pc_count = 0;
+    }
+
+    /* Drain whatever is available without ever blocking. */
     while (PC_SERIAL.available()) {
-        char c = PC_SERIAL.read();
+        uint8_t c = PC_SERIAL.read();
 
-        switch (c) {
-            case PC_CMD_PING:
-                send_command(CMD_PING, NULL, 0);
-                sendLog("Sending PING");
-                break;
-
-            case PC_CMD_CALIBRATE:
-                send_command(CMD_CALIBRATE_BARO, NULL, 0);
-                sendLog("Sending CALIBRATE BARO");
-                break;
-
-            case PC_CMD_MOTOR_CAL:
-                send_command(CMD_CALIBRATE_MOTOR, NULL, 0);
-                sendLog("Sending MOTOR CAL - POWER CYCLE ESC NOW!");
-                break;
-
-            case PC_CMD_STATIC_TEST: {
-                delay(10);
-                uint8_t throttle_pct = 20;
-                if (PC_SERIAL.available()) {
-                    String numStr = "";
-                    while (PC_SERIAL.available() && numStr.length() < 3) {
-                        char nc = PC_SERIAL.peek();
-                        if (nc >= '0' && nc <= '9') {
-                            numStr += (char)PC_SERIAL.read();
-                        } else {
-                            break;
-                        }
-                    }
-                    if (numStr.length() > 0) {
-                        int val = numStr.toInt();
-                        if (val > 0 && val <= 100) {
-                            throttle_pct = (uint8_t)val;
-                        }
-                    }
-                }
-                uint8_t params[8] = {throttle_pct, 0, 0, 0, 0, 0, 0, 0};
-                send_command(CMD_STATIC_TEST, params, 1);
-                char msg[40];
-                snprintf(msg, sizeof(msg), "Static test: %d%% throttle", throttle_pct);
-                sendLog(msg);
-                break;
-            }
-
-            case PC_CMD_PROFILE1: {
-                uint8_t params[8] = {1, 0, 0, 0, 0, 0, 0, 0};
-                float ramp = 5.0f;
-                memcpy(&params[1], &ramp, 4);
-                send_command(CMD_SET_PROFILE, params, 5);
-                sendLog("Profile 1 set");
-                break;
-            }
-
-            case PC_CMD_PROFILE2: {
-                uint8_t params[8] = {2, 0, 0, 0, 0, 0, 0, 0};
-                float hold = 0.3f;
-                memcpy(&params[1], &hold, 4);
-                send_command(CMD_SET_PROFILE, params, 5);
-                sendLog("Profile 2 set");
-                break;
-            }
-
-            case PC_CMD_PROFILE3: {
-                uint8_t params[8] = {3, 0, 0, 0, 0, 0, 0, 0};
-                float target = 50.0f;
-                memcpy(&params[1], &target, 4);
-                send_command(CMD_SET_PROFILE, params, 5);
-                sendLog("Profile 3 set");
-                break;
-            }
-
-            case PC_CMD_ARM:
-                send_command(CMD_ARM, NULL, 0);
-                sendLog("Sending ARM");
-                break;
-
-            case PC_CMD_DISARM:
-                send_command(CMD_DISARM, NULL, 0);
-                sendLog("Sending DISARM");
-                break;
-
-            case PC_CMD_TEST:
-                send_command(CMD_START_TEST, NULL, 0);
-                sendLog("Sending TEST");
-                break;
-
-            case PC_CMD_LAUNCH:
-                send_command(CMD_LAUNCH, NULL, 0);
-                sendLog("Sending LAUNCH");
-                break;
-
-            case PC_CMD_ABORT:
-                send_command(CMD_ABORT, NULL, 0);
-                sendLog("Sending ABORT");
-                break;
-
-            case PC_CMD_SAFE:
-                send_command(CMD_FORCE_SAFE, NULL, 0);
-                sendLog("Sending SAFE");
-                break;
-
-            case PC_CMD_RESET_STATS:
-                memset(&stats, 0, sizeof(stats));
-                sendLog("Stats reset");
-                break;
-
-            case PC_CMD_DEBUG:
-                debug_enabled = !debug_enabled;
-                if (debug_enabled) {
-                    sendLog("Debug ON");
+        switch (pc_state) {
+            case PC_S_IDLE:
+                if (c == '~') {
+                    pc_state = PC_S_TEST_CTRL; pc_count = 0; pc_state_started_ms = now;
+                } else if (c == '#') {
+                    pc_state = PC_S_TEST_PROFILE; pc_count = 0; pc_state_started_ms = now;
+                } else if (c == PC_CMD_STATIC_TEST) {
+                    pc_state = PC_S_E_DIGITS; pc_e_throttle = 0; pc_e_digits = 0;
+                    pc_state_started_ms = now;
                 } else {
-                    sendLog("Debug OFF");
+                    pc_handle_single_char((char)c);
+                }
+                break;
+
+            case PC_S_TEST_CTRL:
+                pending_test_ctrl[pc_count++] = c;
+                if (pc_count >= TEST_CTRL_PKT_SIZE) {
+                    test_ctrl_pending = true;
+                    pc_state = PC_S_IDLE;
+                }
+                break;
+
+            case PC_S_TEST_PROFILE:
+                pc_buf[pc_count++] = c;
+                if (pc_count >= 32) {
+                    send_command(CMD_SET_TEST_PROFILE, pc_buf, 32);
+                    sendLog("Sending SET_TEST_PROFILE");
+                    pc_state = PC_S_IDLE;
+                }
+                break;
+
+            case PC_S_E_DIGITS:
+                if (c >= '0' && c <= '9' && pc_e_digits < 3) {
+                    pc_e_throttle = pc_e_throttle * 10 + (c - '0');
+                    pc_e_digits++;
+                } else {
+                    /* Non-digit terminates the sequence; dispatch and re-feed
+                     * the byte to IDLE so it can start a fresh command. */
+                    pc_dispatch_static_test();
+                    pc_state = PC_S_IDLE;
+                    if (c == '~' || c == '#' || c == PC_CMD_STATIC_TEST) {
+                        /* Restart sequence; we lose this byte's effect, accept it. */
+                        if (c == '~') { pc_state = PC_S_TEST_CTRL; pc_count = 0; pc_state_started_ms = now; }
+                        else if (c == '#') { pc_state = PC_S_TEST_PROFILE; pc_count = 0; pc_state_started_ms = now; }
+                        else { pc_state = PC_S_E_DIGITS; pc_e_throttle = 0; pc_e_digits = 0; pc_state_started_ms = now; }
+                    } else {
+                        pc_handle_single_char((char)c);
+                    }
                 }
                 break;
         }
@@ -1279,7 +1472,7 @@ void loop() {
         tx_done_this_slot = false;
     }
 
-    if (slot == TDMA_TX_SLOT) {
+    if (tdma_slot_is_tx(slot)) {
         handle_tx_slot();
     } else {
         handle_rx_slots();
@@ -1305,6 +1498,25 @@ void loop() {
             PC_SERIAL.print(F(" crc_err="));
             PC_SERIAL.println(stats.crc_errors);
         }
+    }
+
+    /* Phase 3-A debug: per-second TX rate dump. Discriminates between
+     * "Arduino not transmitting" and "transmitting but FC not receiving". */
+    static uint32_t last_tx_dump_ms = 0;
+    static uint32_t prev_tx_sync = 0, prev_tx_cmd = 0;
+    if ((now - last_tx_dump_ms) >= 1000) {
+        uint32_t dsync = stats.tx_sync - prev_tx_sync;
+        uint32_t dcmd  = stats.tx_cmd  - prev_tx_cmd;
+        char buf[80];
+        snprintf(buf, sizeof(buf),
+                 "TX/s sync=%lu cmd=%lu synced=%d mode=%d pending=%d retries=%lu",
+                 (unsigned long)dsync, (unsigned long)dcmd,
+                 tdma_synced ? 1 : 0, tdma_mode_current,
+                 cmd_pending ? 1 : 0, (unsigned long)stats.cmd_retries);
+        sendLog(buf);
+        prev_tx_sync = stats.tx_sync;
+        prev_tx_cmd  = stats.tx_cmd;
+        last_tx_dump_ms = now;
     }
 
     delay(1);

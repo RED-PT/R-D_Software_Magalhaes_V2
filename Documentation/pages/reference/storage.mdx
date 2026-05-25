@@ -1,0 +1,161 @@
+---
+title: Storage reference
+---
+
+import { Callout } from 'nextra/components';
+import { FuncRef } from '../../components/FuncRef';
+
+# Storage reference
+
+SD-card logging via FatFS. Lowest-priority thread on purpose — if the
+card is slow, the card is the only thing that slows down.
+
+For the rationale, see [Storage subsystem](/subsystems/storage).
+
+---
+
+## Public API
+
+### `sd_card_init`
+
+```c
+void sd_card_init(void);
+```
+
+Mounts the FAT volume, opens the next available `flight_<n>.bin`,
+seeds the write buffer. Reports success via
+`fsm_report_init_status("SD_CARD", ok)`.
+
+### `sd_card_configure`
+
+```c
+void sd_card_configure(void);
+```
+
+Writes a small header (firmware version, board ID, boot timestamp) to
+the start of the new log file.
+
+### `sd_card_pause` / `sd_card_resume`
+
+```c
+void sd_card_pause(void);
+void sd_card_resume(void);
+bool sd_card_is_paused(void);
+```
+
+Used by the static thrust test — brushless ESC EMI can corrupt SPI
+traffic on cheap microSDs. The pause flushes any buffered data first
+(critical to avoid losing the last second of pre-test logging):
+
+```c
+if (buffer_pos > 0 && sd_file_open) {
+    UINT bw;
+    f_write(&file, write_buffer, buffer_pos, &bw);
+    f_sync(&file);
+    buffer_pos = 0;
+}
+sd_paused = true;
+```
+
+### `sd_card_close`
+
+```c
+void sd_card_close(void);
+```
+
+Called on `STATE_SAFE` entry. Flushes the buffer, syncs the file,
+closes it, unmounts the volume.
+
+### `sd_card_write_packet`
+
+```c
+bool sd_card_write_packet(const data_packet_t *packet);
+```
+
+Convenience wrapper — pushes a `data_packet_t` onto `queue_to_sd`.
+Most callers go through `data_handler_*` instead, which fans out to
+both SD and the estimator.
+
+---
+
+## Thread main loop
+
+```c title="Codigo/Storage/sd_card_thread.c"
+void sd_card_thread_function(void *argument) {
+    sd_card_init();
+    sd_card_configure();
+
+    TickType_t last_flush = xTaskGetTickCount();
+    const TickType_t flush_timeout = pdMS_TO_TICKS(SD_FLUSH_TIMEOUT_MS);
+    data_packet_t packet;
+
+    while (1) {
+        TickType_t now = xTaskGetTickCount();
+
+        if (xQueueReceive(queue_to_sd, &packet, pdMS_TO_TICKS(50)) == pdTRUE) {
+            log_data_packet(&packet);
+            if (buffer_pos > ((SD_WRITE_BUFFER_SIZE * 3) / 4)) {
+                flush_write_buffer();
+                last_flush = now;
+            }
+        }
+
+        if ((now - last_flush) >= flush_timeout) {
+            if (buffer_pos > 0) flush_write_buffer();
+            last_flush = now;
+        }
+    }
+}
+```
+
+Two flush triggers — buffer fill (75%) and timeout — together
+guarantee both throughput under load and freshness when idle.
+
+---
+
+## Log file format
+
+Binary log, big-endian struct dumps with a 1-byte type tag:
+
+```
++------+--------------------+
+| 0x01 | telemetry_fast_t   |   (37 bytes)
++------+--------------------+
+| 0x02 | telemetry_slow_t   |   (30 bytes)
++------+--------------------+
+| 0x03 | telemetry_event_t  |   (variable)
++------+--------------------+
+| 0xA0 | IMU_t              |   (32 bytes)
++------+--------------------+
+| 0xA1 | BARO_t             |   (16 bytes)
++------+--------------------+
+| 0xA2 | BNO_t              |
++------+--------------------+
+... etc
+```
+
+Decoded post-flight by `Dashboard Python/decode_log.py`. The packet
+struct definitions are in [`Codigo/Telemetry/telemetry.h`](/reference/types#packets) and
+[`Codigo/defs.h`](/reference/types).
+
+---
+
+## Tunables
+
+```c title="Codigo/Storage/sd_card_thread.h"
+#define SD_WRITE_BUFFER_SIZE     4096   /* bytes — amortise FatFS overhead */
+#define SD_FLUSH_TIMEOUT_MS      1000   /* freshness guarantee on idle    */
+```
+
+| Parameter | Effect |
+|---|---|
+| `SD_WRITE_BUFFER_SIZE` | Larger = less FatFS CPU; more lost on power cut. |
+| `SD_FLUSH_TIMEOUT_MS` | Shorter = fresher; more wear on the card. |
+
+<Callout type="info" emoji="ℹ️">
+  These are the parameters most tweaked during integration. The
+  current values (4 KB, 1 s) are tuned for SanDisk Industrial cards.
+  Cheaper cards may need a smaller buffer + longer timeout.
+</Callout>
+
+[Concept: storage subsystem →](/subsystems/storage)

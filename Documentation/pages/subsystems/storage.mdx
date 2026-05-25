@@ -1,0 +1,125 @@
+---
+title: Storage
+---
+
+import { Callout } from 'nextra/components';
+
+# Storage
+
+SD-card logging via FatFS over SPI2. Lowest priority on purpose — if
+the card is slow, nothing else slows down.
+
+<figure style={{ textAlign: 'center', margin: '1.5rem 0' }}>
+  <img
+    src="/images/storage-path.svg"
+    alt="Storage path — DataHandler queues into SDCard thread, FatFS layer below, SPI2 to microSD card"
+    loading="lazy"
+    style={{ maxWidth: '100%', height: 'auto', borderRadius: '0.5rem' }}
+  />
+</figure>
+
+## Thread main loop
+
+The thread waits on `queue_to_sd` for data packets. It buffers writes
+to amortise FatFS overhead, and flushes on either buffer fill or a
+timeout — whichever comes first.
+
+```c title="Codigo/Storage/sd_card_thread.c"
+void sd_card_thread_function(void *argument) {
+    sd_card_init();
+    sd_card_configure();
+
+    TickType_t last_flush = xTaskGetTickCount();
+    const TickType_t flush_timeout = pdMS_TO_TICKS(SD_FLUSH_TIMEOUT_MS);
+    data_packet_t packet;
+
+    while (1) {
+        TickType_t now = xTaskGetTickCount();
+
+        // Drain one packet from the queue (50 ms timeout)
+        if (xQueueReceive(queue_to_sd, &packet, pdMS_TO_TICKS(50)) == pdTRUE) {
+            log_data_packet(&packet);
+
+            // Flush when buffer is 75% full
+            if (buffer_pos > ((SD_WRITE_BUFFER_SIZE * 3) / 4)) {
+                flush_write_buffer();
+                last_flush = now;
+            }
+        }
+
+        // Timeout flush — guarantees data hits disk even at low rate
+        if ((now - last_flush) >= flush_timeout) {
+            if (buffer_pos > 0) flush_write_buffer();
+            last_flush = now;
+        }
+    }
+}
+```
+
+The two flush triggers — buffer fill and timeout — together guarantee
+both throughput (under load) and freshness (when idle).
+
+## Pause/resume
+
+The static thrust test pauses SD logging while the motor is running
+(write transients can corrupt the FatFS state on cheap cards). The
+test calls:
+
+```c
+void sd_card_pause(void) {
+    if (buffer_pos > 0 && sd_file_open) {
+        UINT bw;
+        f_write(&file, write_buffer, buffer_pos, &bw);  // flush first
+        f_sync(&file);
+        buffer_pos = 0;
+    }
+    sd_paused = true;
+}
+
+void sd_card_resume(void) {
+    sd_paused = false;
+}
+```
+
+Pre-flush before pause is critical — otherwise the buffered data is
+lost on the next reset.
+
+## Close (clean shutdown)
+
+Called on `STATE_SAFE` entry:
+
+```c
+void sd_card_close(void) {
+    flush_write_buffer();
+    if (sd_file_open) {
+        f_sync(&file);
+        f_close(&file);
+        sd_file_open = false;
+    }
+    f_mount(NULL, "", 0);
+}
+```
+
+## Log files
+
+| File                       | Contents                                                        |
+| -------------------------- | --------------------------------------------------------------- |
+| `flight_<n>.bin`           | Raw binary log: every IMU sample, estimator output, every event |
+| `static_<timestamp>.csv`   | Static thrust test output                                       |
+
+Binary format is `defs.h` struct dumps with a 1-byte type tag. Decode
+with the Python tool in `Dashboard Python/`. See the [API
+reference](/api/index.html) for field offsets.
+
+<Callout type="info" emoji="ℹ️">
+  Flush behaviour is the most-tweaked parameter on this thread. Too
+  aggressive (small buffer, short timeout) and you eat CPU on FatFS
+  overhead. Too lax and you lose data on a power cut.
+</Callout>
+
+## Files
+
+```
+Codigo/Storage/sd_card_thread.c    ← thread, queue draining, flush logic
+Codigo/Storage/fatfs_sd.c          ← FatFS SPI glue
+```
