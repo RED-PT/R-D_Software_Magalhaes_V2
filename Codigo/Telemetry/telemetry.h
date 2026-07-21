@@ -318,7 +318,7 @@ typedef struct test_control_packet_s {
  *  Phase 3-A bugfix: bumped 1 s → 2 s. The 1 s budget was too tight when the
  *  TDMA mode switch (flight → test) takes ~1 superframe to propagate; the
  *  first ctrl from the GS could land just past 1000 ms after RUNNING entry. */
-#define TEST_HEARTBEAT_TIMEOUT_MS   2000
+#define TEST_HEARTBEAT_TIMEOUT_MS   30000
 
 /** @} */ /* End of TelemetryPackets group */
 

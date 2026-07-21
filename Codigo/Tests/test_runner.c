@@ -35,7 +35,11 @@
 #include <string.h>
 
 #define COUNTDOWN_DURATION_MS  3000
-#define CTRL_FRESH_THRESHOLD_MS 200   /* > this: pass NULL (sub-heartbeat fail-safe) */
+/* Hold the last commanded setpoint between GS packets up to this age. Anything
+ * older falls through to on_run_tick with ctrl=NULL (which the ops module
+ * interprets as "coast to 0"). 1500 ms covers the 1 Hz keepalive with margin;
+ * absolute upper bound is TEST_HEARTBEAT_TIMEOUT_MS (after which we abort). */
+#define CTRL_FRESH_THRESHOLD_MS 3000
 
 /* ------------------------------------------------------------------------- */
 /*  Module state                                                             */

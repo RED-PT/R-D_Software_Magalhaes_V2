@@ -115,6 +115,10 @@ static uint8_t boot_error_idx = 0;
 
 // Calibration state machine
 static bool calibration_in_progress = false;
+
+bool fsm_is_baro_calibrating(void) {
+    return calibration_in_progress;
+}
 static uint32_t calibration_start_tick = 0;
 static uint8_t calibration_sample_count = 0;
 

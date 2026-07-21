@@ -171,8 +171,16 @@ let testMaxPWM = 0;
 /** @type {boolean} Whether a static thrust test is currently running */
 let testRunning = false;
 
-/** @type {boolean} Whether the motor has been calibrated */
-let motorCalibrated = false;
+/** @type {boolean} Whether the motor has been calibrated.
+ *  Persisted in sessionStorage so a browser refresh doesn't make the UI
+ *  think the FC is uncalibrated when the FC actually still is. The FC's
+ *  calibration state lives in MCU RAM and survives browser refresh — only
+ *  an FC power cycle resets it. We clear this on disconnect. */
+let motorCalibrated = sessionStorage.getItem('motorCalibrated') === '1';
+function setMotorCalibrated(v) {
+  motorCalibrated = !!v;
+  try { sessionStorage.setItem('motorCalibrated', v ? '1' : '0'); } catch (e) {}
+}
 
 /** @type {number} Timestamp when current test started (for client-side time tracking) */
 let testStartTime = 0;
@@ -817,10 +825,42 @@ function updateStatus(pkt) {
  */
 const LOG_PERSIST_LIMIT = 100000;
 
+/* Auto-pause-on-scroll: when the user scrolls up the console, we stop
+ * auto-scrolling so they can read/copy. A "↓ N new — click to follow" banner
+ * appears; clicking it (or scrolling back to the bottom) resumes follow mode. */
+let consoleFollowTail = true;
+let consoleNewCount = 0;
+const CONSOLE_AT_BOTTOM_PX = 8; // tolerance for "at bottom"
+
+function consoleUpdateFollowBanner() {
+  const btn = document.getElementById('consoleFollowBtn');
+  if (!btn) return;
+  if (consoleFollowTail || consoleNewCount === 0) {
+    btn.hidden = true;
+  } else {
+    btn.hidden = false;
+    const c = document.getElementById('consoleFollowCount');
+    if (c) c.textContent = String(consoleNewCount);
+  }
+}
+
+function consoleResumeFollow() {
+  consoleFollowTail = true;
+  consoleNewCount = 0;
+  const log = document.getElementById('consoleLog');
+  if (log) log.scrollTop = log.scrollHeight;
+  consoleUpdateFollowBanner();
+}
+
 function appendLog(text) {
   const log = document.getElementById('consoleLog');
   log.textContent += `${text}\n`;
-  log.scrollTop = log.scrollHeight;
+  if (consoleFollowTail) {
+    log.scrollTop = log.scrollHeight;
+  } else {
+    consoleNewCount += 1;
+    consoleUpdateFollowBanner();
+  }
   // Persist so a browser refresh doesn't lose the session log.
   try {
     let s = log.textContent;
@@ -831,6 +871,35 @@ function appendLog(text) {
     sessionStorage.setItem('consoleLog', s);
   } catch (e) { /* quota or disabled storage — silently drop */ }
 }
+
+(function wireConsoleControls() {
+  const log = document.getElementById('consoleLog');
+  if (log) {
+    log.addEventListener('scroll', () => {
+      const atBottom = (log.scrollHeight - log.scrollTop - log.clientHeight) <= CONSOLE_AT_BOTTOM_PX;
+      if (atBottom && !consoleFollowTail) {
+        consoleResumeFollow();
+      } else if (!atBottom && consoleFollowTail) {
+        consoleFollowTail = false;
+        consoleUpdateFollowBanner();
+      }
+    });
+  }
+  document.getElementById('consoleFollowBtn')?.addEventListener('click', consoleResumeFollow);
+  document.getElementById('consoleClearBtn')?.addEventListener('click', () => {
+    if (log) log.textContent = '';
+    try { sessionStorage.removeItem('consoleLog'); } catch (e) {}
+    consoleResumeFollow();
+  });
+  document.getElementById('consoleCopyBtn')?.addEventListener('click', async () => {
+    if (!log) return;
+    try {
+      await navigator.clipboard.writeText(log.textContent);
+      const btn = document.getElementById('consoleCopyBtn');
+      if (btn) { const t = btn.textContent; btn.textContent = 'Copied!'; setTimeout(() => { btn.textContent = t; }, 1000); }
+    } catch (e) { /* clipboard blocked — ignore */ }
+  });
+})();
 
 /**
  * Restore the console log from sessionStorage on page load.
@@ -1333,7 +1402,7 @@ function handleMotorCalEvent(eventType, payload) {
       break;
     case 18: // EVT_MOTOR_CALIBRATED
       console.log('[DEBUG] Motor CALIBRATED event received');
-      motorCalibrated = true;
+      setMotorCalibrated(true);
       appendLog('[MOTOR] Calibration complete!');
       if (consoleStatusEl) {
         consoleStatusEl.textContent = 'Motor calibrated - ready for test';
@@ -2022,6 +2091,20 @@ document.getElementById('setProfileBtn')?.addEventListener('click', () => {
   const profile = tpReadProfile();
   tpSendCommand('SET_PROFILE', { profile });
   tpSetLifecycle('CONFIGED');
+  /* Pre-arm the manual slider at the configured clamp so the user doesn't
+   * have to drag it after RUN. The clamp is also enforced as the slider's
+   * upper bound — going above the configured cap shouldn't be possible. */
+  if (testPage.mode === 'manual' && profile.max_throttle_clamp) {
+    const clampMilli = Math.round(profile.max_throttle_clamp * 10);
+    const throttleEl = document.getElementById('manualThrottle');
+    if (throttleEl) {
+      throttleEl.max = String(clampMilli);
+      throttleEl.value = String(clampMilli);
+    }
+    manualSnapshot.throttle_milli = clampMilli;
+    manualSnapshot.mask |= FIELD_THROTTLE;
+    tpFmtThrottle();
+  }
 });
 document.getElementById('armTestBtn')?.addEventListener('click', () => {
   tpSendCommand('ARM');
@@ -2071,35 +2154,20 @@ function tpFmtThrottle()  { document.getElementById('manualThrottleOut').textCon
 function tpFmtAlpha()     { document.getElementById('manualAlphaOut').textContent    = `${(manualSnapshot.alpha_centideg / 100).toFixed(2)} °`; }
 function tpFmtHRef()      { document.getElementById('manualHRefOut').textContent     = `${(manualSnapshot.h_ref_dm / 10).toFixed(1)} m`; }
 
-document.getElementById('manualThrottle')?.addEventListener('input', e => {
-  manualSnapshot.throttle_milli = parseInt(e.target.value, 10) || 0;
-  manualSnapshot.mask |= FIELD_THROTTLE;
-  tpFmtThrottle();
-});
-document.getElementById('manualAlpha')?.addEventListener('input', e => {
-  manualSnapshot.alpha_centideg = parseInt(e.target.value, 10) || 0;
-  manualSnapshot.mask |= FIELD_ALPHA;
-  tpFmtAlpha();
-});
-document.getElementById('manualHRef')?.addEventListener('input', e => {
-  manualSnapshot.h_ref_dm = Math.round((parseFloat(e.target.value) || 0) * 10);
-  manualSnapshot.mask |= FIELD_HREF;
-  tpFmtHRef();
-});
-
-/** Send a test_control packet at 10 Hz while in Manual + ARMED/COUNTDOWN/RUNNING/HOLD.
- *  The FC's heartbeat watchdog starts the moment it enters SUB_TEST_RUNNING and
- *  aborts after TEST_HEARTBEAT_TIMEOUT_MS without a packet. Sending earlier
- *  (during COUNTDOWN) keeps latest_ctrl_tick fresh so the first RUNNING tick
- *  doesn't race the watchdog. The FC only acts on the packets while in RUNNING,
- *  so this is safe in earlier substates. */
-function tpManualTick() {
+/* Send-on-change: send a test_control packet immediately when any slider
+ * moves, plus a 2 Hz keepalive during ARMED/COUNTDOWN/RUNNING/HOLD so the
+ * FC's heartbeat watchdog doesn't fire. The previous 10 Hz unconditional
+ * ticker caused 60+ binary packets in a typical test, each cycling through
+ * payload bytes that occasionally matched single-char commands when framing
+ * desynced. With the new 0xAA 0x55 sync header that misparse is impossible,
+ * but lower volume also reduces serial pressure and overall noise. */
+function tpSendManualPacket() {
   if (testPage.mode !== 'manual') return;
   const ls = testPage.lifecycle;
   if (ls !== 'ARMED' && ls !== 'COUNTDOWN' && ls !== 'RUNNING' && ls !== 'HOLD') return;
   if (!ws || ws.readyState !== WebSocket.OPEN) return;
   const mask = manualSnapshot.mask | FIELD_THROTTLE;
-  const flags = ls === 'HOLD' ? 2 : 1; // HOLD : RUN
+  const flags = ls === 'HOLD' ? 2 : 1;
   ws.send(JSON.stringify({
     type: 'test_control',
     field_mask: mask,
@@ -2112,7 +2180,33 @@ function tpManualTick() {
   const lastSentEl = document.getElementById('manualLastSent');
   if (lastSentEl) lastSentEl.textContent = new Date().toLocaleTimeString();
 }
-manualTickTimer = setInterval(tpManualTick, 100);
+
+document.getElementById('manualThrottle')?.addEventListener('input', e => {
+  manualSnapshot.throttle_milli = parseInt(e.target.value, 10) || 0;
+  manualSnapshot.mask |= FIELD_THROTTLE;
+  tpFmtThrottle();
+  tpSendManualPacket();
+});
+document.getElementById('manualAlpha')?.addEventListener('input', e => {
+  manualSnapshot.alpha_centideg = parseInt(e.target.value, 10) || 0;
+  manualSnapshot.mask |= FIELD_ALPHA;
+  tpFmtAlpha();
+  tpSendManualPacket();
+});
+document.getElementById('manualHRef')?.addEventListener('input', e => {
+  manualSnapshot.h_ref_dm = Math.round((parseFloat(e.target.value) || 0) * 10);
+  manualSnapshot.mask |= FIELD_HREF;
+  tpFmtHRef();
+  tpSendManualPacket();
+});
+
+/* Keepalive: 4 Hz. The TEST_INTERACTIVE TDMA on the GS Arduino only TX's
+ * test_ctrl in slot B (~2 Hz max), and competes with cmd/sync. With heavy
+ * packet loss on the radio (observed: heartbeat fires after 10 s of zero
+ * deliveries), sending faster than the radio can drain doesn't hurt — the
+ * GS just overwrites the latest pending packet. Burst arrival improves the
+ * odds at least 1-2 packets per CTRL_FRESH window reach the FC. */
+manualTickTimer = setInterval(tpSendManualPacket, 250);
 
 // Initial render
 tpUpdateConfigPanel();

@@ -288,13 +288,21 @@ void sensors_thread_function(void *argument) {
         }
 
         if ((ulNotificationValue & SENSOR_NOTIFY_BARO_TIMER) && baro_ready) {
-            BARO_t baro_data;
-            // Use calibrated reading to get AGL altitude (0 at launch pad)
-            if (MS5607_ReadWithCalibration(&baro_device, &baro_data, fsm_get_baro_calibration())) {
-                sensor_stats.baro_samples++;
-                data_handler_store_baro(&baro_data);
-            } else {
-                sensor_stats.baro_errors++;
+            /* Skip periodic read while FC-thread calibration is sampling the
+             * MS5607 — both share the same SPI bus and baro_device. Without
+             * this gate, calibration samples got corrupted by interleaved CS
+             * toggles, producing a wrong reference pressure (e.g. 730 mbar
+             * instead of ~1010 mbar at sea level). The skipped reads cost
+             * nothing since calibration is short (~1 s) and altitude is
+             * meaningless until cal completes anyway. */
+            if (!fsm_is_baro_calibrating()) {
+                BARO_t baro_data;
+                if (MS5607_ReadWithCalibration(&baro_device, &baro_data, fsm_get_baro_calibration())) {
+                    sensor_stats.baro_samples++;
+                    data_handler_store_baro(&baro_data);
+                } else {
+                    sensor_stats.baro_errors++;
+                }
             }
         }
 

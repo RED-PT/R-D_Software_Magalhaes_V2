@@ -1268,10 +1268,24 @@ void check_command_timeout() {
  * The state machine consumes whatever bytes are available each loop pass,
  * accumulates multi-byte sequences across loop iterations, and never
  * blocks. A 200 ms watchdog recovers from corrupted partials. */
+/* Binary frame framing (PC -> Arduino):
+ *   sync1=0xAA, sync2=0x55, type=0x01 (TEST_CTRL) -> 15 payload bytes
+ *   sync1=0xAA, sync2=0x55, type=0x02 (TEST_PROFILE) -> 32 payload bytes
+ * The 2-byte sync (both non-ASCII) makes accidental misparse of payload bytes
+ * as single-char commands impossible — the old '~'/'#' single-byte prefix was
+ * indistinguishable from a payload byte 0x7E/0x23, so a lost prefix turned the
+ * remaining bytes into 'P'/'T'/'A'/'S'/etc. commands. */
+#define PC_FRAME_SYNC_A      0xAA
+#define PC_FRAME_SYNC_B      0x55
+#define PC_FRAME_TEST_CTRL    0x01
+#define PC_FRAME_TEST_PROFILE 0x02
+
 typedef enum {
     PC_S_IDLE = 0,            /**< Waiting for the next command char */
-    PC_S_TEST_CTRL,           /**< After '~', collecting 15 binary bytes */
-    PC_S_TEST_PROFILE,        /**< After '#', collecting 32 binary bytes */
+    PC_S_SYNC1,               /**< Got 0xAA, waiting for 0x55 */
+    PC_S_FRAME_TYPE,          /**< Got sync, waiting for frame type byte */
+    PC_S_TEST_CTRL,           /**< Collecting 15 binary bytes */
+    PC_S_TEST_PROFILE,        /**< Collecting 32 binary bytes */
     PC_S_E_DIGITS             /**< After 'E', collecting 0–3 decimal digits */
 } pc_input_state_t;
 
@@ -1281,7 +1295,7 @@ static uint8_t  pc_count = 0;
 static uint8_t  pc_e_throttle = 0;
 static uint8_t  pc_e_digits = 0;
 static uint32_t pc_state_started_ms = 0;
-#define PC_STATE_TIMEOUT_MS 200
+#define PC_STATE_TIMEOUT_MS 1000
 
 static void pc_dispatch_static_test(void) {
     uint8_t throttle = pc_e_throttle == 0 ? 20 : pc_e_throttle;
@@ -1322,10 +1336,6 @@ void process_pc_input() {
      * a bare 'E' with no digits gets the default 20%). */
     if (pc_state != PC_S_IDLE && (now - pc_state_started_ms) > PC_STATE_TIMEOUT_MS) {
         if (pc_state == PC_S_E_DIGITS) pc_dispatch_static_test();
-        else if (debug_enabled) {
-            PC_SERIAL.print(F("[PC] state timeout, st=")); PC_SERIAL.print(pc_state);
-            PC_SERIAL.print(F(" cnt=")); PC_SERIAL.println(pc_count);
-        }
         pc_state = PC_S_IDLE;
         pc_count = 0;
     }
@@ -1336,10 +1346,8 @@ void process_pc_input() {
 
         switch (pc_state) {
             case PC_S_IDLE:
-                if (c == '~') {
-                    pc_state = PC_S_TEST_CTRL; pc_count = 0; pc_state_started_ms = now;
-                } else if (c == '#') {
-                    pc_state = PC_S_TEST_PROFILE; pc_count = 0; pc_state_started_ms = now;
+                if (c == PC_FRAME_SYNC_A) {
+                    pc_state = PC_S_SYNC1; pc_state_started_ms = now;
                 } else if (c == PC_CMD_STATIC_TEST) {
                     pc_state = PC_S_E_DIGITS; pc_e_throttle = 0; pc_e_digits = 0;
                     pc_state_started_ms = now;
@@ -1348,7 +1356,35 @@ void process_pc_input() {
                 }
                 break;
 
+            case PC_S_SYNC1:
+                if (c == PC_FRAME_SYNC_B) {
+                    pc_state = PC_S_FRAME_TYPE; pc_state_started_ms = now;
+                } else {
+                    /* Not a real frame — abandon and re-process this byte from IDLE.
+                     * 0xAA followed by anything-but-0x55 is noise. */
+                    pc_state = PC_S_IDLE;
+                    /* Re-feed: if it's a known single-char cmd dispatch, else drop. */
+                    if (c != PC_FRAME_SYNC_A) pc_handle_single_char((char)c);
+                    else { pc_state = PC_S_SYNC1; pc_state_started_ms = now; }
+                }
+                break;
+
+            case PC_S_FRAME_TYPE:
+                pc_state_started_ms = now;
+                pc_count = 0;
+                if (c == PC_FRAME_TEST_CTRL)       pc_state = PC_S_TEST_CTRL;
+                else if (c == PC_FRAME_TEST_PROFILE) pc_state = PC_S_TEST_PROFILE;
+                else                                 pc_state = PC_S_IDLE; /* unknown type */
+                break;
+
             case PC_S_TEST_CTRL:
+                /* Refresh watchdog per byte. Without this, a slow main-loop
+                 * iteration (radio TX, status reports) can cause the 200 ms
+                 * watchdog to fire mid-frame, reset state to IDLE, and let the
+                 * remaining payload bytes be misparsed as ASCII commands —
+                 * which is exactly how 0x50/'P', 0x54/'T', 0x53/'S' etc. were
+                 * accidentally dispatching PING/TEST/FORCE_SAFE during tests. */
+                pc_state_started_ms = now;
                 pending_test_ctrl[pc_count++] = c;
                 if (pc_count >= TEST_CTRL_PKT_SIZE) {
                     test_ctrl_pending = true;
@@ -1357,6 +1393,7 @@ void process_pc_input() {
                 break;
 
             case PC_S_TEST_PROFILE:
+                pc_state_started_ms = now;
                 pc_buf[pc_count++] = c;
                 if (pc_count >= 32) {
                     send_command(CMD_SET_TEST_PROFILE, pc_buf, 32);

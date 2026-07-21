@@ -813,7 +813,8 @@ async def websocket_endpoint(websocket: WebSocket):
                 if tc == 'SET_PROFILE':
                     params = build_set_test_profile_params(msg.get('profile') or {})
                     if params is not None:
-                        app.state.reader.send_command(b'#' + params)
+                        # PC->Arduino framing: 0xAA 0x55 + type(0x02=TEST_PROFILE) + 32 bytes
+                        app.state.reader.send_command(b'\xAA\x55\x02' + params)
                 elif tc == 'ARM':    app.state.reader.send_command('A')
                 elif tc == 'RUN':    app.state.reader.send_command('T')   # CMD_START_TEST
                 elif tc == 'HOLD':   app.state.reader.send_command('H')
@@ -836,7 +837,8 @@ async def websocket_endpoint(websocket: WebSocket):
                     field_mask=msg.get('field_mask', 0),
                     flags=msg.get('flags', 0),
                 )
-                app.state.reader.send_command(b'~' + pkt)
+                # PC->Arduino framing: 0xAA 0x55 + type(0x01=TEST_CTRL) + 15 bytes
+                app.state.reader.send_command(b'\xAA\x55\x01' + pkt)
     except WebSocketDisconnect:
         manager.disconnect(websocket)
 

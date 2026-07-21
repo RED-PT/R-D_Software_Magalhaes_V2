@@ -603,6 +603,13 @@ bool fsm_is_logging_enabled(void);
 bool fsm_is_baro_calibrated(void);
 
 /**
+ * @brief Check if a barometer calibration is currently in progress.
+ * Used by sensors_thread to suspend its periodic baro read so FC-thread
+ * calibration samples don't race for the SPI bus.
+ */
+bool fsm_is_baro_calibrating(void);
+
+/**
  * @brief Get barometer calibration data
  * @return Pointer to calibration structure, or NULL if not calibrated
  */

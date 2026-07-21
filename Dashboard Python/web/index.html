@@ -405,8 +405,15 @@
 
             <!-- Right Panel: Event Log -->
             <div class="card console-log">
-              <div class="card-title">Console</div>
-              <pre id="consoleLog"></pre>
+              <div class="card-title">
+                Console
+                <button id="consoleClearBtn" class="console-tool-btn" title="Clear console">Clear</button>
+                <button id="consoleCopyBtn" class="console-tool-btn" title="Copy all">Copy</button>
+              </div>
+              <div class="console-log-wrap">
+                <pre id="consoleLog"></pre>
+                <button id="consoleFollowBtn" class="console-follow-btn" hidden>↓ <span id="consoleFollowCount">0</span> new — click to follow</button>
+              </div>
             </div>
           </div>
         </section>
