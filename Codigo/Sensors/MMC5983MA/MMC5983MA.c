@@ -78,9 +78,12 @@ bool MMC5983MA_Configure(MMC5983MA_t *dev) {
     }
     osDelay(1);
 
-    // Enable continuous measurement at 1000 Hz
+    // Enable continuous measurement at 1000 Hz.
+    // Cmm_en is BIT 3 (0x08) in Internal Control 2; the old value 0x04|0x07
+    // (= 0x07) set only CM_FREQ and never actually enabled continuous mode,
+    // so no measurements (and no DRDY interrupts) were generated.
     if (!MMC5983MA_WriteRegister(dev, MMC5983MA_REG_CTRL2,
-                                 (0x04 | 0x07))) {  // Cmm_en | CM_Freq=1000Hz
+                                 (0x08 | 0x07))) {  // Cmm_en | CM_Freq=1000Hz
         return false;
     }
     osDelay(1);
@@ -101,12 +104,20 @@ bool MMC5983MA_StartReadDMA(MMC5983MA_t *dev) {
     }
 
     // Prepare TX buffer: [COMMAND][DUMMIES]
-    // Read from XOUT0 (0x00) through TOUT (0x07) = 8 bytes of data
-    dev->tx_buffer[0] = (1 << 7) | (MMC5983MA_REG_XOUT0 << 1);  // Read from XOUT0
+    // Read from XOUT0 (0x00) through TOUT (0x07) = 8 bytes of data.
+    // MMC5983MA SPI frame: bit7 = READ, bits[6:0] = register address
+    // (no shift — verify on hardware, see MMC5983MA_ReadRegister note).
+    dev->tx_buffer[0] = 0x80 | MMC5983MA_REG_XOUT0;  // Read from XOUT0
     memset(&dev->tx_buffer[1], 0x00, 8);
+
+    /* Assert CS for the DMA frame (was missing — with software CS the sensor
+     * never saw the transaction). Deasserted in HAL_SPI_TxRxCpltCallback /
+     * the error path. */
+    CS_MAG_LOW();
 
     // Single DMA TransmitReceive
     if (HAL_SPI_TransmitReceive_DMA(dev->hspi, dev->tx_buffer, dev->read_buffer, 9) != HAL_OK) {
+        CS_MAG_HIGH();
         return false;
     }
 
@@ -144,10 +155,13 @@ bool MMC5983MA_ProcessData(MMC5983MA_t *dev, MAG_t *output) {
         return false;
     }
 
-    // Convert raw counts to Gauss (18-bit: 16384 Counts/G)
-    output->mag_x = (float)dev->mag_x_raw / MMC5983MA_SENSITIVITY_18BIT;
-    output->mag_y = (float)dev->mag_y_raw / MMC5983MA_SENSITIVITY_18BIT;
-    output->mag_z = (float)dev->mag_z_raw / MMC5983MA_SENSITIVITY_18BIT;
+    // Convert raw counts to Gauss (18-bit: 16384 Counts/G).
+    // The output is OFFSET-BINARY: null field = 2^17 = 131072 counts.
+    // Without subtracting the offset every reading came out positive,
+    // centred at ~+8 G.
+    output->mag_x = (float)(dev->mag_x_raw - 131072) / MMC5983MA_SENSITIVITY_18BIT;
+    output->mag_y = (float)(dev->mag_y_raw - 131072) / MMC5983MA_SENSITIVITY_18BIT;
+    output->mag_z = (float)(dev->mag_z_raw - 131072) / MMC5983MA_SENSITIVITY_18BIT;
 
     // Convert temperature: (TOUT_raw * 0.8) - 75
     // Range: -75~125°C at 0.8°C/LSB
@@ -169,7 +183,11 @@ static bool MMC5983MA_ReadRegister(MMC5983MA_t *dev, uint8_t reg, uint8_t *data)
         return false;
     }
 
-    tx_buf[0] = (1 << 7) | (reg << 1);
+    /* MMC5983MA SPI: bit7 = READ, bits[6:0] = register address. The old
+     * `(reg << 1)` encoding addressed the wrong register (e.g. Product ID
+     * 0x2F became 0x5E) — if the mag ever passed init with that encoding,
+     * re-verify this change on hardware with a logic analyzer. */
+    tx_buf[0] = 0x80 | (reg & 0x7F);
     tx_buf[1] = 0x00;
 
     HAL_GPIO_WritePin(CS_MAG_PORT, CS_MAG_PIN, GPIO_PIN_RESET);
@@ -191,7 +209,7 @@ static bool MMC5983MA_WriteRegister(MMC5983MA_t *dev, uint8_t reg, uint8_t data)
         return false;
     }
 
-    tx_buf[0] = (0 << 7) | (reg << 1);
+    tx_buf[0] = (reg & 0x7F);   /* write: bit7 = 0, 7-bit address (no shift) */
     tx_buf[1] = data;
 
     HAL_GPIO_WritePin(CS_MAG_PORT, CS_MAG_PIN, GPIO_PIN_RESET);

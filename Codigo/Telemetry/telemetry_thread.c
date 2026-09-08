@@ -54,7 +54,8 @@ static bool have_gps = false;     /**< GPS data received at least once */
  * @brief Telemetry thread main function
  * @see telemetry_thread.h for detailed documentation
  */
-void telemetry_thread_function() {
+void telemetry_thread_function(void *argument) {
+	(void)argument;
 	printf("[TELEM] Thread started\r\n");
 	fsm_report_thread_started("TELEMETRY");
 	data_packet_t packet;

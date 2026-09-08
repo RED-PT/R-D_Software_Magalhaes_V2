@@ -101,17 +101,22 @@ bool ASM330LHHX_Configure(ASM330LHHX_t *dev) {
     // Disable I3C interface
     if (asm330lhhx_i3c_disable_set(&dev_ctx, ASM330LHHX_I3C_DISABLE) != 0) {return false;}
 
-    // Set full speed
-    if (asm330lhhx_xl_data_rate_set(&dev_ctx, ASM330LHHX_XL_ODR_6667Hz) != 0) {return false;}
-    if (asm330lhhx_gy_data_rate_set(&dev_ctx, ASM330LHHX_GY_ODR_6667Hz) != 0) {return false;}
+    /* ODR 417 Hz — the whole acquisition pipeline (EXTI → task notification
+     * → DMA → notification), buffer sizes and queue depths are designed for
+     * ~400 Hz. The previous 6667 Hz setting produced a 150 µs-period DRDY
+     * interrupt storm the pipeline could never service. */
+    if (asm330lhhx_xl_data_rate_set(&dev_ctx, ASM330LHHX_XL_ODR_417Hz) != 0) {return false;}
+    if (asm330lhhx_gy_data_rate_set(&dev_ctx, ASM330LHHX_GY_ODR_417Hz) != 0) {return false;}
 
     // Set full scales
     if (asm330lhhx_xl_full_scale_set(&dev_ctx, ASM330LHHX_2g)) {return false;}
     if (asm330lhhx_gy_full_scale_set(&dev_ctx, ASM330LHHX_2000dps)) {return false;}
 
-    // Enable data ready interrupt
+    /* Enable DATA-READY on INT1. The old code set md1_cfg.int1_ff, which is
+     * the FREE-FALL event interrupt — DRDY never fired per sample. */
     if (asm330lhhx_pin_int1_route_get(&dev_ctx, &int1_route) != 0) {return false;}
-    int1_route.md1_cfg.int1_ff = PROPERTY_ENABLE;
+    int1_route.md1_cfg.int1_ff = PROPERTY_DISABLE;
+    int1_route.int1_ctrl.int1_drdy_xl = PROPERTY_ENABLE;
     if (asm330lhhx_pin_int1_route_set(&dev_ctx, &int1_route) != 0) {return false;}
 
     return true;
@@ -122,12 +127,22 @@ bool ASM330LHHX_StartReadDMA(ASM330LHHX_t *dev) {
         return false;
     }
 
-    // Prepare TX buffer: [COMMAND][DUMMIES]
-    dev->tx_buffer[0] = (1 << 7) | (0x20 << 1);  // Read from TEMP_OUT_L (0x20)
+    /* ST SPI frame: bit7 = READ, bits[6:0] = register address (NO shift —
+     * the old `(0x20 << 1)` addressed register 0x40/CTRL1_XL instead of
+     * OUT_TEMP_L; platform_read() in this same file already used the
+     * correct encoding). */
+    dev->tx_buffer[0] = 0x80 | 0x20;  // Read from OUT_TEMP_L (0x20)
     memset(&dev->tx_buffer[1], 0x00, 14);
+
+    /* Assert CS for the whole DMA frame. The DMA path never drove CS before
+     * (only the blocking platform functions did), so with software CS the
+     * sensor never saw the transaction. Deasserted in
+     * HAL_SPI_TxRxCpltCallback / the error path. */
+    CS_IMU_LOW();
 
     // Single DMA TransmitReceive
     if (HAL_SPI_TransmitReceive_DMA(dev->hspi, dev->tx_buffer, dev->read_buffer, 15) != HAL_OK) {
+        CS_IMU_HIGH();
         return false;
     }
 
@@ -158,14 +173,16 @@ bool ASM330LHHX_ProcessData(ASM330LHHX_t *dev, IMU_t *output) {
         return false;
     }
 
-    // Convert raw values to physical units
-    output->accel_x = asm330lhhx_from_fs2g_to_mg(dev->accel_raw[0]);
-    output->accel_y = asm330lhhx_from_fs2g_to_mg(dev->accel_raw[1]);
-    output->accel_z = asm330lhhx_from_fs2g_to_mg(dev->accel_raw[2]);
+    /* Convert to the units defs.h documents: g and dps. The ST helpers
+     * return mg / mdps; storing those unscaled made telemetry_build_fast's
+     * ×1000 / ×100 rescaling overflow its int16 fields. */
+    output->accel_x = asm330lhhx_from_fs2g_to_mg(dev->accel_raw[0]) / 1000.0f;
+    output->accel_y = asm330lhhx_from_fs2g_to_mg(dev->accel_raw[1]) / 1000.0f;
+    output->accel_z = asm330lhhx_from_fs2g_to_mg(dev->accel_raw[2]) / 1000.0f;
 
-    output->gyro_x = asm330lhhx_from_fs2000dps_to_mdps(dev->gyro_raw[0]);
-    output->gyro_y = asm330lhhx_from_fs2000dps_to_mdps(dev->gyro_raw[1]);
-    output->gyro_z = asm330lhhx_from_fs2000dps_to_mdps(dev->gyro_raw[2]);
+    output->gyro_x = asm330lhhx_from_fs2000dps_to_mdps(dev->gyro_raw[0]) / 1000.0f;
+    output->gyro_y = asm330lhhx_from_fs2000dps_to_mdps(dev->gyro_raw[1]) / 1000.0f;
+    output->gyro_z = asm330lhhx_from_fs2000dps_to_mdps(dev->gyro_raw[2]) / 1000.0f;
 
     output->temperature_c = asm330lhhx_from_lsb_to_celsius(dev->temp_raw);
     output->timestamp_ms = HAL_GetTick();

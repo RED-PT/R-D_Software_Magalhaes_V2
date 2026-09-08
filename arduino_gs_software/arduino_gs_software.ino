@@ -170,6 +170,13 @@ uint8_t  tdma_slots         = TDMA_FLIGHT_SLOTS;
 #define TX_START_OFFSET_MS      ((tdma_slot_ms * 5) / 100)
 #define TX_END_OFFSET_MS        ((tdma_slot_ms * 80) / 100)
 
+/* Estimated latency between the FC *starting* a transmission and the last
+ * byte arriving here: LoRa air time (~15 ms) + E22 buffering + 37 bytes at
+ * 9600 baud on SoftwareSerial (~39 ms). Used to back-date the TDMA anchor —
+ * without it the GS clock sat ~60 ms late, eating most of the guard margin.
+ * Tune ±20 ms if collisions reappear after changing baud rate / air rate. */
+#define GS_RX_LATENCY_MS        60
+
 /** @brief True iff this slot is a GS-TX slot under the active preset. */
 inline bool tdma_slot_is_tx(uint8_t slot) {
     if (tdma_mode_current == TDMA_MODE_TEST_INTERACTIVE)
@@ -1279,14 +1286,17 @@ void check_command_timeout() {
 #define PC_FRAME_SYNC_B      0x55
 #define PC_FRAME_TEST_CTRL    0x01
 #define PC_FRAME_TEST_PROFILE 0x02
+#define PC_FRAME_ASCII_CMD    0x03  /**< len byte + up to 8 ASCII chars ('P', 'E50', ...) */
 
 typedef enum {
-    PC_S_IDLE = 0,            /**< Waiting for the next command char */
+    PC_S_IDLE = 0,            /**< Waiting for a frame sync byte */
     PC_S_SYNC1,               /**< Got 0xAA, waiting for 0x55 */
     PC_S_FRAME_TYPE,          /**< Got sync, waiting for frame type byte */
     PC_S_TEST_CTRL,           /**< Collecting 15 binary bytes */
     PC_S_TEST_PROFILE,        /**< Collecting 32 binary bytes */
-    PC_S_E_DIGITS             /**< After 'E', collecting 0–3 decimal digits */
+    PC_S_E_DIGITS,            /**< After 'E', collecting 0–3 decimal digits (framed) */
+    PC_S_CMD_LEN,             /**< ASCII-cmd frame: waiting for length byte */
+    PC_S_CMD_DATA             /**< ASCII-cmd frame: collecting len chars */
 } pc_input_state_t;
 
 static pc_input_state_t pc_state = PC_S_IDLE;
@@ -1294,8 +1304,32 @@ static uint8_t  pc_buf[32];
 static uint8_t  pc_count = 0;
 static uint8_t  pc_e_throttle = 0;
 static uint8_t  pc_e_digits = 0;
+static uint8_t  pc_cmd_len = 0;
 static uint32_t pc_state_started_ms = 0;
 #define PC_STATE_TIMEOUT_MS 1000
+
+static void pc_dispatch_static_test(void);
+static void pc_handle_single_char(char c);
+
+/** Dispatch a framed ASCII command string (len 1..8). 'E'+digits = static
+ *  test with throttle %, anything else = per-char single commands. */
+static void pc_dispatch_ascii_cmd(const uint8_t *buf, uint8_t len) {
+    if (len == 0) return;
+    if (buf[0] == PC_CMD_STATIC_TEST) {
+        pc_e_throttle = 0; pc_e_digits = 0;
+        for (uint8_t i = 1; i < len && pc_e_digits < 3; i++) {
+            if (buf[i] >= '0' && buf[i] <= '9') {
+                pc_e_throttle = pc_e_throttle * 10 + (buf[i] - '0');
+                pc_e_digits++;
+            }
+        }
+        pc_dispatch_static_test();
+        return;
+    }
+    for (uint8_t i = 0; i < len; i++) {
+        pc_handle_single_char((char)buf[i]);
+    }
+}
 
 static void pc_dispatch_static_test(void) {
     uint8_t throttle = pc_e_throttle == 0 ? 20 : pc_e_throttle;
@@ -1346,35 +1380,54 @@ void process_pc_input() {
 
         switch (pc_state) {
             case PC_S_IDLE:
+                /* STRICT framing: only 0xAA opens anything. Every other byte
+                 * is DROPPED. Bare ASCII dispatch is gone — after any lost
+                 * byte it turned binary payload into commands (0x55 = 'U' =
+                 * RESUME, 0x41 = 'A' = ARM, ...). The dashboard now wraps
+                 * ASCII console commands in the 0x03 frame. */
                 if (c == PC_FRAME_SYNC_A) {
                     pc_state = PC_S_SYNC1; pc_state_started_ms = now;
-                } else if (c == PC_CMD_STATIC_TEST) {
-                    pc_state = PC_S_E_DIGITS; pc_e_throttle = 0; pc_e_digits = 0;
-                    pc_state_started_ms = now;
-                } else {
-                    pc_handle_single_char((char)c);
                 }
                 break;
 
             case PC_S_SYNC1:
                 if (c == PC_FRAME_SYNC_B) {
                     pc_state = PC_S_FRAME_TYPE; pc_state_started_ms = now;
+                } else if (c == PC_FRAME_SYNC_A) {
+                    /* stay: 0xAA 0xAA 0x55 must still sync */
+                    pc_state_started_ms = now;
                 } else {
-                    /* Not a real frame — abandon and re-process this byte from IDLE.
-                     * 0xAA followed by anything-but-0x55 is noise. */
-                    pc_state = PC_S_IDLE;
-                    /* Re-feed: if it's a known single-char cmd dispatch, else drop. */
-                    if (c != PC_FRAME_SYNC_A) pc_handle_single_char((char)c);
-                    else { pc_state = PC_S_SYNC1; pc_state_started_ms = now; }
+                    pc_state = PC_S_IDLE;  /* noise — drop */
                 }
                 break;
 
             case PC_S_FRAME_TYPE:
                 pc_state_started_ms = now;
                 pc_count = 0;
-                if (c == PC_FRAME_TEST_CTRL)       pc_state = PC_S_TEST_CTRL;
+                if (c == PC_FRAME_TEST_CTRL)         pc_state = PC_S_TEST_CTRL;
                 else if (c == PC_FRAME_TEST_PROFILE) pc_state = PC_S_TEST_PROFILE;
+                else if (c == PC_FRAME_ASCII_CMD)    pc_state = PC_S_CMD_LEN;
                 else                                 pc_state = PC_S_IDLE; /* unknown type */
+                break;
+
+            case PC_S_CMD_LEN:
+                pc_state_started_ms = now;
+                if (c >= 1 && c <= 8) {
+                    pc_cmd_len = c;
+                    pc_count = 0;
+                    pc_state = PC_S_CMD_DATA;
+                } else {
+                    pc_state = PC_S_IDLE;  /* invalid length — drop frame */
+                }
+                break;
+
+            case PC_S_CMD_DATA:
+                pc_state_started_ms = now;
+                pc_buf[pc_count++] = c;
+                if (pc_count >= pc_cmd_len) {
+                    pc_dispatch_ascii_cmd(pc_buf, pc_cmd_len);
+                    pc_state = PC_S_IDLE;
+                }
                 break;
 
             case PC_S_TEST_CTRL:

@@ -62,6 +62,7 @@ static FIL file;
 static bool sd_initialized = false;
 static bool sd_file_open = false;
 static volatile bool sd_paused = false;  // Pause flag for motor tests (volatile for cross-task visibility)
+static volatile bool sd_pause_request = false;  // Set by other threads; honoured by the SD thread
 
 /** @brief Guards every FatFS operation on `file` and `fs`. FatFS is not
  *  reentrant by default; without this mutex, sd_card_pause()/close() called
@@ -111,8 +112,20 @@ static void sd_card_configure(void) {
 
     printf("Configuring SD logging...\r\n");
 
+    /* Pick the first unused log index. The old fixed "log_0.csv" +
+     * FA_CREATE_ALWAYS destroyed the previous flight/test log on every
+     * power cycle. */
     char filename[32];
-    snprintf(filename, sizeof(filename), "log_0.csv");
+    FILINFO fno;
+    uint16_t idx;
+    for (idx = 0; idx < 1000; idx++) {
+        snprintf(filename, sizeof(filename), "log_%03u.csv", idx);
+        xSemaphoreTake(file_mtx, portMAX_DELAY);
+        FRESULT st = f_stat(filename, &fno);
+        xSemaphoreGive(file_mtx);
+        if (st == FR_NO_FILE) break;      /* free slot found */
+        if (st != FR_OK) break;           /* fs error — just use this name */
+    }
 
     xSemaphoreTake(file_mtx, portMAX_DELAY);
     FRESULT res = f_open(&file, filename, FA_WRITE | FA_CREATE_ALWAYS);
@@ -304,6 +317,18 @@ void sd_card_thread_function(void *argument) {
     while(1) {
         TickType_t now = xTaskGetTickCount();
 
+        /* Honour pause requests HERE, in the thread that owns write_buffer.
+         * sd_card_pause() used to flush and zero buffer_pos from the FSM
+         * thread while this thread could be mid-append — file_mtx only
+         * guarded the FatFS calls, not the RAM buffer. */
+        if (sd_pause_request && !sd_paused) {
+            if (buffer_pos > 0) {
+                flush_write_buffer();
+            }
+            sd_paused = true;
+            printf("[SD] Paused for motor test\r\n");
+        }
+
         if (xQueueReceive(queue_to_sd, &packet, pdMS_TO_TICKS(50)) == pdTRUE) {
             log_data_packet(&packet);
             stats_packets++;
@@ -340,26 +365,31 @@ void sd_card_thread_function(void *argument) {
 }
 
 void sd_card_pause(void) {
-    // Flush any pending data before pausing (while motor is still off)
-    if (buffer_pos > 0 && sd_file_open && file_mtx != NULL) {
-        xSemaphoreTake(file_mtx, portMAX_DELAY);
-        UINT bw;
-        f_write(&file, write_buffer, buffer_pos, &bw);
-        f_sync(&file);
-        xSemaphoreGive(file_mtx);
-        buffer_pos = 0;
+    /* Request the pause and wait (bounded) for the SD thread to flush and
+     * acknowledge — the buffer is only ever touched by its owning thread. */
+    sd_pause_request = true;
+
+    for (int i = 0; i < 50; i++) {          /* up to ~500 ms */
+        if (sd_paused || !sd_file_open) return;
+        osDelay(10);
     }
-    sd_paused = true;
-    printf("[SD] Paused for motor test\r\n");
+    printf("[SD] WARNING: pause not acknowledged in time\r\n");
 }
 
 void sd_card_resume(void) {
+    sd_pause_request = false;
     sd_paused = false;
     printf("[SD] Resumed\r\n");
 }
 
 bool sd_card_is_paused(void) {
     return sd_paused;
+}
+
+uint8_t sd_card_status(void) {
+    /* 0 = OK for the slow-telemetry sd_status field. The radio used to
+     * hardcode 1 (= error) here. */
+    return (sd_initialized && sd_file_open) ? 0 : 1;
 }
 
 void sd_card_close(void) {

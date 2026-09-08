@@ -35,15 +35,19 @@
 #include "data_handler_thread.h"
 
 void data_handler_notify_threshold(void) {
+    /* Called from the sensors THREAD (data_handler_store_*), not an ISR —
+     * the FromISR variant + portYIELD_FROM_ISR was incorrect API usage. */
     if (data_handler_thread_id != NULL) {
-        BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-        xTaskNotifyFromISR(data_handler_thread_id, DATA_HANDLER_NOTIFY_THRESHOLD, eSetBits, &xHigherPriorityTaskWoken);
-        portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+        xTaskNotify((TaskHandle_t)data_handler_thread_id, DATA_HANDLER_NOTIFY_THRESHOLD, eSetBits);
     }
 }
 
 static void flush_buffer_to_queues(ram_circular_buffer_t *cb, data_type_t type, uint32_t *seq) {
     if (ram_circular_buffer_is_empty(cb)) {return;}
+
+    /* SD is state-gated here (it used to be gated only on the now-removed
+     * store-time path, so in practice everything was logged all the time). */
+    bool sd_enabled = fsm_should_queue_to_sd();
 
     while (!ram_circular_buffer_is_empty(cb)) {
         if (xSemaphoreTake(cb->mutex, pdMS_TO_TICKS(5)) != pdTRUE) {
@@ -60,40 +64,35 @@ static void flush_buffer_to_queues(ram_circular_buffer_t *cb, data_type_t type, 
 
         data_packet_t packet = {
             .type = type,
-            .data_ptr = read_addr,
             .timestamp_ms = 0,
             .sequence = (*seq)++,
-            .source_cb = cb
         };
+        /* COPY the sample out of the buffer while holding the mutex, then
+         * release the slot. The old code queued a *pointer* to the slot and
+         * advanced tail — consumers could read a recycled slot. */
+        memcpy(&packet.payload, read_addr, cb->sample_size);
+        cb->tail = (cb->tail + 1) % cb->capacity;
+        /* Release BEFORE the queue sends: holding the buffer mutex across a
+         * blocking xQueueSend stalled the (higher-priority) sensors thread's
+         * writes and silently dropped samples. */
+        xSemaphoreGive(cb->mutex);
 
         switch (type) {
-            case DATA_TYPE_IMU:
-                packet.timestamp_ms = ((IMU_t*)read_addr)->timestamp_ms;
-                break;
-            case DATA_TYPE_BARO:
-                packet.timestamp_ms = ((BARO_t*)read_addr)->timestamp_ms;
-                break;
-            case DATA_TYPE_MAG:
-                packet.timestamp_ms = ((MAG_t*)read_addr)->timestamp_ms;
-                break;
-            case DATA_TYPE_BNO:
-                packet.timestamp_ms = ((BNO_t*)read_addr)->timestamp_ms;
-                break;
-            case DATA_TYPE_GPS:
-                packet.timestamp_ms = ((GPS_t*)read_addr)->timestamp_ms;
-                break;
-            default:
-                break;
+            case DATA_TYPE_IMU:  packet.timestamp_ms = packet.payload.imu.timestamp_ms;  break;
+            case DATA_TYPE_BARO: packet.timestamp_ms = packet.payload.baro.timestamp_ms; break;
+            case DATA_TYPE_MAG:  packet.timestamp_ms = packet.payload.mag.timestamp_ms;  break;
+            case DATA_TYPE_BNO:  packet.timestamp_ms = packet.payload.bno.timestamp_ms;  break;
+            case DATA_TYPE_GPS:  packet.timestamp_ms = packet.payload.gps.timestamp_ms;  break;
+            default: break;
         }
 
         // Prioritize SD with blocking send (short timeout)
-        xQueueSend(queue_to_sd, &packet, pdMS_TO_TICKS(5));
+        if (sd_enabled) {
+            xQueueSend(queue_to_sd, &packet, pdMS_TO_TICKS(5));
+        }
 
-        // Telemetry is lower priority
+        // Telemetry is lower priority (always sent, for GS monitoring)
         xQueueSend(queue_to_telemetry, &packet, 0);
-
-        cb->tail = (cb->tail + 1) % cb->capacity;
-        xSemaphoreGive(cb->mutex);
     }
 }
 
@@ -138,7 +137,8 @@ static void flush_all_buffers(void) {
     flush_buffer_to_queues(&cb_gps, DATA_TYPE_GPS, &seq_tel_gps);
 }
 
-void data_handler_thread_function() {
+void data_handler_thread_function(void *argument) {
+    (void)argument;
     printf("Data Handler thread started...\r\n");
     fsm_report_thread_started("DATA_HANDLER");
     fsm_report_init_status("DATA_HANDLER", true);

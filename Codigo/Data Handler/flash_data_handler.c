@@ -158,136 +158,65 @@ bool ram_circular_buffer_is_empty(ram_circular_buffer_t *cb) {
     return cb->head == cb->tail;
 }
 
-static void distribute_data_packet(const data_packet_t *packet) {
-    // Check FSM state for conditional routing
-    // NOTE: Use different names to avoid shadowing the global queue handles!
-    bool should_queue_to_est = fsm_should_queue_to_estimator();
-    bool should_queue_to_sd = fsm_should_queue_to_sd();
-
-    // Send to estimator only if in appropriate state
-    if (should_queue_to_est) {
-        if (packet->type == DATA_TYPE_IMU ||
-            packet->type == DATA_TYPE_BARO ||
-            packet->type == DATA_TYPE_MAG) {
-            xQueueSend(queue_to_estimator, packet, 0);
-        }
-    }
-
-    // Always send to telemetry (for GS monitoring)
-    xQueueSend(queue_to_telemetry, packet, 0);
-
-    // Send to SD only if logging enabled
-    if (should_queue_to_sd) {
-        xQueueSend(queue_to_sd, packet, 0);
+/* Routing (deduplicated):
+ *  - Circular buffers hold the backlog; the data-handler thread flushes them
+ *    to SD + telemetry in batches (see data_handler_thread.c). Store-time
+ *    code no longer also sends to SD/telemetry — the old scheme delivered
+ *    every IMU/BARO sample to those queues TWICE.
+ *  - The estimator gets a low-latency copy at store time, only for the types
+ *    it consumes (IMU + BARO) and only in states where it runs. Sending
+ *    MAG/BNO/GPS into the 4-deep estimator queue just flooded it and dropped
+ *    the BARO packets the estimator actually needed. */
+static void send_to_estimator(data_packet_t *packet) {
+    if (fsm_should_queue_to_estimator()) {
+        xQueueSend(queue_to_estimator, packet, 0);
     }
 }
 
 // Helper Functions for Sensors
 void data_handler_store_imu(const IMU_t *imu_data) {
-    const void *data_ptr = NULL;
-
-    // Store in RAM circular buffer and get pointer to stored data
-    if (ram_circular_buffer_write(&cb_imu, imu_data, &data_ptr)) {
-        // Create data packet with pointer to data in buffer
+    if (ram_circular_buffer_write(&cb_imu, imu_data, NULL)) {
         data_packet_t packet = {
             .type = DATA_TYPE_IMU,
-            .data_ptr = data_ptr,
             .timestamp_ms = imu_data->timestamp_ms,
             .sequence = seq_imu++,
-            .source_cb = &cb_imu
         };
-
-        // Distribute to consumers
-        distribute_data_packet(&packet);
-
-        // Check if buffer crossed threshold
+        packet.payload.imu = *imu_data;
+        send_to_estimator(&packet);
         check_and_notify_threshold();
     }
 }
 
 void data_handler_store_baro(const BARO_t *baro_data) {
-    const void *data_ptr = NULL;
-
-    if (ram_circular_buffer_write(&cb_baro, baro_data, &data_ptr)) {
+    if (ram_circular_buffer_write(&cb_baro, baro_data, NULL)) {
         data_packet_t packet = {
             .type = DATA_TYPE_BARO,
-            .data_ptr = data_ptr,
             .timestamp_ms = baro_data->timestamp_ms,
             .sequence = seq_baro++,
-            .source_cb = &cb_baro
         };
-
-        distribute_data_packet(&packet);
-
+        packet.payload.baro = *baro_data;
+        send_to_estimator(&packet);
         check_and_notify_threshold();
     }
 }
 
 void data_handler_store_mag(const MAG_t *mag_data) {
-    const void *data_ptr = NULL;
-
-    if (ram_circular_buffer_write(&cb_mag, mag_data, &data_ptr)) {
-        data_packet_t packet = {
-            .type = DATA_TYPE_MAG,
-            .data_ptr = data_ptr,
-            .timestamp_ms = mag_data->timestamp_ms,
-            .sequence = seq_mag++,
-            .source_cb = &cb_mag
-        };
-        // Send to estimator immediately (high priority)
-        xQueueSend(queue_to_estimator, &packet, 0);
-
-        // Check if buffer crossed threshold
+    if (ram_circular_buffer_write(&cb_mag, mag_data, NULL)) {
+        seq_mag++;
         check_and_notify_threshold();
     }
 }
 
 void data_handler_store_bno(const BNO_t *bno_data) {
-    const void *data_ptr = NULL;
-
-    if (ram_circular_buffer_write(&cb_bno, bno_data, &data_ptr)) {
-        data_packet_t packet = {
-            .type = DATA_TYPE_BNO,
-            .data_ptr = data_ptr,
-            .timestamp_ms = bno_data->timestamp_ms,
-            .sequence = seq_bno++,
-            .source_cb = &cb_bno
-        };
-        // Send to estimator immediately
-        xQueueSend(queue_to_estimator, &packet, 0);
-
-        // Check if buffer crossed threshold
+    if (ram_circular_buffer_write(&cb_bno, bno_data, NULL)) {
+        seq_bno++;
         check_and_notify_threshold();
     }
 }
 
 void data_handler_store_gps(const GPS_t *gps_data) {
-    const void *data_ptr = NULL;
-
-    if (ram_circular_buffer_write(&cb_gps, gps_data, &data_ptr)) {
-        data_packet_t packet = {
-            .type = DATA_TYPE_GPS,
-            .data_ptr = data_ptr,
-            .timestamp_ms = gps_data->timestamp_ms,
-            .sequence = seq_gps++,
-            .source_cb = &cb_gps
-        };
-        // Send to estimator immediately
-        xQueueSend(queue_to_estimator, &packet, 0);
-
-        // Check if buffer crossed threshold
+    if (ram_circular_buffer_write(&cb_gps, gps_data, NULL)) {
+        seq_gps++;
         check_and_notify_threshold();
     }
-}
-
-void data_handler_store_event(const telemetry_event_t *event_data) {
-    // Events don't go in circular buffer, send directly
-    data_packet_t packet = {
-        .type = DATA_TYPE_EVENT,
-        .data_ptr = event_data,
-        .timestamp_ms = event_data->time,
-        .sequence = 0,
-        .source_cb = NULL  // No circular buffer for events
-    };
-    distribute_data_packet(&packet);
 }

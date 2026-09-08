@@ -100,7 +100,7 @@ extern osThreadId_t data_handler_thread_id;
  * - Queue depths
  * - Flush counts by trigger type
  */
-void data_handler_thread_function();
+void data_handler_thread_function(void *argument);
 
 /**
  * @brief Notify data handler that a buffer threshold was crossed

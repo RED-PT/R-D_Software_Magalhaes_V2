@@ -16,10 +16,10 @@
  * ## Sensor Overview
  * | Sensor | config.h macro | Rate | Data Type |
  * |------------|----------------|--------|-------------------|
- * | ASM330LHHX | SPI_IMU_BARO | 416 Hz | 6-axis IMU (DMA) |
- * | MMC5983MA | SPI_MAG | 100 Hz | 3-axis MAG (DMA) |
- * | MS5607 | SPI_IMU_BARO | 50 Hz | Barometer (poll) |
- * | BNO055 | I2C_BNO | 100 Hz | 9-DOF Fusion (DMA)|
+ * | ASM330LHHX | SPI_IMU_BARO | 417 Hz | 6-axis IMU (DMA) |
+ * | MMC5983MA | SPI_MAG | DRDY | 3-axis MAG (DMA) |
+ * | MS5607 | SPI_IMU_BARO | 10 Hz | Barometer (poll) |
+ * | BNO055 | I2C_BNO | 10 Hz | 9-DOF Fusion (DMA)|
  * | u-blox GPS | UART_UBLOX | 1 Hz | Position/Vel (DMA)|
  *
  * ## Data Flow
@@ -124,20 +124,19 @@ static void I2C_BusRecovery(I2C_HandleTypeDef *hi2c) {
     printf("[SENSORS] I2C bus recovery complete\r\n");
 }
 
-// Timer Callbacks
+// Timer Callbacks — these run in the FreeRTOS timer daemon TASK, not an ISR;
+// the FromISR API + portYIELD_FROM_ISR was incorrect usage.
 void vBaroTimerCallback(TimerHandle_t xTimer) {
-    if (osKernelGetState() == osKernelRunning) {
-        BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-        xTaskNotifyFromISR(sensors_thread_id, SENSOR_NOTIFY_BARO_TIMER, eSetBits, &xHigherPriorityTaskWoken);
-        portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+    (void)xTimer;
+    if (sensors_thread_id != NULL) {
+        xTaskNotify((TaskHandle_t)sensors_thread_id, SENSOR_NOTIFY_BARO_TIMER, eSetBits);
     }
 }
 
 void vBnoTimerCallback(TimerHandle_t xTimer) {
-    if (osKernelGetState() == osKernelRunning) {
-        BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-        xTaskNotifyFromISR(sensors_thread_id, SENSOR_NOTIFY_BNO_TIMER, eSetBits, &xHigherPriorityTaskWoken);
-        portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+    (void)xTimer;
+    if (sensors_thread_id != NULL) {
+        xTaskNotify((TaskHandle_t)sensors_thread_id, SENSOR_NOTIFY_BNO_TIMER, eSetBits);
     }
 }
 
@@ -268,7 +267,11 @@ void sensors_thread_function(void *argument) {
         // [REST OF YOUR ORIGINAL LOOP CODE - UNCHANGED]
 
         if (ulNotificationValue & SENSOR_NOTIFY_IMU_DRDY) {
-            if (imu_ready && spi1_active_sensor == ACTIVE_SENSOR_NONE) {
+            /* Also hold off while the FC thread is running baro calibration:
+             * those blocking MS5607 reads share SPI1, and __HAL_LOCK is NOT
+             * thread-safe — concurrent traffic corrupted both transfers. */
+            if (imu_ready && spi1_active_sensor == ACTIVE_SENSOR_NONE &&
+                !fsm_is_baro_calibrating()) {
                 spi1_active_sensor = ACTIVE_SENSOR_IMU;
                 if (!ASM330LHHX_StartReadDMA(&imu_device)) {
                     spi1_active_sensor = ACTIVE_SENSOR_NONE;
@@ -295,7 +298,14 @@ void sensors_thread_function(void *argument) {
              * instead of ~1010 mbar at sea level). The skipped reads cost
              * nothing since calibration is short (~1 s) and altitude is
              * meaningless until cal completes anyway. */
-            if (!fsm_is_baro_calibrating()) {
+            /* SPI1 arbitration: the MS5607 read is fully blocking (~20 ms)
+             * on the same bus as the IMU DMA. Only start it when the bus is
+             * free, and claim it so the IMU DRDY path can't start a DMA
+             * mid-read. (Previously both could drive SPI1 at once — two CS
+             * lines low simultaneously, MISO contention, corrupted data.) */
+            if (!fsm_is_baro_calibrating() &&
+                spi1_active_sensor == ACTIVE_SENSOR_NONE) {
+                spi1_active_sensor = ACTIVE_SENSOR_BARO;
                 BARO_t baro_data;
                 if (MS5607_ReadWithCalibration(&baro_device, &baro_data, fsm_get_baro_calibration())) {
                     sensor_stats.baro_samples++;
@@ -303,7 +313,10 @@ void sensors_thread_function(void *argument) {
                 } else {
                     sensor_stats.baro_errors++;
                 }
+                spi1_active_sensor = ACTIVE_SENSOR_NONE;
             }
+            /* If the bus was busy this tick, simply skip — next 100 ms tick
+             * will retry; one skipped baro sample is harmless. */
         }
 
         if (ulNotificationValue & SENSOR_NOTIFY_BNO_TIMER) {
@@ -335,6 +348,7 @@ void sensors_thread_function(void *argument) {
         }
 
         if (ulNotificationValue & SENSOR_NOTIFY_GPS_DATA) {
+            gps_update_calls++;
             if (UBLOX_GPS_Update(&gps_device)) {
             	gps_sentences_found++;
             	ulNotificationValue |= SENSOR_NOTIFY_GPS_DR;
@@ -387,6 +401,7 @@ void sensors_thread_function(void *argument) {
 
         if (ulNotificationValue & SENSOR_NOTIFY_DMA_ERROR) {
             printf("ERROR: DMA error occurred\r\n");
+            sensor_stats.dma_errors++;
             CS_IMU_HIGH();
             CS_BARO_HIGH();
             CS_MAG_HIGH();

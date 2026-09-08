@@ -101,57 +101,65 @@ int GPS_validate(char *nmeastr) {
  * @param[in]  GPSstrParse Null-terminated, checksum-validated NMEA sentence
  */
 void GPS_parse(GPS_t *gps, char *GPSstrParse) {
-    // Temporary variables for NMEA format conversion
+    /* All numeric fields are parsed into local temporaries and assigned
+     * afterwards. The old code passed (int*)&gps->lock / &gps->satellites
+     * to sscanf — those fields are uint8_t, so each %d stored 4 bytes and
+     * clobbered the neighbouring struct members (undefined behaviour and
+     * real data corruption). */
     float nmea_lat, nmea_lon;
     char ns, ew;
     char msl_units;
+    int lock_i, sats_i;
+    float utc, hdop, msl_alt;
+    int fields;
 
-    if (!strncmp(GPSstrParse, "$GNGGA", 6)) {
-        if (sscanf(GPSstrParse, "$GNGGA,%f,%f,%c,%f,%c,%d,%d,%f,%f,%c",
-                &gps->utc_time, &nmea_lat, &ns, &nmea_lon, &ew,
-                (int*)&gps->lock, (int*)&gps->satellites,
-                &gps->hdop, &gps->msl_altitude, &msl_units) >= 1) {
+    if (!strncmp(GPSstrParse, "$GNGGA", 6) || !strncmp(GPSstrParse, "$GPGGA", 6)) {
+        fields = sscanf(GPSstrParse + 6, ",%f,%f,%c,%f,%c,%d,%d,%f,%f,%c",
+                        &utc, &nmea_lat, &ns, &nmea_lon, &ew,
+                        &lock_i, &sats_i, &hdop, &msl_alt, &msl_units);
 
-            // Convert NMEA to decimal degrees
-            gps->dec_latitude = GPS_nmea_to_dec(nmea_lat, ns);
+        if (fields >= 7) {
+            /* Full position fix parsed */
+            gps->utc_time      = utc;
+            gps->dec_latitude  = GPS_nmea_to_dec(nmea_lat, ns);
             gps->dec_longitude = GPS_nmea_to_dec(nmea_lon, ew);
-            return;
+            gps->lock          = (uint8_t)lock_i;
+            gps->satellites    = (uint8_t)sats_i;
+            if (fields >= 8) gps->hdop = hdop;
+            if (fields >= 9) gps->msl_altitude = msl_alt;
+        } else {
+            /* GGA with empty lat/lon fields = no fix. The old `>= 1` check
+             * bailed out here without touching `lock`, so once a fix had
+             * been seen the GS showed "GPS locked" forever. */
+            gps->lock = 0;
+            gps->satellites = 0;
+            if (fields >= 1) gps->utc_time = utc;
         }
-    }
-
-    else if (!strncmp(GPSstrParse, "$GPGGA", 6)) {
-        if (sscanf(GPSstrParse, "$GPGGA,%f,%f,%c,%f,%c,%d,%d,%f,%f,%c",
-                &gps->utc_time, &nmea_lat, &ns, &nmea_lon, &ew,
-                (int*)&gps->lock, (int*)&gps->satellites,
-                &gps->hdop, &gps->msl_altitude, &msl_units) >= 1) {
-
-            // Convert NMEA to decimal degrees
-            gps->dec_latitude = GPS_nmea_to_dec(nmea_lat, ns);
-            gps->dec_longitude = GPS_nmea_to_dec(nmea_lon, ew);
-            return;
-        }
+        return;
     }
 
     else if (!strncmp(GPSstrParse, "$GPRMC", 6)) {
-        char rmc_status;
+        char rmc_status = 'V';
         int date;
-        float mag_dev;
+        float mag_dev, speed, course;
         char mag_dev_unit;
 
-        if (sscanf(GPSstrParse, "$GPRMC,%f,%c,%f,%c,%f,%c,%f,%f,%6d,%f,%c",
-                &gps->utc_time, &rmc_status, &nmea_lat, &ns, &nmea_lon, &ew,
-                &gps->speed_k, &gps->course_d, &date, &mag_dev, &mag_dev_unit) >= 1) {
+        fields = sscanf(GPSstrParse, "$GPRMC,%f,%c,%f,%c,%f,%c,%f,%f,%6d,%f,%c",
+                        &utc, &rmc_status, &nmea_lat, &ns, &nmea_lon, &ew,
+                        &speed, &course, &date, &mag_dev, &mag_dev_unit);
 
-            // Convert NMEA to decimal degrees
-            gps->dec_latitude = GPS_nmea_to_dec(nmea_lat, ns);
+        if (fields >= 6) {
+            gps->utc_time      = utc;
+            gps->dec_latitude  = GPS_nmea_to_dec(nmea_lat, ns);
             gps->dec_longitude = GPS_nmea_to_dec(nmea_lon, ew);
-
-            // Set lock status from RMC 'A'ctive status
-            if (rmc_status == 'A') {
-                gps->lock = 1;
-            }
-            return;
+            if (fields >= 7) gps->speed_k  = speed;
+            if (fields >= 8) gps->course_d = course;
+            gps->lock = (rmc_status == 'A') ? 1 : 0;
+        } else if (fields >= 2) {
+            /* Status parsed but no position — 'V' (void) means no fix. */
+            if (rmc_status != 'A') gps->lock = 0;
         }
+        return;
     }
 }
 
@@ -400,21 +408,23 @@ bool UBLOX_GPS_SetRate(UBLOX_GPS_t *dev, uint16_t rate_ms) {
 bool UBLOX_GPS_SaveConfig(UBLOX_GPS_t *dev) {
     uint8_t payload[13] = {0};
 
-    // Save to all storage layers
-    payload[0] = 0xFF;  // clearMask (clear all)
-    payload[1] = 0xFF;
-    payload[2] = 0xFF;
-    payload[3] = 0xFF;
+    // Save to all storage layers.
+    // clearMask must be 0: "clear all + save all" first reverted the stored
+    // config to defaults — the standard save recipe is clear=0, save=all.
+    payload[0] = 0x00;  // clearMask: none
+    payload[1] = 0x00;
+    payload[2] = 0x00;
+    payload[3] = 0x00;
 
     payload[4] = 0xFF;  // saveMask (save all)
     payload[5] = 0xFF;
     payload[6] = 0xFF;
     payload[7] = 0xFF;
 
-    payload[8] = 0xFF;  // loadMask (load all)
-    payload[9] = 0xFF;
-    payload[10] = 0xFF;
-    payload[11] = 0xFF;
+    payload[8] = 0x00;  // loadMask: none (don't reload over what we just set)
+    payload[9] = 0x00;
+    payload[10] = 0x00;
+    payload[11] = 0x00;
 
     payload[12] = 0x17; // deviceMask (BBR, Flash, EEPROM, SPI Flash)
 

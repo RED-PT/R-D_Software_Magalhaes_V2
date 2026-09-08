@@ -272,7 +272,8 @@ void SX126x_WriteRegister(uint16_t address, uint8_t *data, uint8_t length);
 void SX126x_ReadRegister(uint16_t address, uint8_t *data, uint8_t length);
 
 // Interrupt Handlers
-void SX126x_DIO1_IRQ_Handler(void);
+void SX126x_DIO1_IRQ_Handler(void);   /* ISR-safe: only sets a flag */
+void SX126x_Pump(void);               /* Call from radio thread each loop iteration */
 void SX126x_SPI_TxCpltCallback(void);
 void SX126x_SPI_RxCpltCallback(void);
 

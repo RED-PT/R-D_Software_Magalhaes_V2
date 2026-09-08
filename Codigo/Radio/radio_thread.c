@@ -70,6 +70,7 @@
 #include <string.h>
 #include "Threads/create_threads.h"
 #include "Tests/test_runner.h"
+#include "Storage/sd_card_thread.h"   /* sd_card_status() for slow telemetry */
 
 // ============================================================================
 // Phase 3-A (A4): TDMA preset abstraction (shared between UART and SPI)
@@ -304,11 +305,11 @@ static void tx_slow_telemetry(uint8_t slot) {
 
     if (sensor_mutex && xSemaphoreTake(sensor_mutex, pdMS_TO_TICKS(2)) == pdTRUE) {
         telemetry_build_slow(&pkt, tdma_ctx.frame_id, tdma_ctx.slow_seq++,
-                             &latest_gps, &latest_baro, 100, 1, mode, slow_slot);
+                             &latest_gps, &latest_baro, 100, sd_card_status(), mode, slow_slot);
         xSemaphoreGive(sensor_mutex);
     } else {
         telemetry_build_slow(&pkt, tdma_ctx.frame_id, tdma_ctx.slow_seq++,
-                             NULL, NULL, 100, 1, mode, slow_slot);
+                             NULL, NULL, 100, sd_card_status(), mode, slow_slot);
     }
 
     if (E22_Transmit((uint8_t*)&pkt, sizeof(pkt)) == E22_OK) {
@@ -507,14 +508,18 @@ static void handle_synced_mode(void) {
         tx_done_this_slot = false;
     }
 
+    /* TDMA slotting only gates *our* transmissions. RX is processed on every
+     * iteration regardless of slot: the E22 receives continuously anyway,
+     * and the old "only read RX after TX window" gating meant that whenever
+     * FC and GS disagreed about the slot layout (e.g. during the flight→test
+     * TDMA mode switch) inbound commands sat unread until the link was
+     * declared dead. Reading RX unconditionally makes mode-switch races and
+     * small sync offsets benign — worst case a packet is lost on air to a
+     * TX collision, and the GS's 5–10 Hz repetition covers that. */
     if (slot_is_tx_fast(slot)) {
-        // FC TX (fast telemetry)
         if (time_in_slot >= tx_start_ms && time_in_slot < tx_end_ms) {
             tx_pending_events();
             tx_fast_telemetry(slot);
-        }
-        if (time_in_slot >= tx_end_ms || tx_done_this_slot) {
-            process_rx_data();
         }
     }
     else if (slot_is_slow(slot)) {
@@ -523,14 +528,9 @@ static void handle_synced_mode(void) {
             tx_pending_events();
             tx_slow_telemetry(slot);
         }
-        if (tx_done_this_slot) {
-            process_rx_data();
-        }
     }
-    else {
-        // RX slot — listen for GS commands/sync only
-        process_rx_data();
-    }
+
+    process_rx_data();
 }
 
 static void handle_unsynced_mode(void) {
@@ -580,9 +580,9 @@ static void handle_unsynced_mode(void) {
 // ============================================================================
 // Main Thread
 // ============================================================================
-void radio_thread_function() {
+void radio_thread_function(void *argument) {
+    (void)argument;
     printf("[RADIO] Thread starting...\r\n");
-    fsm_report_thread_started("RADIO");
 
     // Initialize
     sensor_mutex = xSemaphoreCreateMutex();
@@ -596,6 +596,9 @@ void radio_thread_function() {
         vTaskSuspend(NULL);
     }
     fsm_report_init_status("RADIO", true);
+    /* Report "started" only once the radio actually works — reporting before
+     * init let the boot check pass with a dead radio. */
+    fsm_report_thread_started("RADIO");
     printf("[RADIO] E22 initialized\r\n");
     printf("[RADIO] Packet sizes: FAST=%u SLOW=%u CMD=%u SYNC=%u\r\n",
            sizeof(telemetry_fast_t), sizeof(telemetry_slow_t),
@@ -854,11 +857,11 @@ static void tx_slow_telemetry(uint8_t slot) {
 
     if (sensor_mutex && xSemaphoreTake(sensor_mutex, pdMS_TO_TICKS(2)) == pdTRUE) {
         telemetry_build_slow(&pkt, tdma_ctx.frame_id, tdma_ctx.slow_seq++,
-                             &latest_gps, &latest_baro, 100, 1, mode, slow_slot);
+                             &latest_gps, &latest_baro, 100, sd_card_status(), mode, slow_slot);
         xSemaphoreGive(sensor_mutex);
     } else {
         telemetry_build_slow(&pkt, tdma_ctx.frame_id, tdma_ctx.slow_seq++,
-                             NULL, NULL, 100, 1, mode, slow_slot);
+                             NULL, NULL, 100, sd_card_status(), mode, slow_slot);
     }
 
     if (SX126x_TransmitDMA((uint8_t*)&pkt, sizeof(pkt))) {
@@ -930,6 +933,10 @@ static void process_test_ctrl(test_control_packet_t *ctrl) {
         radio_stats.crc_errors++;
         return;
     }
+    /* Same fix as the UART backend: any valid RX from the GS counts as link
+     * alive — without this, a GS that prioritises test_ctrl over sync trips
+     * the 5 s sync timeout mid-test and the manual test dies. */
+    tdma_ctx.last_sync_tick = HAL_GetTick();
     test_runner_submit_control(ctrl);
 }
 
@@ -1063,13 +1070,13 @@ static void handle_synced_mode(void) {
         tx_done_this_slot = false;
     }
 
+    /* TDMA slotting only gates *our* transmissions; RX is polled on every
+     * iteration (see UART variant comment — same rationale: mode-switch
+     * races and small sync offsets must not leave inbound packets unread). */
     if (slot_is_tx_fast(slot)) {
         if (time_in_slot >= tx_start_ms && time_in_slot < tx_end_ms) {
             tx_pending_events();
             tx_fast_telemetry(slot);
-        }
-        if (time_in_slot >= tx_end_ms || tx_done_this_slot) {
-            process_rx_data();
         }
     }
     else if (slot_is_slow(slot)) {
@@ -1077,14 +1084,9 @@ static void handle_synced_mode(void) {
             tx_pending_events();
             tx_slow_telemetry(slot);
         }
-        if (tx_done_this_slot) {
-            process_rx_data();
-        }
     }
-    else {
-        // RX slot — listen for GS commands/sync only
-        process_rx_data();
-    }
+
+    process_rx_data();
 }
 
 /**
@@ -1138,9 +1140,9 @@ static void handle_unsynced_mode(void) {
 // ============================================================================
 
 /** @copydoc radio_thread_function */
-void radio_thread_function() {
+void radio_thread_function(void *argument) {
+    (void)argument;
     printf("[RADIO] SPI thread starting...\r\n");
-    fsm_report_thread_started("RADIO");
 
     sensor_mutex = xSemaphoreCreateMutex();
     if (!sensor_mutex) {
@@ -1154,6 +1156,8 @@ void radio_thread_function() {
         vTaskSuspend(NULL);
     }
     fsm_report_init_status("RADIO", true);
+    /* Report "started" only once the radio actually works. */
+    fsm_report_thread_started("RADIO");
 
     printf("[RADIO] SX126x initialized — freq=%luHz SF=%u BW=%u\r\n",
            lora_config.frequency_hz,
@@ -1180,6 +1184,10 @@ void radio_thread_function() {
 
     while (1) {
         uint32_t now = HAL_GetTick();
+
+        /* Service deferred SX126x work (TX trigger, DIO1 IRQ status,
+         * TX-wedge recovery) in thread context — ISRs only set flags now. */
+        SX126x_Pump();
 
         if (tdma_ctx.state == TDMA_SYNCED) {
             handle_synced_mode();

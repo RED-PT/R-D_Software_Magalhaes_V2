@@ -42,18 +42,9 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-/**
- * @defgroup PWMLimits ESC PWM Duty Cycle Limits
- * @brief Duty cycle range for standard ESC signals
- *
- * At 50Hz (20ms period):
- * - 5% duty = 1ms pulse = minimum throttle
- * - 10% duty = 2ms pulse = maximum throttle
- * @{
- */
-#define DC_MIN 5.5f         /**< Minimum duty cycle (ESC arm signal) */
-#define DC_MAX 9.7f        /**< Maximum duty cycle (full throttle) */
-/** @} */
+/* (Legacy DC_MIN/DC_MAX duty-cycle macros removed — the driver works in
+ * microsecond pulse widths now; see PULSE_MIN_US / PULSE_MAX_US in
+ * PWM_FUNCTIONS.c. The old values no longer matched and were unused.) */
 
 /**
  * @defgroup ThrottleLimits Throttle Percentage Limits

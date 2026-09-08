@@ -88,7 +88,7 @@ static void check_flight_events(float altitude_m, float velocity_ms) {
     if (!liftoff_detected && velocity_ms > LIFTOFF_VELOCITY_THRESHOLD_MS) {
         liftoff_detected = true;
         printf("[EST] LIFTOFF detected! vel=%.2f m/s\r\n", velocity_ms);
-        fsm_send_event(FSM_EVT_LIFTOFF, &velocity_ms);
+        fsm_send_event(FSM_EVT_LIFTOFF, &velocity_ms, sizeof(float));
     }
 
     // Apogee detection (velocity crosses zero going negative)
@@ -96,7 +96,7 @@ static void check_flight_events(float altitude_m, float velocity_ms) {
         if (velocity_ms < 0 && fabsf(velocity_ms) > APOGEE_VELOCITY_THRESHOLD_MS) {
             apogee_detected = true;
             printf("[EST] APOGEE detected! alt=%.2f m\r\n", altitude_m);
-            fsm_send_event(FSM_EVT_APOGEE, &altitude_m);
+            fsm_send_event(FSM_EVT_APOGEE, &altitude_m, sizeof(float));
         }
     }
 
@@ -105,7 +105,7 @@ static void check_flight_events(float altitude_m, float velocity_ms) {
         if (altitude_m <= fsm_ctx.profile.flare_altitude_m) {
             flare_triggered = true;
             printf("[EST] FLARE altitude reached! alt=%.2f m\r\n", altitude_m);
-            fsm_send_event(FSM_EVT_FLARE_ALT, &altitude_m);
+            fsm_send_event(FSM_EVT_FLARE_ALT, &altitude_m, sizeof(float));
         }
     }
 
@@ -115,7 +115,7 @@ static void check_flight_events(float altitude_m, float velocity_ms) {
             touchdown_detected = true;
             touchdown_time = HAL_GetTick();
             printf("[EST] TOUCHDOWN detected! alt=%.2f m\r\n", altitude_m);
-            fsm_send_event(FSM_EVT_TOUCHDOWN, &altitude_m);
+            fsm_send_event(FSM_EVT_TOUCHDOWN, &altitude_m, sizeof(float));
         }
     }
 
@@ -124,7 +124,7 @@ static void check_flight_events(float altitude_m, float velocity_ms) {
         if (fabsf(velocity_ms) < LANDED_VELOCITY_THRESHOLD_MS) {
             if ((HAL_GetTick() - touchdown_time) > LANDED_TIME_MS) {
                 printf("[EST] LANDED confirmed!\r\n");
-                fsm_send_event(FSM_EVT_LANDED, NULL);
+                fsm_send_event(FSM_EVT_LANDED, NULL, 0);
             }
         } else {
             // Reset timer if still moving
@@ -135,13 +135,13 @@ static void check_flight_events(float altitude_m, float velocity_ms) {
     // Safety: Altitude limit exceeded
     if (altitude_m > fsm_ctx.profile.max_altitude_m) {
         printf("[EST] WARNING: Max altitude exceeded!\r\n");
-        fsm_send_event(FSM_EVT_ALTITUDE_LIMIT, &altitude_m);
+        fsm_send_event(FSM_EVT_ALTITUDE_LIMIT, &altitude_m, sizeof(float));
     }
 
     // Safety: Velocity limit exceeded
     if (fabsf(velocity_ms) > fsm_ctx.profile.max_velocity_ms) {
         printf("[EST] WARNING: Max velocity exceeded!\r\n");
-        fsm_send_event(FSM_EVT_VELOCITY_LIMIT, &velocity_ms);
+        fsm_send_event(FSM_EVT_VELOCITY_LIMIT, &velocity_ms, sizeof(float));
     }
 }
 
@@ -160,7 +160,8 @@ static void reset_flight_detection(void) {
 // ============================================================================
 // Main Thread
 // ============================================================================
-void estimator_thread_function() {
+void estimator_thread_function(void *argument) {
+    (void)argument;
 
     printf("[EST] Estimator Thread started...\r\n");
     fsm_report_thread_started("ESTIMATOR");
@@ -176,40 +177,45 @@ void estimator_thread_function() {
     TickType_t last_stats = xTaskGetTickCount();
 
     while(1) {
-        // Receive sensor data
+        // Receive sensor data. Block for the first packet, then drain the
+        // queue non-blocking — the old one-packet-per-iteration receive let
+        // the 4-deep queue overflow and drop BARO packets under load.
+        bool got_data = false;
         if (xQueueReceive(queue_to_estimator, &packet, pdMS_TO_TICKS(100)) == pdTRUE) {
-            data_packet_lock(&packet);
+            do {
+                switch(packet.type) {
+                    case DATA_TYPE_BARO: {
+                        BARO_t baro;
+                        data_packet_copy_baro(&packet, &baro);
+                        current_altitude_m = baro.altitude_m;
 
-            switch(packet.type) {
-                case DATA_TYPE_BARO: {
-                    BARO_t baro;
-                    data_packet_copy_baro(&packet, &baro);
-                    current_altitude_m = baro.altitude_m;
-
-                    // Simple velocity estimation (derivative of altitude)
-                    uint32_t now = HAL_GetTick();
-                    if (prev_time_ms > 0) {
-                        float dt_s = (now - prev_time_ms) / 1000.0f;
-                        if (dt_s > 0.001f) {
-                            current_velocity_ms = (current_altitude_m - prev_altitude_m) / dt_s;
+                        // Velocity from the *sample* timestamps — using
+                        // HAL_GetTick() at dequeue time meant queueing jitter
+                        // corrupted the derivative.
+                        if (prev_time_ms > 0 && baro.timestamp_ms > prev_time_ms) {
+                            float dt_s = (baro.timestamp_ms - prev_time_ms) / 1000.0f;
+                            if (dt_s > 0.001f) {
+                                current_velocity_ms = (current_altitude_m - prev_altitude_m) / dt_s;
+                            }
                         }
+                        prev_altitude_m = current_altitude_m;
+                        prev_time_ms = baro.timestamp_ms;
+                        got_data = true;
+                        break;
                     }
-                    prev_altitude_m = current_altitude_m;
-                    prev_time_ms = now;
-                    break;
+
+                    case DATA_TYPE_IMU: {
+                        // TODO: Use IMU for better state estimation
+                        break;
+                    }
+
+                    default:
+                        break;
                 }
+            } while (xQueueReceive(queue_to_estimator, &packet, 0) == pdTRUE);
+        }
 
-                case DATA_TYPE_IMU: {
-                    // TODO: Use IMU for better state estimation
-                    break;
-                }
-
-                default:
-                    break;
-            }
-
-            data_packet_unlock(&packet);
-
+        if (got_data) {
             // Check for flight events
             check_flight_events(current_altitude_m, current_velocity_ms);
         }

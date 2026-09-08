@@ -79,7 +79,7 @@
  *
  * @note Does not directly handle radio - that's the Radio thread's job.
  */
-void telemetry_thread_function();
+void telemetry_thread_function(void *argument);
 
 /** @} */ // End of Telemetry group
 

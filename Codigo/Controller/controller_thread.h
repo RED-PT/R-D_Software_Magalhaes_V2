@@ -115,7 +115,7 @@ extern controller_state_t ctrl_state;
  *
  * @note This function runs as a FreeRTOS task and never returns
  */
-void controller_thread_function();
+void controller_thread_function(void *argument);
 
 /** @} */
 

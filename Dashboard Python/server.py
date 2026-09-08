@@ -309,6 +309,18 @@ def build_set_test_profile_params(profile):
     return bytes(buf)
 
 
+def frame_ascii_cmd(s) -> bytes:
+    """Wrap an ASCII console command ('P', 'A', 'E50', ...) in the
+    0xAA 0x55 0x03 <len> <bytes> PC->Arduino frame. Never send bare ASCII —
+    it is indistinguishable from binary-frame payload bytes after a lost
+    byte, which is how random commands got dispatched mid-test."""
+    if not s:
+        return b''
+    b = s.encode() if isinstance(s, str) else bytes(s)
+    b = b[:8]
+    return b'\xAA\x55\x03' + bytes([len(b)]) + b
+
+
 def build_test_control_packet(throttle_milli=0, alpha_centideg=0,
                               h_ref_dm=0, h_ref_dot_cms=0,
                               field_mask=0, flags=0):
@@ -804,23 +816,28 @@ async def websocket_endpoint(websocket: WebSocket):
 
             kind = msg.get('type')
             if kind == 'cmd' and app.state.reader:
-                app.state.reader.send_command(msg.get('cmd'))
+                # EVERYTHING is framed now, including console ASCII commands.
+                # Bare bytes on the same serial channel as binary frames meant
+                # any lost byte desynced the stream and payload bytes became
+                # commands (0x55 = 'U' = RESUME, 0x41 = 'A' = ARM, ...) — the
+                # "dashboard sends random commands after abort" bug.
+                app.state.reader.send_command(frame_ascii_cmd(msg.get('cmd')))
 
             elif kind == 'test_cmd' and app.state.reader:
                 # Phase 3-A (A3/A7): translate test-page lifecycle commands to
-                # the matching Arduino magic chars / binary frames.
+                # the matching Arduino framed chars / binary frames.
                 tc = msg.get('cmd', '').upper()
                 if tc == 'SET_PROFILE':
                     params = build_set_test_profile_params(msg.get('profile') or {})
                     if params is not None:
                         # PC->Arduino framing: 0xAA 0x55 + type(0x02=TEST_PROFILE) + 32 bytes
                         app.state.reader.send_command(b'\xAA\x55\x02' + params)
-                elif tc == 'ARM':    app.state.reader.send_command('A')
-                elif tc == 'RUN':    app.state.reader.send_command('T')   # CMD_START_TEST
-                elif tc == 'HOLD':   app.state.reader.send_command('H')
-                elif tc == 'RESUME': app.state.reader.send_command('U')
-                elif tc == 'STOP':   app.state.reader.send_command('K')   # CMD_STOP_TEST
-                elif tc == 'ABORT':  app.state.reader.send_command('X')
+                elif tc == 'ARM':    app.state.reader.send_command(frame_ascii_cmd('A'))
+                elif tc == 'RUN':    app.state.reader.send_command(frame_ascii_cmd('T'))   # CMD_START_TEST
+                elif tc == 'HOLD':   app.state.reader.send_command(frame_ascii_cmd('H'))
+                elif tc == 'RESUME': app.state.reader.send_command(frame_ascii_cmd('U'))
+                elif tc == 'STOP':   app.state.reader.send_command(frame_ascii_cmd('K'))   # CMD_STOP_TEST
+                elif tc == 'ABORT':  app.state.reader.send_command(frame_ascii_cmd('X'))
                 else:
                     print(f"[TEST_CMD] unhandled cmd={tc}")
 

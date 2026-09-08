@@ -162,7 +162,7 @@ extern radio_stats_t radio_stats;
  *             configMAX_PRIORITIES - 1, NULL);
  * @endcode
  */
-void radio_thread_function();
+void radio_thread_function(void *argument);
 
 /**
  * @brief Update sensor data for telemetry transmission

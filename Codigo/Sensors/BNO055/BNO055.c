@@ -51,17 +51,19 @@ bool BNO055_Configure(BNO055_t *dev) {
     }
     osDelay(25);
 
-    // Set to NDOF mode (full 9-DOF sensor fusion)
-    if (!BNO055_SetOpMode(dev, BNO055_MODE_NDOF)) {
-        return false;
-    }
-    osDelay(100);  // Mode change takes time
-
-    // Set power mode to normal
+    // Set power mode WHILE STILL IN CONFIG MODE — BNO055 config registers
+    // (incl. PWR_MODE) are only writable in CONFIGMODE; the old order wrote
+    // it after entering NDOF, where the write is ignored.
     if (!BNO055_WriteRegister(dev, BNO055_REG_PWR_MODE, BNO055_POWER_NORMAL)) {
         return false;
     }
     osDelay(10);
+
+    // Set to NDOF mode (full 9-DOF sensor fusion) last
+    if (!BNO055_SetOpMode(dev, BNO055_MODE_NDOF)) {
+        return false;
+    }
+    osDelay(100);  // Mode change takes time
 
     return true;
 }

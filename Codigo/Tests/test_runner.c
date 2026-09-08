@@ -27,6 +27,7 @@
 #include "Flight Computer/test_profile.h"
 #include "Telemetry/telemetry.h"
 #include "Radio/radio_thread.h"
+#include "Threads/create_threads.h"   /* estimator_thread_id */
 #include "main.h"
 
 #include <stdbool.h>
@@ -37,9 +38,10 @@
 #define COUNTDOWN_DURATION_MS  3000
 /* Hold the last commanded setpoint between GS packets up to this age. Anything
  * older falls through to on_run_tick with ctrl=NULL (which the ops module
- * interprets as "coast to 0"). 1500 ms covers the 1 Hz keepalive with margin;
- * absolute upper bound is TEST_HEARTBEAT_TIMEOUT_MS (after which we abort). */
-#define CTRL_FRESH_THRESHOLD_MS 3000
+ * interprets as "coast to 0"). 1500 ms covers the 1 Hz keepalive with margin.
+ * Must be < TEST_HEARTBEAT_TIMEOUT_MS (3000) so the safe "coast" phase
+ * actually happens before the hard abort. */
+#define CTRL_FRESH_THRESHOLD_MS 1500
 
 /* ------------------------------------------------------------------------- */
 /*  Module state                                                             */
@@ -132,6 +134,32 @@ static void runner_transition(fsm_state_t st, fsm_substate_t sub) {
 }
 
 /* ------------------------------------------------------------------------- */
+/*  Estimator lifecycle                                                      */
+/* ------------------------------------------------------------------------- */
+/* transition_to() suspends the estimator on entry to STATE_IDLE and only
+ * resumes it for STATE_ARMED/TEST_STAND/FLIGHT. The test runner bypasses
+ * transition_to(), so previously the estimator stayed suspended during every
+ * STATE_TEST_* — the gutter PID controlled against a frozen
+ * fsm_ctx.altitude_agl_m and the hard-altitude abort trip could never fire.
+ * The runner now manages the estimator explicitly. */
+
+static void runner_estimator_resume(void) {
+    if (estimator_thread_id != NULL && !fsm_ctx.flags.estimator_running) {
+        vTaskResume(estimator_thread_id);
+        fsm_ctx.flags.estimator_running = 1;
+        printf("[RUNNER] Estimator resumed\r\n");
+    }
+}
+
+static void runner_estimator_suspend(void) {
+    if (estimator_thread_id != NULL && fsm_ctx.flags.estimator_running) {
+        vTaskSuspend(estimator_thread_id);
+        fsm_ctx.flags.estimator_running = 0;
+        printf("[RUNNER] Estimator suspended\r\n");
+    }
+}
+
+/* ------------------------------------------------------------------------- */
 /*  Lifecycle API                                                            */
 /* ------------------------------------------------------------------------- */
 
@@ -158,6 +186,11 @@ bool test_runner_enter(const profile_t *profile) {
     radio_request_tdma_mode(TDMA_MODE_TEST_INTERACTIVE);
 
     runner_transition(kind_to_state(profile->kind), SUB_TEST_CONFIGED);
+    /* Estimator must run during tests: gutter's closed loop reads
+     * fsm_ctx.altitude_agl_m, and its hard-altitude safety trip depends on
+     * it being fresh. (Data routing gated in fsm_should_queue_to_estimator,
+     * which now includes STATE_TEST_*.) */
+    runner_estimator_resume();
     return true;
 }
 
@@ -223,6 +256,7 @@ void test_runner_abort(test_exit_reason_t reason) {
      * Without this the FSM stayed at STATE_TEST_<KIND>.SUB_TEST_ABORTED and
      * `handle_cmd_set_test_profile` rejected on the state gate. */
     runner_transition(STATE_IDLE, SUB_NONE);
+    runner_estimator_suspend();   /* mirror transition_to()'s IDLE entry */
 }
 
 bool test_runner_is_active(void) {
@@ -329,6 +363,7 @@ void test_runner_tick(void) {
             radio_request_tdma_mode(TDMA_MODE_FLIGHT);
             /* Bugfix: return to IDLE for the next test (mirror abort path). */
             runner_transition(STATE_IDLE, SUB_NONE);
+            runner_estimator_suspend();
             break;
         }
 

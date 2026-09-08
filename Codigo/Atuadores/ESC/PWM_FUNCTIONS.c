@@ -22,6 +22,7 @@
 #include "PWM_FUNCTIONS.h"
 #include "config.h"
 #include "main.h"
+#include "cmsis_os.h"   /* osDelay in PWM_ArmESC */
 #include <stdio.h>
 
 // Current state
@@ -315,15 +316,18 @@ void PWM_CancelRamp(void) {
 // ESC Arm/Disarm
 // ============================================================================
 
+/* NOTE: blocking — do NOT call from the FSM thread (it would freeze command
+ * processing, including ABORT). controller_init_motor() no longer uses this;
+ * the ARMED sub-state machine provides the arm dwell non-blockingly. */
 void PWM_ArmESC(uint32_t duration_ms) {
     printf("[PWM] Arming ESC (sending min signal for %lu ms)...\r\n", duration_ms);
-    
+
     // Send minimum throttle (arm signal)
     PWM_SetThrottle(0.0f);
-    
-    // Wait for ESC to recognize arm signal
-    HAL_Delay(duration_ms);
-    
+
+    // Wait for ESC to recognize arm signal (osDelay: yields under RTOS)
+    osDelay(duration_ms);
+
     printf("[PWM] ESC arm complete\r\n");
 }
 

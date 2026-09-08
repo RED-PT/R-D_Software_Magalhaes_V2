@@ -45,12 +45,28 @@ typedef enum {
     DATA_TYPE_NAV_STATE
 } data_type_t;
 
+/**
+ * Queue item carrying a full COPY of the sample.
+ *
+ * The previous design queued a pointer into the circular buffer plus the
+ * buffer's mutex. That was unsound: the writer overwrites the oldest slot
+ * when the buffer is full, and the flush path frees slots (advances tail)
+ * immediately after queueing — so consumers could dereference a slot that
+ * had already been recycled. The mutex only guarded *concurrent* access,
+ * not *stale* pointers. Copying ~80 bytes per item (≈4 KB extra across all
+ * queues) removes that whole class of bugs and the consumer-side locking.
+ */
 typedef struct {
     data_type_t type;
-    const void *data_ptr;
     uint32_t timestamp_ms;
     uint32_t sequence;
-    ram_circular_buffer_t *source_cb;
+    union {
+        IMU_t  imu;
+        BARO_t baro;
+        MAG_t  mag;
+        BNO_t  bno;
+        GPS_t  gps;
+    } payload;
 } data_packet_t;
 
 extern ram_circular_buffer_t cb_imu;
@@ -75,36 +91,29 @@ bool ram_circular_buffer_write(ram_circular_buffer_t *cb, const void *data, cons
 uint32_t ram_circular_buffer_available(ram_circular_buffer_t *cb);
 bool ram_circular_buffer_is_empty(ram_circular_buffer_t *cb);
 
-static inline void data_packet_lock(const data_packet_t *packet) {
-    if (packet->source_cb && packet->source_cb->mutex) {
-        xSemaphoreTake(packet->source_cb->mutex, portMAX_DELAY);
-    }
-}
-
-static inline void data_packet_unlock(const data_packet_t *packet) {
-    if (packet->source_cb && packet->source_cb->mutex) {
-        xSemaphoreGive(packet->source_cb->mutex);
-    }
-}
+/* Packets now carry copies — locking is unnecessary. Kept as no-ops so any
+ * straggling caller still compiles. */
+static inline void data_packet_lock(const data_packet_t *packet)   { (void)packet; }
+static inline void data_packet_unlock(const data_packet_t *packet) { (void)packet; }
 
 static inline void data_packet_copy_imu(const data_packet_t *packet, IMU_t *dest) {
-    memcpy(dest, packet->data_ptr, sizeof(IMU_t));
+    memcpy(dest, &packet->payload.imu, sizeof(IMU_t));
 }
 
 static inline void data_packet_copy_baro(const data_packet_t *packet, BARO_t *dest) {
-    memcpy(dest, packet->data_ptr, sizeof(BARO_t));
+    memcpy(dest, &packet->payload.baro, sizeof(BARO_t));
 }
 
 static inline void data_packet_copy_mag(const data_packet_t *packet, MAG_t *dest) {
-    memcpy(dest, packet->data_ptr, sizeof(MAG_t));
+    memcpy(dest, &packet->payload.mag, sizeof(MAG_t));
 }
 
 static inline void data_packet_copy_bno(const data_packet_t *packet, BNO_t *dest) {
-    memcpy(dest, packet->data_ptr, sizeof(BNO_t));
+    memcpy(dest, &packet->payload.bno, sizeof(BNO_t));
 }
 
 static inline void data_packet_copy_gps(const data_packet_t *packet, GPS_t *dest) {
-    memcpy(dest, packet->data_ptr, sizeof(GPS_t));
+    memcpy(dest, &packet->payload.gps, sizeof(GPS_t));
 }
 
 void data_handler_store_imu(const IMU_t *imu_data);
@@ -112,6 +121,7 @@ void data_handler_store_baro(const BARO_t *baro_data);
 void data_handler_store_gps(const GPS_t *gps_data);
 void data_handler_store_mag(const MAG_t *mag_data);
 void data_handler_store_bno(const BNO_t *bno_data);
-void data_handler_store_event(const telemetry_event_t *event_data);
+/* data_handler_store_event() removed: it queued a pointer to the caller's
+ * stack variable (dangling by design) and had no callers. */
 
 #endif /* DATA_HANDLER_FLASH_DATA_HANDLER_H_ */

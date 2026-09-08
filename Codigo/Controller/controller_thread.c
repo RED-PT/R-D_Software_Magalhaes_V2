@@ -43,17 +43,20 @@ static pid_gains_t velocity_pid = {
 void controller_init_motor(void) {
     printf("[CTRL] Initializing motor/ESC...\r\n");
 
-    // Initialize PWM hardware (uses TIM3 per config.h)
+    // Initialize PWM hardware (timer per config.h) — outputs the min/arm pulse
     PWM_Init();
 
-    // Arm ESC - send minimum signal for 2 seconds
-    PWM_ArmESC(2000);
+    /* NOTE: no blocking arm delay here anymore. This is called from the FSM
+     * thread, and the old PWM_ArmESC(2000) = HAL_Delay(2000) froze command
+     * processing (including ABORT) for 2 s. The ESC sees the minimum pulse
+     * from PWM_Init() onward; the ARMED sub-state machine's
+     * MOTOR_ARM_CAL_DELAY_MS (3 s) wait provides the arming dwell time. */
 
     ctrl_state.motor_initialized = true;
     ctrl_state.emergency_stop = false;
     ctrl_state.throttle_output = 0.0f;
 
-    printf("[CTRL] Motor initialized and armed\r\n");
+    printf("[CTRL] Motor initialized (arm dwell handled by FSM state machine)\r\n");
 }
 
 void controller_set_throttle(float throttle) {
@@ -61,8 +64,12 @@ void controller_set_throttle(float throttle) {
         throttle = 0.0f;
     }
 
-    // Apply limits from profile (0.0-1.0 normalized)
-    if (throttle < ctrl_state.throttle_min) throttle = ctrl_state.throttle_min;
+    // Apply limits from profile (0.0-1.0 normalized).
+    // An explicit 0 (stop/disarm) bypasses throttle_min: with a profile
+    // where throttle_min > 0, "set 0" used to leave the motor spinning
+    // at min throttle.
+    if (throttle > 0.0f && throttle < ctrl_state.throttle_min) throttle = ctrl_state.throttle_min;
+    if (throttle < 0.0f) throttle = 0.0f;
     if (throttle > ctrl_state.throttle_max) throttle = ctrl_state.throttle_max;
 
     ctrl_state.throttle_output = throttle;
@@ -252,7 +259,8 @@ void controller_update_ramp(void) {
 // Main Thread
 // ============================================================================
 
-void controller_thread_function() {
+void controller_thread_function(void *argument) {
+    (void)argument;
     printf("[CTRL] Controller Thread started\r\n");
     fsm_report_thread_started("CONTROLLER");
 

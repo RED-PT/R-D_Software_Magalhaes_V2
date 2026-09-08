@@ -83,7 +83,7 @@
  *
  * @note Starts suspended; resumed by FSM when entering ARMED state.
  */
-void estimator_thread_function();
+void estimator_thread_function(void *argument);
 
 /** @} */ // End of Estimator group
 

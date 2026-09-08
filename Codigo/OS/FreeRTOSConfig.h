@@ -105,7 +105,11 @@
 
 /* Software timer definitions. */
 #define configUSE_TIMERS                         1
-#define configTIMER_TASK_PRIORITY                ( 2 )
+/* Timer daemon priority raised from 2 to 45: the baro/BNO trigger timers run
+ * in this task, and at priority 2 every application thread (High/AboveNormal,
+ * CMSIS raw 24..43) starved them under load, delaying sensor sampling. The
+ * callbacks only post task notifications, so the daemon's CPU cost is tiny. */
+#define configTIMER_TASK_PRIORITY                ( 45 )
 #define configTIMER_QUEUE_LENGTH                 10
 #define configTIMER_TASK_STACK_DEPTH             256
 

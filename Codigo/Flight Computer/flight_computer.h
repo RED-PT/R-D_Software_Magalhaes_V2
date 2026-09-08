@@ -27,6 +27,20 @@
 #ifndef FLIGHT_COMPUTER_FLIGHT_COMPUTER_H_
 #define FLIGHT_COMPUTER_FLIGHT_COMPUTER_H_
 
+/**
+ * @brief DEV BYPASS — boot without IMU / MAG / BNO connected.
+ *
+ * 1 = IMU, MAG and BNO are treated as OPTIONAL: their init failures are not
+ *     counted as critical, fsm_is_boot_complete() passes without them, and
+ *     SET_PROFILE / ARM no longer require the IMU. The failures still appear
+ *     in the boot report so the GS sees exactly what is missing.
+ * 0 = normal behaviour (IMU + BARO critical).
+ *
+ * @warning SET THIS BACK TO 0 FOR FLIGHT. The barometer remains required
+ *          in both modes.
+ */
+#define BOOT_IGNORE_MISSING_SENSORS 1
+
 #include "defs.h"
 #include "FreeRTOS.h"
 #include "queue.h"
@@ -629,9 +643,10 @@ bool fsm_send_command(fsm_command_t cmd, uint8_t cmd_seq, const void *payload, u
  * @brief Send an internal event to the FSM
  * @param event_type Event type
  * @param data Event data (can be NULL)
+ * @param size Size of the data in bytes (max sizeof(fsm_event_msg_t.data) = 8)
  * @return true if event was queued successfully
  */
-bool fsm_send_event(fsm_internal_event_t event_type, const void *data);
+bool fsm_send_event(fsm_internal_event_t event_type, const void *data, uint16_t size);
 
 /**
  * @brief Convert FSM state to string

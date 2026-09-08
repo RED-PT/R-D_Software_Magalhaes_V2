@@ -129,19 +129,12 @@ extern TimerHandle_t xBnoTimer;   /**< BNO055 orientation polling timer */
  *  @brief FreeRTOS queues for thread-safe data exchange
  *  @{
  */
-extern QueueHandle_t queue_to_radio_tx;     /**< Telemetry packets to radio (fast/slow) */
-extern QueueHandle_t queue_radio_rx_to_fsm; /**< Raw radio RX to FSM (deprecated) */
 extern QueueHandle_t queue_fsm_events;      /**< FSM events to radio for TX */
 extern QueueHandle_t queue_cmd_to_fsm;      /**< Parsed commands to FSM */
 extern QueueHandle_t queue_event_to_fsm;    /**< Internal events to FSM */
 /** @} */
 
-/** @name Stream Buffers
- *  @brief FreeRTOS stream buffers for variable-length data
- *  @{
- */
-extern StreamBufferHandle_t stream_buffer_gps;  /**< GPS NMEA data stream */
-/** @} */
+/* (GPS stream buffer removed — GPS RX uses its own circular DMA buffer.) */
 
 /**
  * @brief Create all system threads, queues, and timers

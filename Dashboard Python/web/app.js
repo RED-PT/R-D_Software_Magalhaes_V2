@@ -663,6 +663,8 @@ function updateFast(pkt) {
     inferredLifecycle = SUB_TO_LIFECYCLE[pkt.substate];
   } else if (pkt.state === 1 /* STATE_IDLE */ || pkt.state === 2 /* STATE_CONFIGED */) {
     inferredLifecycle = 'IDLE';
+  } else if (pkt.state === 6 /* STATE_ABORT */ || pkt.state === 7 /* STATE_SAFE */) {
+    inferredLifecycle = 'ABORTED';
   }
   if (inferredLifecycle && inferredLifecycle !== testPage.lifecycle) {
     tpSetLifecycle(inferredLifecycle);
@@ -1893,13 +1895,82 @@ const KIND_HINTS = {
   'gutter-manual':   'Gutter (manual): <var>h</var><sub>ref</sub> slider, FC controller chases your setpoint within the configured bounds.',
 };
 
-/** Active state of the test page. */
+/** Active state of the test page.
+ *
+ * REWORKED: the lifecycle is driven EXCLUSIVELY by FC telemetry (updateFast's
+ * substate sync). Buttons no longer flip the state optimistically — clicking
+ * sends the command and marks it "pending"; it is then RETRIED automatically
+ * every 900 ms (up to 6×) until the FC reports the expected state. This is
+ * why buttons "needed several clicks" before: the command was sent once,
+ * lost on the radio, and the optimistic local state was immediately reverted
+ * by the 8 Hz telemetry sync. */
 const testPage = {
   kind: 'static',
   mode: 'auto',
   lifecycle: 'IDLE',  // IDLE | CONFIGED | ARMED | COUNTDOWN | RUNNING | HOLD | FINISHING | DONE | ABORTED
   lastSendTick: 0,
 };
+
+/** In-flight lifecycle command awaiting FC confirmation. */
+const pendingCmd = { cmd: null, payload: null, expect: null, tries: 0, timer: null };
+const PENDING_RETRY_MS  = 900;
+const PENDING_MAX_TRIES = 6;
+
+function tpClearPending() {
+  if (pendingCmd.timer) clearTimeout(pendingCmd.timer);
+  pendingCmd.cmd = null; pendingCmd.payload = null;
+  pendingCmd.expect = null; pendingCmd.timer = null; pendingCmd.tries = 0;
+}
+
+function tpTrySend() {
+  if (!pendingCmd.cmd) return;
+  if (pendingCmd.tries >= PENDING_MAX_TRIES) {
+    appendLog(`[TEST] ${pendingCmd.cmd} NOT confirmed after ${PENDING_MAX_TRIES} attempts — check radio link`);
+    const status = document.getElementById('testStatus');
+    if (status) { status.textContent = `⚠ ${pendingCmd.cmd} not confirmed — link problem?`; status.style.color = '#ef4444'; }
+    tpClearPending();
+    tpUpdateLifecycleUI();
+    return;
+  }
+  pendingCmd.tries++;
+  tpSendCommand(pendingCmd.cmd, pendingCmd.payload);
+  pendingCmd.timer = setTimeout(tpTrySend, PENDING_RETRY_MS);
+}
+
+/** Send a lifecycle command reliably: retry until the FC's reported
+ *  lifecycle lands in `expectStates`. */
+function tpSendReliable(cmd, payload, expectStates) {
+  tpClearPending();
+  pendingCmd.cmd = cmd;
+  pendingCmd.payload = payload || {};
+  pendingCmd.expect = expectStates;
+  tpTrySend();
+  tpUpdateLifecycleUI();
+}
+
+/* ── Countdown animation ─────────────────────────────────────────────────
+ * Driven locally from the moment the FC reports COUNTDOWN (so it never
+ * freezes when individual EVT_TEST_COUNTDOWN packets are lost); the FC's
+ * countdown events overwrite the digit when they do arrive. */
+let countdownTimer = null;
+let countdownStartMs = 0;
+
+function tpStartCountdownAnim() {
+  tpStopCountdownAnim();
+  countdownStartMs = Date.now();
+  const cd = document.getElementById('countdownDisplay');
+  const paint = () => {
+    const remaining = 3 - (Date.now() - countdownStartMs) / 1000;
+    if (cd) cd.textContent = remaining > 0 ? String(Math.ceil(remaining)) : 'GO';
+    if (remaining <= -2) tpStopCountdownAnim();   // FC should be RUNNING by now
+  };
+  paint();
+  countdownTimer = setInterval(paint, 200);
+}
+
+function tpStopCountdownAnim() {
+  if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
+}
 
 function tpUpdateConfigPanel() {
   const want = `${testPage.kind}-${testPage.mode}`;
@@ -1928,7 +1999,9 @@ function tpUpdateSliders() {
 function tpUpdateLifecycleUI() {
   const pill = document.getElementById('lifecyclePill');
   if (pill) {
-    pill.textContent = testPage.lifecycle;
+    pill.textContent = pendingCmd.cmd
+      ? `${testPage.lifecycle} → ${pendingCmd.cmd}…`
+      : testPage.lifecycle;
     pill.dataset.state = testPage.lifecycle;
   }
   const cd = document.getElementById('countdownDisplay');
@@ -1952,13 +2025,16 @@ function tpUpdateLifecycleUI() {
   // Motor must be calibrated before any test profile is loaded.
   // Without it the FC will reject CMD_SET_PROFILE/CMD_*_TEST commands anyway.
   const motorOk = !!motorCalibrated;
-  set('setProfileBtn', { enabled: motorOk && (ls === 'IDLE' || ls === 'CONFIGED' || ls === 'DONE' || ls === 'ABORTED') });
-  set('armTestBtn',    { enabled: motorOk && ls === 'CONFIGED' });
-  set('runTestBtn',    { enabled: ls === 'ARMED', hidden: ls === 'HOLD' });
-  set('resumeTestBtn', { enabled: ls === 'HOLD',  hidden: ls !== 'HOLD' });
-  set('holdTestBtn',   { enabled: ls === 'RUNNING' && testPage.mode === 'manual',
+  // While a command is pending (being retried), lock the buttons — except
+  // ABORT, which must always be available and pre-empts anything pending.
+  const busy = !!pendingCmd.cmd;
+  set('setProfileBtn', { enabled: !busy && motorOk && (ls === 'IDLE' || ls === 'CONFIGED' || ls === 'DONE' || ls === 'ABORTED') });
+  set('armTestBtn',    { enabled: !busy && motorOk && ls === 'CONFIGED' });
+  set('runTestBtn',    { enabled: !busy && ls === 'ARMED', hidden: ls === 'HOLD' });
+  set('resumeTestBtn', { enabled: !busy && ls === 'HOLD',  hidden: ls !== 'HOLD' });
+  set('holdTestBtn',   { enabled: !busy && ls === 'RUNNING' && testPage.mode === 'manual',
                          hidden: !(testPage.mode === 'manual' && (ls === 'RUNNING' || ls === 'HOLD')) });
-  set('stopTestBtn',   { enabled: ls === 'RUNNING' || ls === 'HOLD' });
+  set('stopTestBtn',   { enabled: !busy && (ls === 'RUNNING' || ls === 'HOLD') });
   set('abortTestBtn',  { enabled: ls !== 'IDLE' && ls !== 'DONE' && ls !== 'ABORTED' });
   tpUpdateSliders();
 }
@@ -1987,13 +2063,37 @@ function tpResetChartData() {
 
 function tpSetLifecycle(state) {
   const previous = testPage.lifecycle;
+  if (previous === state) return;
   testPage.lifecycle = state;
+
+  /* Pending-command confirmation: the FC reached the expected state. */
+  if (pendingCmd.cmd && pendingCmd.expect && pendingCmd.expect.includes(state)) {
+    appendLog(`[TEST] ${pendingCmd.cmd} confirmed by FC (${state}, attempt ${pendingCmd.tries})`);
+    tpClearPending();
+  }
+
+  /* Countdown animation follows the FC state. */
+  if (state === 'COUNTDOWN') tpStartCountdownAnim();
+  else if (previous === 'COUNTDOWN') tpStopCountdownAnim();
+
   /* Reset chart at start of each fresh test (catches both manual runs and the
    * "second test in a session" case where EVT_STARTED can arrive late). */
   if ((state === 'COUNTDOWN' || state === 'RUNNING') && previous !== state
       && previous !== 'COUNTDOWN' && previous !== 'RUNNING' && previous !== 'HOLD') {
     tpResetChartData();
   }
+
+  /* Leaving a live test (abort/finish/FC back to IDLE): zero the manual
+   * sliders so the next run can't inherit a stale throttle. */
+  if ((previous === 'RUNNING' || previous === 'HOLD' || previous === 'COUNTDOWN')
+      && (state === 'IDLE' || state === 'DONE' || state === 'ABORTED')) {
+    manualSnapshot.throttle_milli = 0;
+    manualSnapshot.mask = 0;
+    const throttleEl = document.getElementById('manualThrottle');
+    if (throttleEl) throttleEl.value = '0';
+    tpFmtThrottle();
+  }
+
   tpUpdateLifecycleUI();
 }
 
@@ -2087,10 +2187,12 @@ document.querySelectorAll('.test-mode-toggle input[name="testMode"]').forEach(ra
 });
 
 // ── Wiring: lifecycle buttons ──────────────────────────────────────────────
+// NO optimistic state changes: the pill/buttons only move when the FC's
+// telemetry confirms the transition. Each command retries automatically
+// (tpSendReliable) until the FC reaches one of the expected states.
 document.getElementById('setProfileBtn')?.addEventListener('click', () => {
   const profile = tpReadProfile();
-  tpSendCommand('SET_PROFILE', { profile });
-  tpSetLifecycle('CONFIGED');
+  tpSendReliable('SET_PROFILE', { profile }, ['CONFIGED']);
   /* Pre-arm the manual slider at the configured clamp so the user doesn't
    * have to drag it after RUN. The clamp is also enforced as the slider's
    * upper bound — going above the configured cap shouldn't be possible. */
@@ -2107,42 +2209,25 @@ document.getElementById('setProfileBtn')?.addEventListener('click', () => {
   }
 });
 document.getElementById('armTestBtn')?.addEventListener('click', () => {
-  tpSendCommand('ARM');
-  tpSetLifecycle('ARMED');
+  tpSendReliable('ARM', null, ['ARMED']);
 });
 document.getElementById('runTestBtn')?.addEventListener('click', () => {
-  tpSendCommand('RUN');
-  tpSetLifecycle('COUNTDOWN');
-  // Local 3-2-1 fallback animation; the FC will also broadcast EVT_TEST_COUNTDOWN
-  // events when wired up in Phase 3-A and those will overwrite this.
-  let n = 3;
-  const cd = document.getElementById('countdownDisplay');
-  if (cd) cd.textContent = String(n);
-  const tick = setInterval(() => {
-    n -= 1;
-    if (cd) cd.textContent = (n > 0) ? String(n) : 'GO';
-    if (n <= 0) {
-      clearInterval(tick);
-      setTimeout(() => tpSetLifecycle('RUNNING'), 400);
-    }
-  }, 1000);
+  // Countdown animation starts when the FC reports COUNTDOWN (tpSetLifecycle).
+  tpSendReliable('RUN', null, ['COUNTDOWN', 'RUNNING']);
 });
 document.getElementById('holdTestBtn')?.addEventListener('click', () => {
-  tpSendCommand('HOLD');
-  tpSetLifecycle('HOLD');
+  tpSendReliable('HOLD', null, ['HOLD']);
 });
 document.getElementById('resumeTestBtn')?.addEventListener('click', () => {
-  tpSendCommand('RESUME');
-  tpSetLifecycle('RUNNING');
+  tpSendReliable('RESUME', null, ['RUNNING']);
 });
 document.getElementById('stopTestBtn')?.addEventListener('click', () => {
-  tpSendCommand('STOP');
-  tpSetLifecycle('FINISHING');
-  setTimeout(() => tpSetLifecycle('DONE'), 600);
+  // The FC runs FINISHING → DONE → IDLE within one tick, so accept any.
+  tpSendReliable('STOP', null, ['FINISHING', 'DONE', 'IDLE']);
 });
 document.getElementById('abortTestBtn')?.addEventListener('click', () => {
-  tpSendCommand('ABORT');
-  tpSetLifecycle('ABORTED');
+  // ABORT pre-empts whatever else was pending.
+  tpSendReliable('ABORT', null, ['ABORTED', 'IDLE']);
 });
 
 // ── Wiring: manual sliders ─────────────────────────────────────────────────

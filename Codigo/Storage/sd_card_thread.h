@@ -108,6 +108,12 @@ void sd_card_resume(void);
  */
 bool sd_card_is_paused(void);
 
+/**
+ * @brief SD health for telemetry
+ * @return 0 = OK (mounted, log file open), 1 = error
+ */
+uint8_t sd_card_status(void);
+
 /** @} */
 
 #endif /* STORAGE_SD_CARD_THREAD_H_ */

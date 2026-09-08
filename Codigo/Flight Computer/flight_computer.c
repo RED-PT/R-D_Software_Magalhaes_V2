@@ -396,9 +396,16 @@ void fsm_report_init_status(const char *component, bool success) {
         bs->passed_checks++;
     } else {
         bs->failed_checks++;
+#if BOOT_IGNORE_MISSING_SENSORS
+        /* DEV BYPASS: only the barometer is critical (IMU/MAG/BNO absent). */
+        if (strstr(component, "BARO")) {
+            bs->critical_failures++;
+        }
+#else
         if (strstr(component, "IMU") || strstr(component, "BARO")) {
             bs->critical_failures++;
         }
+#endif
     }
 
     if (fsm_mutex) xSemaphoreGive(fsm_mutex);
@@ -462,7 +469,12 @@ void fsm_report_thread_started(const char *thread_name) {
  */
 bool fsm_should_queue_to_estimator(void) {
     fsm_state_t state = fsm_get_state();
-    return (state == STATE_ARMED || state == STATE_TEST_STAND || state == STATE_FLIGHT);
+    return (state == STATE_ARMED || state == STATE_TEST_STAND || state == STATE_FLIGHT ||
+            /* Phase 3-A states were missing here — without them the estimator
+             * received no data during the new tests and the gutter closed
+             * loop ran on frozen altitude. */
+            state == STATE_TEST_STATIC || state == STATE_TEST_TORQUE ||
+            state == STATE_TEST_TORQUE_CAL || state == STATE_TEST_GUTTER);
 }
 
 /**
@@ -481,7 +493,9 @@ bool fsm_should_queue_to_estimator(void) {
 bool fsm_should_queue_to_sd(void) {
     fsm_state_t state = fsm_get_state();
     return (state == STATE_ARMED || state == STATE_TEST_STAND ||
-            state == STATE_FLIGHT || state == STATE_ABORT);
+            state == STATE_FLIGHT || state == STATE_ABORT ||
+            state == STATE_TEST_STATIC || state == STATE_TEST_TORQUE ||
+            state == STATE_TEST_TORQUE_CAL || state == STATE_TEST_GUTTER);
 }
 
 /**
@@ -519,7 +533,9 @@ bool fsm_is_boot_complete(void) {
     if (bs->data_handler_thread_started != 1) return false;
     if (bs->telemetry_thread_started != 1) return false;
     if (bs->radio_thread_started != 1) return false;
+#if !BOOT_IGNORE_MISSING_SENSORS
     if (bs->imu_init != 1) return false;
+#endif
     if (bs->baro_init != 1) return false;
 
     return true;
@@ -627,7 +643,7 @@ bool fsm_send_command(fsm_command_t cmd, uint8_t cmd_seq, const void *payload, u
  * @note Events are processed asynchronously by the FSM thread.
  * @see fsm_internal_event_t for complete event list
  */
-bool fsm_send_event(fsm_internal_event_t event_type, const void *data) {
+bool fsm_send_event(fsm_internal_event_t event_type, const void *data, uint16_t size) {
     if (queue_event_to_fsm == NULL) {
         printf("[FSM] ERROR: queue_event_to_fsm is NULL\r\n");
         return false;
@@ -638,8 +654,11 @@ bool fsm_send_event(fsm_internal_event_t event_type, const void *data) {
     msg.type = event_type;
     msg.timestamp = HAL_GetTick();
 
-    if (data) {
-        memcpy(&msg.data, data, sizeof(msg.data));
+    if (data && size > 0) {
+        /* Copy only what the caller actually provided — the old fixed
+         * sizeof(msg.data) copy read out of bounds for 4-byte payloads. */
+        if (size > sizeof(msg.data)) size = sizeof(msg.data);
+        memcpy(&msg.data, data, size);
     }
 
     if (xQueueSend(queue_event_to_fsm, &msg, pdMS_TO_TICKS(10)) != pdTRUE) {

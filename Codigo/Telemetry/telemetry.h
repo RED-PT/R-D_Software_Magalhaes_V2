@@ -86,7 +86,7 @@ typedef enum {
     TDMA_MODE_TEST_INTERACTIVE = 1,
 } tdma_mode_t;
 
-/* TEST_INTERACTIVE preset: 5 slots × 40 ms = 200 ms.
+/* TEST_INTERACTIVE preset: 5 slots × 100 ms = 500 ms.
  *   slot 0: FAST (FC tx)
  *   slot 1: RX   (FC listens for test_control_packet_t)
  *   slot 2: FAST (FC tx)
@@ -315,10 +315,13 @@ typedef struct test_control_packet_s {
 
 /** @brief How long the FC waits for a fresh test_control_packet_t in
  *  Manual mode before declaring the GS link dead and aborting.
- *  Phase 3-A bugfix: bumped 1 s → 2 s. The 1 s budget was too tight when the
- *  TDMA mode switch (flight → test) takes ~1 superframe to propagate; the
- *  first ctrl from the GS could land just past 1000 ms after RUNNING entry. */
-#define TEST_HEARTBEAT_TIMEOUT_MS   30000
+ *  3 s: long enough to ride out one bad superframe + a resync, short enough
+ *  that a live motor is never more than 3 s away from an auto-abort after
+ *  real link loss. (The old 30000 was a debug value that masked the link
+ *  drops instead of fixing them — the drops themselves are addressed in
+ *  radio_thread.c / lora_sx126x.c: any valid RX refreshes the link, RX is
+ *  polled every loop iteration, and the SX126x TX path can no longer wedge.) */
+#define TEST_HEARTBEAT_TIMEOUT_MS   3000
 
 /** @} */ /* End of TelemetryPackets group */
 

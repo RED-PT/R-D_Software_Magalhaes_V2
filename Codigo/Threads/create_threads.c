@@ -73,8 +73,8 @@ TimerHandle_t xBnoTimer = NULL;   /**< Triggers BNO055 reading at 100 Hz */
 /** @name Queue Handles
  *  @{
  */
-QueueHandle_t queue_to_radio_tx = NULL;     /**< Telemetry → Radio (tx packets) */
-QueueHandle_t queue_radio_rx_to_fsm = NULL; /**< Radio → FSM (raw rx, deprecated) */
+/* queue_to_radio_tx and queue_radio_rx_to_fsm removed: declared for years
+ * but never created nor used anywhere. */
 QueueHandle_t queue_fsm_events = NULL;      /**< FSM → Radio (event packets, 5 items) */
 QueueHandle_t queue_cmd_to_fsm = NULL;      /**< Radio → FSM (parsed commands, 8 items) */
 QueueHandle_t queue_event_to_fsm = NULL;    /**< Estimator → FSM (internal events, 8 items) */
@@ -84,8 +84,8 @@ QueueHandle_t queue_event_to_fsm = NULL;    /**< Estimator → FSM (internal eve
  * Stream Buffer Definitions
  * ============================================================================ */
 
-/** @brief GPS NMEA data stream buffer */
-StreamBufferHandle_t stream_buffer_gps;
+/* stream_buffer_gps removed: never created nor used (GPS uses its own
+ * circular DMA buffer inside UBLOX_GPS_t). */
 
 /* ============================================================================
  * Thread Attribute Definitions
@@ -207,8 +207,8 @@ const osThreadAttr_t fsm_thread_attr = {
  * **Timer Specifications:**
  * | Timer | Period | Callback | Purpose |
  * |-------|--------|----------|---------|
- * | xBaroTimer | 20ms | vBaroTimerCallback | MS5607 50 Hz polling |
- * | xBnoTimer | 10ms | vBnoTimerCallback | BNO055 100 Hz polling |
+ * | xBaroTimer | BARO_UPDATE_RATE_MS (100ms) | vBaroTimerCallback | MS5607 10 Hz polling |
+ * | xBnoTimer | BNO_UPDATE_RATE_MS (100ms) | vBnoTimerCallback | BNO055 10 Hz polling |
  *
  * @warning If any resource creation fails, an error is logged but execution
  *          continues. Check serial output for "ERROR:" messages.
@@ -220,6 +220,11 @@ void create_threads() {
 
 	// Terminate CubeMX default task to free resources
 	osThreadTerminate(defaultTaskHandle);
+
+	/* Initialize the FSM context BEFORE any thread exists. Previously
+	 * fsm_init() ran inside the FSM thread and its memset could wipe boot
+	 * reports already posted by the higher-priority sensors thread. */
+	fsm_init();
 
 	printf("Creating queues...\r\n");
 

@@ -17,6 +17,22 @@
 
 static DMA_BUFFER SX126x_DMA_t sx126x_state;
 
+/* Deferred-work flags. ISRs (EXTI DIO1, SPI DMA complete) only set these;
+ * all SPI traffic happens in the radio thread via SX126x_Pump(). Doing
+ * blocking SPI (with up-to-1 s BUSY waits) inside ISRs both stalled the
+ * system and interleaved with the radio thread's own SPI transactions,
+ * corrupting the SX126x command stream — one of the causes of the
+ * "link dies mid-test" failures. */
+static volatile bool dio1_pending = false;      /* DIO1 edge seen, IRQ status unread */
+static volatile bool tx_trigger_pending = false;/* WriteBuffer DMA done, SetTx not yet sent */
+static uint32_t tx_start_tick = 0;              /* For TX-wedge recovery */
+#define SX126X_TX_RECOVERY_MS  300              /* No TX_DONE within this → force RX */
+
+/* Cached packet params (set in Init). TransmitDMA used to "read back" the
+ * current params with the SET_PKT_PARAMS opcode — no such read command
+ * exists on the SX126x, so CRC/IQ fields were rewritten from garbage. */
+static uint8_t pkt_params_cache[6] = {0};
+
 // ============================================================================
 // LOW-LEVEL SPI
 // ============================================================================
@@ -148,6 +164,14 @@ bool SX126x_Reset(void) {
 
 bool SX126x_Init(SX126x_LoRaConfig_t *config) {
     memset(&sx126x_state, 0, sizeof(sx126x_state));
+    /* tx_done must start true: IsTxBusy() returns `... || !tx_done`, and with
+     * tx_done=false from the memset the radio reported "busy" forever before
+     * the first transmission — can_transmit() never passed and the FC never
+     * TX'd at all on this backend. */
+    sx126x_state.tx_done = true;
+    dio1_pending = false;
+    tx_trigger_pending = false;
+    tx_start_tick = 0;
 
     if (!SX126x_Reset()) return false;
 
@@ -187,6 +211,7 @@ bool SX126x_Init(SX126x_LoRaConfig_t *config) {
         0x00
     };
     SX126x_WriteCommand(SX126X_CMD_SET_PKT_PARAMS, pkt_params, 6);
+    memcpy(pkt_params_cache, pkt_params, 6);
 
     uint8_t pa_config[4] = {0x04, 0x07, 0x00, 0x01};
     SX126x_WriteCommand(SX126X_CMD_SET_PA_CONFIG, pa_config, 4);
@@ -238,13 +263,14 @@ bool SX126x_TransmitDMA(uint8_t *data, uint8_t length) {
 
     sx126x_state.tx_done = false;
     sx126x_state.spi_state = SX126X_DMA_TX_BUSY;
+    tx_start_tick = HAL_GetTick();
 
     SX126x_SetStandby(SX126X_STANDBY_RC);
 
+    /* Use the cached params from Init (preamble/CRC/IQ preserved),
+     * only patch the payload length. */
     uint8_t pkt_params[6];
-    SX126x_ReadCommand(SX126X_CMD_SET_PKT_PARAMS, pkt_params, 6);
-    pkt_params[0] = 0x00;
-    pkt_params[1] = 0x08;
+    memcpy(pkt_params, pkt_params_cache, 6);
     pkt_params[2] = length;
     SX126x_WriteCommand(SX126X_CMD_SET_PKT_PARAMS, pkt_params, 6);
 
@@ -268,12 +294,11 @@ bool SX126x_TransmitDMA(uint8_t *data, uint8_t length) {
 }
 
 void SX126x_SPI_TxCpltCallback(void) {
+    /* DMA-complete ISR: only end the SPI frame (GPIO write, ISR-safe) and
+     * flag the thread. SetTx / ClearIrq are SPI transactions — they run in
+     * SX126x_Pump() from the radio thread. */
     SX126X_CS_HIGH();
-
-    SX126x_ClearIrqStatus(SX126X_IRQ_ALL);
-    SX126x_SetTx(1000);
-
-    sx126x_state.spi_state = SX126X_DMA_IDLE;
+    tx_trigger_pending = true;
 }
 
 void SX126x_SPI_RxCpltCallback(void) {
@@ -358,31 +383,68 @@ int8_t SX126x_GetSnr(void) {
 // ============================================================================
 
 void SX126x_DIO1_IRQ_Handler(void) {
-    uint16_t irq_status = SX126x_GetIrqStatus();
+    /* EXTI ISR context: no SPI here (blocking SPI + wait_not_busy in an ISR
+     * stalled the system and raced the radio thread's SPI). Just flag it;
+     * the radio thread services it via SX126x_Pump() within one loop tick. */
+    dio1_pending = true;
+}
 
-    if (irq_status & SX126X_IRQ_TX_DONE) {
-        sx126x_state.tx_done = true;
-        SX126x_ClearIrqStatus(SX126X_IRQ_TX_DONE);
-        /* Phase 3-A bugfix: after TX completes the SX126x defaults to
-         * STANDBY_RC. Without an explicit SetRx here, the modem stays deaf
-         * until something else (CRC error, manual call) restores RX —
-         * which on FC means most GS packets land in a dead window and the
-         * "Lost sync (no rx for 5000 ms)" cycle becomes permanent. */
-        SX126x_SetRx(0xFFFFFF);
+/**
+ * @brief Service deferred radio work. Call from the radio thread every loop
+ *        iteration (2 ms). Handles: TX trigger after buffer-DMA, DIO1 IRQ
+ *        status, and TX-wedge recovery.
+ */
+void SX126x_Pump(void) {
+    /* 1. WriteBuffer DMA finished → actually start the TX. */
+    if (tx_trigger_pending) {
+        tx_trigger_pending = false;
+        SX126x_ClearIrqStatus(SX126X_IRQ_ALL);
+        SX126x_SetTx(1000);
+        sx126x_state.spi_state = SX126X_DMA_IDLE;
     }
 
-    if (irq_status & SX126X_IRQ_RX_DONE) {
-        sx126x_state.rx_done = true;
-        SX126x_ClearIrqStatus(SX126X_IRQ_RX_DONE);
+    /* 2. DIO1 edge → read + dispatch IRQ status (in thread context). */
+    if (dio1_pending) {
+        dio1_pending = false;
+        uint16_t irq_status = SX126x_GetIrqStatus();
+
+        if (irq_status & SX126X_IRQ_TX_DONE) {
+            sx126x_state.tx_done = true;
+            SX126x_ClearIrqStatus(SX126X_IRQ_TX_DONE);
+            /* After TX the SX126x drops to STANDBY_RC — go straight back
+             * to continuous RX so no GS packet lands in a dead window. */
+            SX126x_SetRx(0xFFFFFF);
+        }
+        if (irq_status & SX126X_IRQ_RX_DONE) {
+            sx126x_state.rx_done = true;
+            SX126x_ClearIrqStatus(SX126X_IRQ_RX_DONE);
+        }
+        if (irq_status & SX126X_IRQ_TIMEOUT) {
+            SX126x_ClearIrqStatus(SX126X_IRQ_TIMEOUT);
+            SX126x_SetRx(0xFFFFFF);
+        }
+        if (irq_status & SX126X_IRQ_CRC_ERROR) {
+            SX126x_ClearIrqStatus(SX126X_IRQ_CRC_ERROR);
+            SX126x_SetRx(0xFFFFFF);
+        }
     }
 
-    if (irq_status & SX126X_IRQ_TIMEOUT) {
-        SX126x_ClearIrqStatus(SX126X_IRQ_TIMEOUT);
-    }
-
-    if (irq_status & SX126X_IRQ_CRC_ERROR) {
-        SX126x_ClearIrqStatus(SX126X_IRQ_CRC_ERROR);
-        SX126x_SetRx(0xFFFFFF);
+    /* 3. TX-wedge recovery: if TX_DONE never arrives (missed IRQ, glitch),
+     * IsTxBusy() used to stay true forever → the FC stopped transmitting
+     * entirely and the GS declared it dead. Force the modem back to RX. */
+    if (!sx126x_state.tx_done &&
+        (sx126x_state.spi_state == SX126X_DMA_TX_BUSY || tx_start_tick != 0)) {
+        if (tx_start_tick != 0 &&
+            (HAL_GetTick() - tx_start_tick) > SX126X_TX_RECOVERY_MS) {
+            SX126x_SetStandby(SX126X_STANDBY_RC);
+            SX126x_ClearIrqStatus(SX126X_IRQ_ALL);
+            SX126x_SetRx(0xFFFFFF);
+            sx126x_state.spi_state = SX126X_DMA_IDLE;
+            sx126x_state.tx_done = true;
+            tx_start_tick = 0;
+        }
+    } else if (sx126x_state.tx_done) {
+        tx_start_tick = 0;
     }
 }
 

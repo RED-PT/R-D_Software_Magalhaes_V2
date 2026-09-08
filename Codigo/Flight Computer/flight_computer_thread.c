@@ -333,7 +333,13 @@ static void handle_state_boot(void) {
             printf("[FSM]   - %s\r\n", boot_report.errors[i]);
         }
 
+        /* boot_report_t (137 B) does not fit the 24 B event payload — the
+         * event carries the counters + first error only. Send each error as
+         * its own EVT_GENERIC_MSG so the GS actually sees all of them. */
         send_telem_event(EVT_CHECKS_RED, &boot_report, sizeof(boot_report));
+        for (int i = 0; i < boot_report.error_count; i++) {
+            send_telem_event(EVT_GENERIC_MSG, boot_report.errors[i], BOOT_ERROR_MSG_LEN);
+        }
 
         if (bs->critical_failures > 0) {
             printf("[FSM] CRITICAL FAILURES - going to SAFE\r\n");
@@ -515,11 +521,13 @@ static void handle_state_abort(void) {
     //   CMD_ABORT / CMD_FORCE_SAFE -> StaticTest_Cancel + PWM_EmergencyStop in handler.
     //   Internal safety events     -> process_static_test guard cancels test next tick.
     // Wait here for manual intervention.
-    static bool abort_logged = false;
+    // Log once per *entry* (the old static bool never reset, so a second
+    // visit to ABORT logged nothing).
+    static uint32_t logged_entry_tick = 0;
 
-    if (!abort_logged) {
+    if (logged_entry_tick != fsm_ctx.state_entry_tick) {
         printf("[FSM] ABORT state - motors cut, waiting for SAFE command\r\n");
-        abort_logged = true;
+        logged_entry_tick = fsm_ctx.state_entry_tick;
     }
 }
 
@@ -528,11 +536,11 @@ static void handle_state_abort(void) {
 // ============================================================================
 static void handle_state_safe(void) {
     // Final safe state - do nothing, wait for power cycle or restart
-    static bool safe_logged = false;
+    static uint32_t logged_entry_tick = 0;
 
-    if (!safe_logged) {
+    if (logged_entry_tick != fsm_ctx.state_entry_tick) {
         printf("[FSM] SAFE state - system idle\r\n");
-        safe_logged = true;
+        logged_entry_tick = fsm_ctx.state_entry_tick;
     }
 }
 
@@ -572,7 +580,9 @@ static void handle_cmd_set_profile(fsm_cmd_msg_t *msg) {
 
     if (bs->imu_init != 1) {
         printf("[FSM] WARNING: IMU not initialized!\r\n");
+#if !BOOT_IGNORE_MISSING_SENSORS
         sensors_ok = false;
+#endif
     }
     if (bs->baro_init != 1) {
         printf("[FSM] WARNING: Barometer not initialized!\r\n");
@@ -599,8 +609,6 @@ static void handle_cmd_set_profile(fsm_cmd_msg_t *msg) {
 
     printf("[FSM] SET_PROFILE: type=%u p1=%.1f p2=%.1f\r\n", profile_type, param1, param2);
 
-    fsm_ctx.profile.type = (flight_profile_t)profile_type;
-
     switch (profile_type) {
         case PROFILE_GUTTER_RAMP:
             fsm_ctx.profile.ramp_duration_s = param1;
@@ -613,7 +621,13 @@ static void handle_cmd_set_profile(fsm_cmd_msg_t *msg) {
             fsm_ctx.profile.target_altitude_m = param1;
             fsm_ctx.profile.flare_altitude_m = param2;
             break;
+        default:
+            printf("[FSM] Unknown profile type %u - rejected\r\n", profile_type);
+            fsm_ctx.last_cmd_status = 1;
+            return;
     }
+
+    fsm_ctx.profile.type = (flight_profile_t)profile_type;
 
     transition_to(STATE_CONFIGED, SUB_NONE, EVT_PROFILE_LOADED);
     fsm_ctx.last_cmd_status = 0;
@@ -805,7 +819,11 @@ static void handle_cmd_arm(fsm_cmd_msg_t *msg) {
     }
 
     // Check critical sensors
+#if BOOT_IGNORE_MISSING_SENSORS
+    if (fsm_ctx.boot_status.baro_init != 1) {   /* DEV BYPASS: IMU optional */
+#else
     if (fsm_ctx.boot_status.imu_init != 1 || fsm_ctx.boot_status.baro_init != 1) {
+#endif
         printf("[FSM] Critical sensors not ready!\r\n");
         fsm_ctx.last_cmd_status = 1;
         return;
@@ -864,10 +882,15 @@ static void handle_cmd_launch(fsm_cmd_msg_t *msg) {
 static void handle_cmd_abort(fsm_cmd_msg_t *msg) {
     printf("[FSM] ABORT!\r\n");
 
-    // Phase 3-A: bring down the new test runner before forcing the global stop
-    // (its on_exit handles motor + sd_card_resume).
+    // Phase 3-A: an abort of a runner-managed TEST is fully handled by the
+    // runner (motor cut via on_exit, SD resumed, state back to IDLE). Do NOT
+    // fall through to STATE_ABORT — that state is terminal-until-reboot and
+    // forced a power cycle between test-stand runs.
     if (test_runner_is_active()) {
         test_runner_abort(TEST_EXIT_ABORT);
+        PWM_EmergencyStop();   // belt-and-suspenders
+        fsm_ctx.last_cmd_status = 0;
+        return;
     }
 
     // Cancel any legacy test in progress and force motor off before changing state.
@@ -1337,8 +1360,10 @@ static void process_static_test(void) {
 void fsm_thread_function(void *argument) {
     printf("[FSM] Thread starting...\r\n");
 
-    // Initialize FSM
-    fsm_init();
+    /* fsm_init() is now called from create_threads() BEFORE the scheduler
+     * starts. Calling it here raced the (higher-priority) sensors thread:
+     * its early fsm_report_init_status() calls landed before the memset in
+     * fsm_init() and were silently wiped, producing phantom boot failures. */
 
     // Report thread started
     fsm_report_thread_started("FSM");

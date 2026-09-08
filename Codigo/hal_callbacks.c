@@ -160,14 +160,17 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi) {
 
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
-    // Parse DMA buffer based on active sensor
+    // End the SPI frame (CS was asserted in the StartReadDMA functions),
+    // then parse the DMA buffer based on the active sensor.
     if (hspi->Instance == SPI_IMU_BARO_INSTANCE) {
         if (spi1_active_sensor == ACTIVE_SENSOR_IMU) {
+            CS_IMU_HIGH();
             ASM330LHHX_ParseDMABuffer(&imu_device);
         }
     }
     else if (hspi->Instance == SPI_MAG_INSTANCE) {
         if (spi_mag_active_sensor == ACTIVE_SENSOR_MAG) {
+            CS_MAG_HIGH();
             MMC5983MA_ParseDMABuffer(&mag_device);
         }
     }
@@ -403,8 +406,11 @@ void HAL_UART_RxHalfCpltCallback(UART_HandleTypeDef *huart) {
  * @todo Implement proper error recovery and statistics tracking
  */
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) {
+	/* No printf here: this runs in ISR context and the retargeted blocking
+	 * printf can stall or deadlock inside an interrupt. Count it instead. */
+	static volatile uint32_t uart_error_count = 0;
 	if (huart->Instance == UART_DEBUG_INSTANCE) {
-		printf("ERRO DMA UART\r\n");
+		uart_error_count++;
 	}
 }
 
